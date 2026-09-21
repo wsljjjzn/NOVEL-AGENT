@@ -1,0 +1,338 @@
+[
+  {
+    "character_id": "000006_四月(艾谱莉)",
+    "name": "四月(艾谱莉)",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "四月(艾谱莉)：随遇而安、温柔坚韧、音乐与精神力见长"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000006_飞坦",
+    "name": "飞坦",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "飞坦：本作最大亮点——从原作冷酷旅团成员转变为」暴躁傲娇武力值爆表的矮子男友」，感情发展层次清晰"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000006_利威尔",
+    "name": "利威尔",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "利威尔：进击篇男主，塑造为」嘴硬心软的地下街王者」，与四月的互动主打反差萌和默契"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000006_沢田纲吉（成年版）",
+    "name": "沢田纲吉（成年版）",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "沢田纲吉（成年版）：温柔包容的完美父亲形象，是四月理想化的精神支柱"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000006_沢田纲吉（少年版）",
+    "name": "沢田纲吉（少年版）",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "沢田纲吉（少年版）：尊重原作人设的」废柴少年」，与四月的姐弟关系充满矛盾张力"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000006_向日岳人",
+    "name": "向日岳人",
+    "aliases": [],
+    "source_file": "000006.txt (15433行)",
+    "base_profile": {
+      "初步描述": "向日岳人：网王篇融入的核心角色，四月无条件宠爱的对象，四月为他抹去记忆以保护他"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.226747"
+  },
+  {
+    "character_id": "000007_安迪/阿吉/科尔温",
+    "name": "安迪/阿吉/科尔温",
+    "aliases": [],
+    "source_file": "000007.txt (82357行)",
+    "base_profile": {
+      "初步描述": "安迪/阿吉/科尔温：本作灵魂人物——极度缺乏安全感、偏执、阴郁但有强烈保护欲"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.294459"
+  },
+  {
+    "character_id": "000007_泽田纲吉",
+    "name": "泽田纲吉",
+    "aliases": [],
+    "source_file": "000007.txt (82357行)",
+    "base_profile": {
+      "初步描述": "泽田纲吉：基本遵循原作人设（废柴→成长→大空），但在与安迪的互动中展现更多敏感和温柔"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.294459"
+  },
+  {
+    "character_id": "000007_白兰（番外）",
+    "name": "白兰（番外）",
+    "aliases": [],
+    "source_file": "000007.txt (82357行)",
+    "base_profile": {
+      "初步描述": "白兰（番外）：从原作反派转变为」同爱安迪并寻找她的男人」，一个深情的偏执狂"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.294459"
+  },
+  {
+    "character_id": "000007_吉尔伽美什",
+    "name": "吉尔伽美什",
+    "aliases": [],
+    "source_file": "000007.txt (82357行)",
+    "base_profile": {
+      "初步描述": "吉尔伽美什：被塑造为残暴、傲慢但具有深渊般吸引力的」最古之王」，与科尔温的关系充满了权力不对等的施虐/受虐色彩，同时也有异样的亲密和依赖"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.294459"
+  },
+  {
+    "character_id": "000007_库洛洛（猎人篇）",
+    "name": "库洛洛（猎人篇）",
+    "aliases": [],
+    "source_file": "000007.txt (82357行)",
+    "base_profile": {
+      "初步描述": "库洛洛（猎人篇）：以病弱双胞胎弟弟身份出场，与安迪（男体状态）形成镜像关系"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.294459"
+  },
+  {
+    "character_id": "000008_温妮·爱因斯坦",
+    "name": "温妮·爱因斯坦",
+    "aliases": [],
+    "source_file": "000008.txt (27282行)",
+    "base_profile": {
+      "初步描述": "温妮·爱因斯坦：面瘫、逻辑性强、嗜甜如命、对感情迟钝但有强烈正义感"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.348205"
+  },
+  {
+    "character_id": "000008_德拉科·马尔福",
+    "name": "德拉科·马尔福",
+    "aliases": [],
+    "source_file": "000008.txt (27282行)",
+    "base_profile": {
+      "初步描述": "德拉科·马尔福：经典」傲娇毒舌深情贵公子」，外在傲慢冷漠内心温柔敏感"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.348205"
+  },
+  {
+    "character_id": "000009_李青衫",
+    "name": "李青衫",
+    "aliases": [],
+    "source_file": "000009.txt (138717行)",
+    "base_profile": {
+      "初步描述": "李青衫：典型」天选之子」——孤儿背景/隐藏天赋/倔强性格/不断突破极限"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.425002"
+  },
+  {
+    "character_id": "000009_KUMA/李清扬",
+    "name": "KUMA/李清扬",
+    "aliases": [],
+    "source_file": "000009.txt (138717行)",
+    "base_profile": {
+      "初步描述": "KUMA/李清扬：本作灵魂——从程序代码到真正」人」的觉醒过程令人动容"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.425002"
+  },
+  {
+    "character_id": "000010_荣仓别克",
+    "name": "荣仓别克",
+    "aliases": [],
+    "source_file": "000010.txt (26017行)",
+    "base_profile": {
+      "初步描述": "荣仓别克：典型」知识分子型主角」——理性/有原则/不轻易动怒但被触及时会爆发"
+    },
+    "personality": {},
+    "chapter_states": [],
+    "relationship_map": {},
+    "relationship_details": [],
+    "dialogue_style": {
+      "sentence_pattern": "",
+      "catchphrases": [],
+      "address_others": {},
+      "tone_tendency": ""
+    },
+    "arc_summary": "",
+    "created_at": "2026-07-24T16:44:44.587467"
+  }
+]

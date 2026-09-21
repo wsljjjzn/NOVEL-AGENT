@@ -1,0 +1,69 @@
+bm25:
+  enabled: true
+database:
+  path: data/knowledge/writing_expert_new.db
+embedding:
+  batch_size: 32
+  device: cuda
+  max_seq_length: 8192
+  model: BGE-M3
+llm:
+  deepseek_v4_flash:
+    api_key: \${DEEPSEEK_API_KEY}
+    base_url: https://api.deepseek.com/v1
+    max_tokens: 4096
+    model: deepseek-v4-flash
+    rpm_limit: 100
+    temperature: 0.7
+    timeout_seconds: 60
+    max_retries: 3
+    retry_base_delay: 1.0
+  deepseek_v4_pro:
+    api_key: \${DEEPSEEK_API_KEY}
+    base_url: https://api.deepseek.com/v1
+    max_tokens: 8192
+    model: deepseek-v4-pro
+    rpm_limit: 50
+    temperature: 0.6
+    timeout_seconds: 120
+    max_retries: 3
+    retry_base_delay: 1.0
+preprocessing:
+  chunk_overlap: 64
+  chunk_size: 512
+  encoding: utf-8
+  max_file_size_mb: 100
+  min_chunk_chars: 50
+reranker:
+  device: cuda
+  model: BGE-Reranker-v2-m3
+  top_k: 20
+review:
+  agents:
+  - thought
+  - structure
+  - narrative
+  - language
+  - fact_check
+  - proofread
+  auto_fix_level1: true
+  auto_fix_level2: false
+  parallel_agents: true
+vector_store:
+  collection_name: writing_knowledge
+  persist_directory: data/embeddings
+  type: chromadb
+writing:
+  default_temperature: 0.7
+  max_sections: 10
+  min_section_words: 200
+  outline_model: flash
+  rerank_top_k: 5
+  retrieval_top_k: 10
+  writing_model: pro
+
+# P0-1 成本护栏：单进程会话预算（人民币）。0 = 关闭硬闸。
+# usage_db 用于把每次调用用量/费用持久化到独立小库（与 61GB 主知识库分离，便于对账）。
+budget:
+  max_cny_per_session: 50
+  usage_db: data/knowledge/llm_usage.db
