@@ -32,3 +32,12 @@ gradio>=4.0.0
 loguru>=0.7.0
 tqdm>=4.65.0
 rich>=13.0.0
+
+# ========== 交互式终端界面（python tui.py） ==========
+# textual 是纯 Python 包，无编译依赖；只用命令行的话可以不装
+# （tui.py 会捕获 ImportError 并提示怎么装）
+textual>=0.80.0
+
+# ========== 测试 ==========
+pytest>=8.0.0
+

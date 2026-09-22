@@ -81,6 +81,12 @@ class ChapterWriter:
         # 清理输出（去掉可能的标题行）
         chapter_text = response.strip()
 
+        # 空响应不落盘：否则会留下一个 0 字的"幽灵章节"，
+        # 上层即使报错也已经污染了项目（回归案例见 tests/test_novel_service.py）
+        if not chapter_text:
+            logger.warning(f"第 {chapter_num} 章返回空文本，未写入项目")
+            return ""
+
         # 存入项目
         title = self._extract_title(chapter_text, chapter_num)
         self.project.add_chapter(chapter_num, title, chapter_text)

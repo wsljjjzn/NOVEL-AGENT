@@ -84,3 +84,36 @@ class TestLLMClientDynamicConfig:
         assert "..." in info["api_key"]
         assert info["base_url"] == "url2"
         assert info["model"] == "model2"
+
+
+class TestMissingKeyHandling:
+    """Key 未配置时的行为：不抛 401，而是明确说"没配"。"""
+
+    def test_client_is_none_without_key(self, monkeypatch):
+        import config.settings as settings
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        monkeypatch.setattr(settings, "_config", None)
+        client = LLMClient()
+        # 回归：以前会把字面量 "${DEEPSEEK_API_KEY}" 当 Key 发出去换回一个 401
+        assert client.flash is None
+        assert client.pro is None
+        assert client.get_available_tiers() == []
+
+    def test_chat_raises_clear_error_without_key(self, monkeypatch):
+        import pytest
+        import config.settings as settings
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        monkeypatch.setattr(settings, "_config", None)
+        client = LLMClient()
+        with pytest.raises(RuntimeError) as e:
+            client.chat([{"role": "user", "content": "ping"}], model_tier="flash")
+        assert "未配置" in str(e.value)
+
+    def test_placeholder_key_is_not_treated_as_configured(self, monkeypatch):
+        """哪怕配置里留着 ${VAR} 字面量也视为未配置（settings 层已解析成空串）。"""
+        from config.settings import LLMConfig
+        client = LLMClient()
+        assert client._has_key(LLMConfig(api_key="")) is False
+        assert client._has_key(LLMConfig(api_key="   ")) is False
+        assert client._has_key(LLMConfig(api_key="\\${DEEPSEEK_API_KEY}")) is False
+        assert client._has_key(LLMConfig(api_key="sk-real")) is True

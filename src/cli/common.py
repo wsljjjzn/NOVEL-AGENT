@@ -10,7 +10,6 @@ from __future__ import annotations
 import sys
 import json
 from pathlib import Path
-from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -36,36 +35,27 @@ def ensure_utf8() -> None:
 # ========== 项目加载 ==========
 
 def load_bundle(name: str, base_dir: str = "data/projects"):
-    """加载项目及其角色引擎、剧情引擎、写作器（不调用任何 LLM）。"""
-    from src.novel import NovelProject, CharacterEngine, ChapterWriter
-    from src.novel.plot_engine import PlotEngine
+    """加载项目及其角色引擎、剧情引擎、写作器（不调用任何 LLM）。
 
-    project = NovelProject.load(base_dir, name)
-    engine = CharacterEngine()
-    plot = PlotEngine()
-    char_file = project.base_dir / "characters.json"
-    plot_file = project.base_dir / "plots.json"
-    if char_file.exists():
-        engine.load(str(char_file))
-    if plot_file.exists():
-        plot.load(str(plot_file))
-    writer = ChapterWriter(project, engine)
-    return project, engine, plot, writer
+    实现统一放在 NovelService.load()：命令行与交互界面共用一套编排，
+    避免两处逻辑各自漂移（本函数只做旧的四元组返回格式兼容）。
+    """
+    from src.novel.service import NovelService
+
+    bundle = NovelService(base_dir).load(name)
+    return bundle.project, bundle.engine, bundle.plot, bundle.writer
 
 
 def create_project(name: str, genre: str = "", desc: str = "") -> tuple:
-    """新建项目（对齐 gradio novel_create）。"""
-    from src.novel import NovelProject, CharacterEngine, ChapterWriter
-    from src.novel.plot_engine import PlotEngine
+    """新建项目（对齐 gradio novel_create）。编排同样复用服务层。"""
+    from src.novel.service import NovelService
 
-    project = NovelProject(name)
-    project.genre = genre
-    project.description = desc
-    engine = CharacterEngine()
-    plot = PlotEngine()
-    writer = ChapterWriter(project, engine)
-    project.save()
-    return project, engine, plot, writer
+    service = NovelService()
+    result = service.create(name, genre, desc)
+    if not result.ok:
+        raise RuntimeError(result.title)
+    bundle = service.load(name)
+    return bundle.project, bundle.engine, bundle.plot, bundle.writer
 
 
 def project_summary(name: str, base_dir: str = "data/projects") -> dict:

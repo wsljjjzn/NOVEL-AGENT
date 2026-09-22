@@ -3,11 +3,24 @@
 """
 
 import os
-from pathlib import Path
+import re
 from typing import Literal, Optional
-from pydantic import Field, ConfigDict
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 import yaml
+
+# config.yaml 里写的是 api_key: \${DEEPSEEK_API_KEY}（YAML 里为避免被当成变量，
+# 反斜杠是转义的）。这里把它解析成真实环境变量；**变量不存在时解析为空串**，
+# 而不是把字面量 "${DEEPSEEK_API_KEY}" 当 Key 发出去 —— 后者会得到一个
+# 让人看不懂的 401「Your api key: ****KEY is invalid」。
+_ENV_PATTERN = re.compile(r"\\?\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def resolve_env(value: str) -> str:
+    """把 ${VAR} / \\${VAR} 解析成环境变量值；未设置则返回空串。"""
+    if not isinstance(value, str) or "${" not in value:
+        return value
+    return _ENV_PATTERN.sub(lambda m: os.getenv(m.group(1), ""), value)
 
 
 class LLMConfig(BaseSettings):
@@ -101,7 +114,7 @@ class AppConfig(BaseSettings):
         # 解析 LLM 配置
         llm_configs = {}
         for name, cfg in raw.get("llm", {}).items():
-            api_key = os.getenv("DEEPSEEK_API_KEY", cfg.get("api_key", ""))
+            api_key = os.getenv("DEEPSEEK_API_KEY") or resolve_env(cfg.get("api_key", ""))
             llm_configs[name] = LLMConfig(
                 api_key=api_key,
                 base_url=cfg.get("base_url", "https://api.deepseek.com/v1"),

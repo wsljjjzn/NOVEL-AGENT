@@ -1,0 +1,161 @@
+/* tui/styles.tcss — 交互式界面样式。
+   中文按全角宽度渲染，左右分栏留足宽度以免项目名被截断。 */
+
+Screen {
+    background: $surface;
+}
+
+/* ========== 项目列表 ========== */
+#projects-layout {
+    height: 1fr;
+}
+
+#project-table {
+    width: 1fr;
+    height: 1fr;
+    border: round $primary;
+}
+
+#project-detail {
+    width: 44;
+    height: 1fr;
+    border: round $accent;
+    padding: 0 1;
+}
+
+#projects-hint {
+    height: 3;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+/* ========== 工作台 ========== */
+#workbench-body {
+    height: 1fr;
+}
+
+#tabs {
+    height: 1fr;
+}
+
+TabPane {
+    padding: 0 1;
+}
+
+#chapter-table, #character-table, #plot-table, #outline-table, #foreshadow-table {
+    height: 1fr;
+    border: round $primary;
+}
+
+#foreshadow-panel {
+    height: auto;
+    max-height: 12;
+    border: round $warning;
+    padding: 0 1;
+}
+
+/* 底部实时日志：写作时看进度 */
+#log-panel {
+    height: 12;
+    border: round $success;
+}
+
+#log-panel.hidden {
+    display: none;
+}
+
+RichLog {
+    background: $surface;
+}
+
+#status-bar {
+    height: 1;
+    background: $panel;
+    color: $text;
+    padding: 0 1;
+}
+
+#workbench-title {
+    height: 1;
+    background: $panel-darken-1;
+    color: $text;
+    padding: 0 1;
+}
+
+/* ========== 正文阅读器 ========== */
+#reader-scroll {
+    height: 1fr;
+    border: round $primary;
+    padding: 0 2;
+}
+
+#reader-title {
+    height: 1;
+    background: $panel-darken-1;
+    padding: 0 1;
+}
+
+/* ========== 弹窗 ========== */
+FormModal, ConfirmModal {
+    align: center middle;
+    background: $background 60%;
+}
+
+#form-box, #confirm-box {
+    width: 78;
+    max-width: 96%;
+    height: auto;
+    max-height: 90%;
+    border: round $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+#form-box.danger, #confirm-box.danger {
+    border: round $error;
+}
+
+#form-title, #confirm-title {
+    text-style: bold;
+    color: $text;
+    padding-bottom: 1;
+}
+
+#form-notice, #confirm-body {
+    color: $warning;
+    padding-bottom: 1;
+}
+
+#form-fields {
+    height: auto;
+    max-height: 20;
+}
+
+.field-label {
+    padding-top: 1;
+    color: $text;
+}
+
+.field-hint {
+    color: $text-muted;
+}
+
+TextArea {
+    height: 6;
+}
+
+#form-buttons, #confirm-buttons {
+    height: auto;
+    padding-top: 1;
+    align-horizontal: right;
+}
+
+Button {
+    margin-left: 2;
+}
+
+#form-hint {
+    color: $text-muted;
+    padding-top: 1;
+    text-align: right;
+}

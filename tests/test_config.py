@@ -2,16 +2,22 @@
 
 import os
 import tempfile
+from pathlib import Path
+
 import yaml
 
 from config.settings import AppConfig
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestAppConfig:
     def test_load_defaults(self):
         """从默认路径加载配置。"""
         cfg = AppConfig.load()
-        assert cfg.project_root.endswith("novel")
+        # 原先断言 endswith("novel")，把仓库目录名写死在测试里：Windows 副本叫
+        # novel，当前检出叫 NOVEL-AGENT，这条在 macOS 上一直是红的。
+        assert Path(cfg.project_root) == ROOT
         assert "deepseek_v4_flash" in cfg.llm
         assert "deepseek_v4_pro" in cfg.llm
         assert cfg.writing.outline_model == "flash"

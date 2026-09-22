@@ -20,7 +20,7 @@ from openai import (
 import time
 import threading
 
-from config.settings import get_config, LLMConfig
+from config.settings import get_config
 from src.utils.logger import logger
 from src.utils.cost_tracker import get_tracker, UsageRecord
 
@@ -144,9 +144,14 @@ class LLMClient:
         return None
 
     def _get_client(self, tier: str) -> Optional[OpenAI]:
-        """获取 tier 对应的 OpenAI 客户端（考虑动态覆盖）。"""
+        """获取 tier 对应的 OpenAI 客户端（考虑动态覆盖）。
+
+        未配置 api_key 时返回 None（而不是拿空 Key 去构造客户端）—— 这样
+        `chat()` 会抛出明确的"模型层未配置"，而不是一个语焉不详的
+        OpenAIError / 401 "Your api key: ****KEY is invalid"。
+        """
         cfg = self._get_effective_cfg(tier)
-        if cfg is None:
+        if cfg is None or not self._has_key(cfg):
             return None
         if tier == "flash":
             if self._flash_client is None:
@@ -163,6 +168,12 @@ class LLMClient:
                 )
             return self._pro_client
         return None
+
+    @staticmethod
+    def _has_key(cfg) -> bool:
+        """Key 是否真的配好了（空串或未解析的 ${VAR} 都算没配）。"""
+        key = (getattr(cfg, "api_key", "") or "").strip()
+        return bool(key) and "${" not in key
 
     def _rate_limiter(self, tier: str, rpm: int) -> _RateLimiter:
         with self._rl_lock:
@@ -359,10 +370,10 @@ class LLMClient:
         }
 
     def get_available_tiers(self) -> list[str]:
-        """获取所有可用的 tier 名称。"""
+        """获取所有**可用**（即 Key 已配置）的 tier 名称。"""
         tiers = []
-        if self._get_effective_cfg("flash") is not None:
-            tiers.append("flash")
-        if self._get_effective_cfg("pro") is not None:
-            tiers.append("pro")
+        for tier in ("flash", "pro"):
+            cfg = self._get_effective_cfg(tier)
+            if cfg is not None and self._has_key(cfg):
+                tiers.append(tier)
         return tiers
