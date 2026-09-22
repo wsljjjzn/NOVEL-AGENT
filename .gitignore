@@ -9,6 +9,8 @@ build/
 # 环境（API Key 等密文，绝不入库）
 .env
 *.local
+.venv/
+venv/
 
 # 文献（约 13.5GB 语料，不纳入版本控制）
 doc/
@@ -17,6 +19,9 @@ doc/
 data/chunks/
 data/embeddings/
 data/knowledge/*.db
+
+# 数据修复/重建脚本留下的备份（体积大，可从 project.json 重新生成）
+data/projects/*/project.json.bak-*
 
 # 日志
 logs/
