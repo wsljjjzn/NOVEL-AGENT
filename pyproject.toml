@@ -1,0 +1,43 @@
+[project]
+name = "novel-agent"
+version = "0.1.0"
+description = "写作专家系统：读文献学习写作 + 长篇小说生成与六维审稿"
+requires-python = ">=3.10"
+dependencies = [
+    # 与 requirements-core.txt 一致：跑命令行与交互界面所需的全部依赖
+    "openai>=1.0.0",
+    "instructor>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "chardet>=5.0.0",
+    "rich>=13.0.0",
+    "textual>=6.2",
+    "loguru>=0.7.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+# 板块一：读 60GB 文献、embedding、向量检索（数 GB，按需再装）
+#   uv sync --extra full     /  pip install -r requirements.txt
+full = [
+    "chromadb>=0.5.0",
+    "sentence-transformers>=2.2.0",
+    "rank-bm25>=0.2.0",
+    "FlagEmbedding>=1.2.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "jieba>=0.42.1",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "gradio>=4.0.0",
+]
+test = ["pytest>=8.0.0"]
+
+[tool.uv]
+# 这是应用而不是要发布的库：uv 只负责建环境装依赖，不要把项目本身装进去
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

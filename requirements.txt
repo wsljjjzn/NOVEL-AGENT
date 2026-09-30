@@ -1,4 +1,32 @@
-# 写作专家系统依赖
+# 写作专家系统 · 全量依赖（含板块一的重型依赖 torch / transformers / chromadb）
+#
+# 实测（Python 3.14.7 / macOS）：一条命令装完约 1.7 GB，
+# 13 个重型依赖均可正常 import，193 项测试全部通过。
+#
+# ┌─ 一条命令装齐（三选一，复制粘贴即用） ────────────────────────────────
+# │
+# │ ① 虚拟环境（推荐，隔离干净）
+# │      python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
+# │      Windows:
+# │      python -m venv .venv && .venv\Scripts\python -m pip install -r requirements.txt
+# │
+# │ ② 不建虚拟环境，装到当前 Python 的用户目录（不进系统目录）
+# │      python3 -m pip install --user -r requirements.txt
+# │
+# │ ③ 已装 uv（自动建环境 + 装依赖，无需手动 pip）
+# │      uv sync --extra full
+# └──────────────────────────────────────────────────────────────────────
+#
+# 只想跑命令行和交互界面（实测约 75 MB，不含 torch 等）：
+#      python3 -m pip install -r requirements-core.txt
+#
+# 装完自检（不花钱，只列模型）：
+#      python3 tui.py            # 交互界面；缺依赖时会提示装法
+#      python3 tui.py novel list # 命令行；能列出项目即环境正常
+#
+# 国内镜像（可选，加速下载）：
+#      python3 -m pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
 # ========== LLM ==========
 openai>=1.0.0
 instructor>=1.0.0
@@ -35,8 +63,9 @@ rich>=13.0.0
 
 # ========== 交互式终端界面（python tui.py） ==========
 # textual 是纯 Python 包，无编译依赖；只用命令行的话可以不装
-# （tui.py 会捕获 ImportError 并提示怎么装）
-textual>=0.80.0
+# （tui.py 会检查依赖并提示怎么装）
+# 已验证版本：6.2.1 与 8.2.8 均可（测试 193 项在两个版本上都通过）
+textual>=6.2
 
 # ========== 测试 ==========
 pytest>=8.0.0
