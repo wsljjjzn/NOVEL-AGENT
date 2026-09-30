@@ -1,0 +1,48 @@
+# 写作专家系统 · 核心依赖（只跑命令行 + 交互式界面）
+#
+# 实测（Python 3.14.7 / macOS）：一条命令装完约 75 MB；
+# 命令行与交互界面均可正常启动，193 项测试全部通过。
+#
+# ┌─ 一条命令装齐（三选一，复制粘贴即用） ────────────────────────────────
+# │
+# │ ① 虚拟环境（推荐，隔离干净）
+# │      python3 -m venv .venv && .venv/bin/python -m pip install -r requirements-core.txt
+# │      Windows:
+# │      python -m venv .venv && .venv\Scripts\python -m pip install -r requirements-core.txt
+# │
+# │ ② 不建虚拟环境，装到当前 Python 的用户目录（不进系统目录）
+# │      python3 -m pip install --user -r requirements-core.txt
+# │
+# │ ③ 已装 uv（自动建环境 + 装依赖，无需手动 pip）
+# │      uv run tui.py
+# └──────────────────────────────────────────────────────────────────────
+#
+# 装完自检：
+#      python3 tui.py             # 交互界面；缺依赖时会打印上面的装法
+#      python3 tui.py novel list  # 能列出项目 = 环境正常
+#
+# 需要板块一（读文献 / embedding / 向量检索）时再装全量：
+#      python3 -m pip install -r requirements.txt
+#
+# 国内镜像（可选，加速下载）：
+#      python3 -m pip install -r requirements-core.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# ========== LLM ==========
+openai>=1.0.0
+instructor>=1.0.0
+
+# ========== 配置与数据 ==========
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+chardet>=5.0.0
+
+# ========== 界面 ==========
+rich>=13.0.0
+# 已验证版本：6.2.1 与 8.2.8 均可（193 项测试在两个版本上都通过）
+textual>=6.2
+
+# ========== 工具 ==========
+loguru>=0.7.0
+tqdm>=4.65.0
