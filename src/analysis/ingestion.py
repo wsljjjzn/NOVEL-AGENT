@@ -58,14 +58,18 @@ class IngestionPipeline:
             source_type: 来源类型（"default" 或 "user"）
 
         Returns:
-            处理统计信息
+            处理统计信息（含 chunks / char_count / knowledge_units 等）
         """
-        stats = {"file": file_path, "chunks": 0, "lightweight": False, "knowledge_units": 0,
+        stats = {"file": file_path, "chunks": 0, "char_count": 0,
+                 "lightweight": False, "knowledge_units": 0,
                  "source_type": source_type}
 
         # 第一步：预处理
         chunks = self.preprocessor.process_file(file_path)
         stats["chunks"] = len(chunks)
+        # 字数与入库的 chunks.char_count 同源，避免索引与实际库两个口径
+        # （回归：kb learn 曾因缺这个键，把索引里的字数恒记为 0）
+        stats["char_count"] = sum(c.char_count for c in chunks)
         logger.info(f"预处理完成: {len(chunks)} 个段落块")
 
         # 入库段落块

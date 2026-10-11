@@ -181,10 +181,16 @@ class CharacterEngine:
         """
         prompt = (
             f"章号: {chapter_num}\n"
-            f"已有角色: {', '.join(existing_names)}\n\n"
+            f"已有角色: {', '.join(existing_names) or '（无）'}\n\n"
             f"章节内容:\n{chapter_text[:6000]}\n\n"
             f"请分析所有出场角色的状态变化。"
         )
+        if not existing_names:
+            # 首次写作时角色库为空，必须显式说明——否则模型容易原样返回空数组，
+            # 表现为日志里的"角色分析完成: 0 个角色更新"
+            # （回归用例见 tests/test_character_engine.py）
+            prompt += ("\n当前角色库为空：本章所有出场角色都按新角色输出"
+                       "（is_new 置 true，并给出 personality 与 speaking_style）。")
 
         try:
             response = self.llm.chat(
@@ -201,10 +207,27 @@ class CharacterEngine:
         from src.utils.json_utils import safe_json_parse
         data = safe_json_parse(response)
         if not data:
+            # 不静默：日志里的"0 个角色更新"既可能是模型没提取到角色，
+            # 也可能是 JSON 格式不对——两者排查方向完全不同，必须能区分
+            logger.warning(
+                f"第 {chapter_num} 章角色分析结果无法解析为 JSON，本章角色未更新"
+                f"（响应前 200 字: {response[:200]!r}）"
+            )
+            return []
+        if not isinstance(data, dict):
+            logger.warning(f"第 {chapter_num} 章角色分析结果不是 JSON 对象: {type(data).__name__}")
+            return []
+
+        raw_characters = data.get("characters", [])
+        if not isinstance(raw_characters, list):
+            logger.warning(f"第 {chapter_num} 章角色分析 characters 字段不是数组，忽略")
+            return []
+        if not raw_characters:
+            logger.info(f"第 {chapter_num} 章角色分析：模型未返回任何角色")
             return []
 
         updated = []
-        for char_data in data.get("characters", []):
+        for char_data in raw_characters:
             name = char_data.get("name", "")
             if not name:
                 continue

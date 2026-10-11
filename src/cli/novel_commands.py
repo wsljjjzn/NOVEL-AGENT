@@ -370,29 +370,37 @@ def cmd_auto(args) -> int:
         console.print("[yellow]角色已存在，跳过[/yellow]")
 
     console.print("[cyan][3/3] 逐章：剧情设计+写作…[/cyan]")
-    for ch in range(1, args.chapters + 1):
-        item = next((o for o in project.outline if o.chapter == ch), None)
-        plot_obj = plot.plots.get(ch)
-        if plot_obj is None and item is not None:
-            plot_obj = plot.design_chapter_plot(
-                ch, {"title": item.title, "expected_content": item.expected_content},
-                project.get_recap(ch), project.foreshadowing,
-            )
-            plot.save(str(project.base_dir / "plots.json"))
-        instructions = ""
-        if plot_obj is not None:
-            instructions = "\n\n## 本章剧情设计（请严格遵循）\n" + plot_obj.to_prompt_text()
-            for fp in plot_obj.foreshadowing_planted:
-                project.add_foreshadowing(fp)
-            for fr in plot_obj.foreshadowing_resolved:
-                project.resolve_foreshadowing(fr)
-        try:
-            writer.write_chapter(ch, instructions, args.words, model_tier=args.tier)
-        except Exception as e:
-            console.print(f"[red]第{ch}章写作失败: {e}（已停止）[/red]")
-            break
-        wc = len(project.chapters.get(ch, ""))
-        console.print(f"[green]第{ch}章完成（{wc:,} 字）[/green]")
+    # 只往后写：从第一个未写章节开始。旧版是 range(1, N+1)，对已有正文的项目
+    # 会从第 1 章开始整本重写（回归：与 service.batch_write 的语义对齐）
+    written_to = max(project.chapters) if project.chapters else 0
+    if written_to:
+        console.print(f"[yellow]已有正文写到第 {written_to} 章，只往后写、不重写已有章节[/yellow]")
+    if written_to >= args.chapters:
+        console.print(f"[green]目标 {args.chapters} 章已完成，无需续写[/green]")
+    else:
+        for ch in range(written_to + 1, args.chapters + 1):
+            item = next((o for o in project.outline if o.chapter == ch), None)
+            plot_obj = plot.plots.get(ch)
+            if plot_obj is None and item is not None:
+                plot_obj = plot.design_chapter_plot(
+                    ch, {"title": item.title, "expected_content": item.expected_content},
+                    project.get_recap(ch), project.foreshadowing,
+                )
+                plot.save(str(project.base_dir / "plots.json"))
+            instructions = ""
+            if plot_obj is not None:
+                instructions = "\n\n## 本章剧情设计（请严格遵循）\n" + plot_obj.to_prompt_text()
+                for fp in plot_obj.foreshadowing_planted:
+                    project.add_foreshadowing(fp)
+                for fr in plot_obj.foreshadowing_resolved:
+                    project.resolve_foreshadowing(fr)
+            try:
+                writer.write_chapter(ch, instructions, args.words, model_tier=args.tier)
+            except Exception as e:
+                console.print(f"[red]第{ch}章写作失败: {e}（已停止）[/red]")
+                break
+            wc = len(project.chapters.get(ch, ""))
+            console.print(f"[green]第{ch}章完成（{wc:,} 字）[/green]")
 
     project.save()
     engine.save(str(project.base_dir / "characters.json"))

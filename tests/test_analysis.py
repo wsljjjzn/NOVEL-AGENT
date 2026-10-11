@@ -194,6 +194,10 @@ class TestIngestionPipeline:
             assert stats["chunks"] > 0
             assert stats["lightweight"] is False
             assert stats["knowledge_units"] == 0
+            # 回归：kb learn 用这个键写索引字数，曾因 stats 缺键导致索引里字数恒为 0
+            expected = pipeline.conn.execute(
+                "SELECT COALESCE(SUM(char_count), 0) FROM chunks").fetchone()[0]
+            assert stats["char_count"] == expected > 0
         finally:
             os.unlink(fpath)
 
