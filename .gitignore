@@ -29,6 +29,16 @@ logs/
 # 缓存与工具元数据
 .pytest_cache/
 .reasonix/
+.ruff_cache/
+.mypy_cache/
+
+# checkpoint 与临时产物（可从数据重建，勿入库）
+data/preprocess_checkpoint.json
+data/samples/analysis_progress.json
+
+# agent 临时产物
+*.tmp
+.agent-scratch/
 
 # IDE
 .vscode/
