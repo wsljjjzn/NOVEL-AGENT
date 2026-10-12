@@ -9,20 +9,19 @@
 ## 对外接口
 
 ```python
-@dataclass
-class CharacterProfile:
+class CharacterProfile(PersistedModel):        # pydantic v2（P1-2）
     name: str
     aliases: list[str]
     role: str                       # 主角 / 反派 / 配角 / 路人
-    personality: dict[str, int]     # {特质: 0-10}
+    personality: dict               # {特质: 0-10}；⚠️ 故意保持宽松 dict，见下
     speaking_style: str
     core_desire: str                # 核心欲望（一致性锚点）
     core_fear: str                  # 核心恐惧（一致性锚点）
-    moral_compass: dict[str, int]
+    moral_compass: dict
     background: str
     appearance: str
     chapter_events: list[ChapterEvent]
-    relationships: dict[str, dict]
+    relationships: dict             # 值可能是 dict，也可能是历史遗留的字符串
     arc_summary: str
 
     # 逐章视图（一律按章号排序）
@@ -54,6 +53,23 @@ class CharacterEngine:
 | 5 | `save` 在**每写完一章**都会被调用 | `chapter_writer.write_chapter` |
 | 6 | 已有角色**永不被 `is_new` 清空** | `_resolve_existing_name` + `fill_missing` |
 | 7 | 名字归一化后同一角色归并 | `_normalize_name` 去括号注释/全角括号/空白 |
+
+### P1-2：为什么模型改成 pydantic，以及三个刻意的选择
+
+领域模型（`CharacterProfile` / `ChapterEvent` / `PersonalityShift`）已从 dataclass
+换成 pydantic v2 的 `BaseModel`。校验加在**数据进来时**，落盘格式**不变**。
+
+| 选择 | 原因 |
+|---|---|
+| `extra="allow"`，不用 pydantic 默认的 `"ignore"` | 默认值会**静默丢掉**档案里不认识的键（CODE_REVIEW A15 点名的坑）。`to_dict` 会把额外键并回去，手工编辑/新版写出的字段不再消失 |
+| `personality` / `moral_compass` / `relationships` 保持**无参 `dict`** | 存量档案里有 `{"善良": null}`、关系值是字符串。收紧成 `dict[str, int]` 会让老项目直接打不开；数值兜底放在读取处（`personality_summary` / `_to_int_0_10`） |
+| `relationship_changes` 保持**纯 `dict` 列表** | `to_dict` 与写作卡片都用 `isinstance(rc, dict)` 判定；换成嵌套模型会让关系变化在落盘时被静默丢弃（A4 事故的翻版） |
+| 不开 `validate_assignment`、不 `frozen` | 引擎会在原地改字段与容器（`profile.personality[t] = v`、`upsert_event` 下标赋值 + `sort`） |
+| `to_dict` / `from_dict` 继续保留为兼容层 | 它们是落盘契约，由 `tests/test_roundtrip_baseline.py` 锁住；pydantic 负责构造期归一化 |
+
+直接由 LLM 输出构造（`service.generate_characters`）以前**绕过**所有归一化，
+现在与 `from_dict` 走同一套 `field_validator`：`chapter="3"`、`key_actions="一个动作"`、
+`relationships={"乙": "描述文本"}` 都会被正确归一化。
 
 ## 为什么会话设计成这样（历史）
 

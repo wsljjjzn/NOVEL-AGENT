@@ -9,6 +9,13 @@
 ## 对外接口
 
 ```python
+class OutlineItem(BaseModel):          # pydantic v2（P1-2）
+    chapter: int                       # 读盘时归一化：模型返回 "3" 也能读（建议 6）
+    title: str
+    expected_content: str              # 容忍 null（手工编辑过的存档不能让项目打不开）
+    key_foreshadowing: list[str]
+    # extra="allow"：未知键原样带走
+
 class NovelProject:
     def __init__(self, name: str, base_dir: str = "data/projects")
 

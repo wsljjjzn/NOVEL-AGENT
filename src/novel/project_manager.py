@@ -11,6 +11,8 @@ import json, os
 from pathlib import Path
 from dataclasses import dataclass, field
 
+from pydantic import BaseModel, ConfigDict, field_validator
+
 
 @dataclass
 class ChapterSummary:
@@ -22,13 +24,46 @@ class ChapterSummary:
     summary: str = ""       # 一句话概要
 
 
-@dataclass
-class OutlineItem:
-    """大纲条目。"""
-    chapter: int
-    title: str
-    expected_content: str    # 预期内容
-    key_foreshadowing: list[str] = field(default_factory=list)  # 关键伏笔
+class OutlineItem(BaseModel):
+    """大纲条目（P1-2：类型声明交给 pydantic，读盘时自动归一化）。
+
+    - `chapter` 会被夹成非负整数：模型返回 `"3"` 也能读，且**不再**让
+      `list_chapters()` 的 `sorted(int + str)` 抛 TypeError（CODE_REVIEW 建议 6）。
+    - `expected_content` 容忍 null/非字符串：手工编辑过的存档不能让项目打不开（A4）。
+    - `extra="allow"`：不认识的键原样带走，不静默丢字段。
+    """
+
+    model_config = ConfigDict(extra="allow", validate_assignment=False)
+
+    chapter: int = 0
+    title: str = ""
+    expected_content: str = ""
+    key_foreshadowing: list[str] = []
+
+    @field_validator("chapter", mode="before")
+    @classmethod
+    def _coerce_chapter(cls, value):
+        if value is None or isinstance(value, bool):
+            return 0
+        try:
+            return max(0, int(str(value).strip()))
+        except (TypeError, ValueError):
+            return 0
+
+    @field_validator("title", "expected_content", mode="before")
+    @classmethod
+    def _coerce_text(cls, value):
+        if value is None:
+            return ""
+        return value if isinstance(value, str) else str(value)
+
+    @field_validator("key_foreshadowing", mode="before")
+    @classmethod
+    def _coerce_list(cls, value):
+        if value is None:
+            return []
+        items = value if isinstance(value, list) else [value]
+        return [str(item).strip() for item in items if str(item).strip()]
 
 
 class NovelProject:
@@ -183,11 +218,13 @@ class NovelProject:
         }
         project.outline = [
             OutlineItem(
-                chapter=o["chapter"], title=o["title"],
+                chapter=o.get("chapter", 0), title=o.get("title", ""),
                 expected_content=o.get("expected_content", ""),
                 key_foreshadowing=o.get("key_foreshadowing", []),
+                # 未知键原样带走：手工编辑/新版写出的字段不能在读盘时消失
+                **{k: v for k, v in o.items() if k not in OutlineItem.model_fields},
             )
-            for o in data.get("outline", [])
+            for o in data.get("outline", []) if isinstance(o, dict)
         ]
         project.metadata = data.get("metadata", {})
         project.foreshadowing = data.get("foreshadowing", [])
