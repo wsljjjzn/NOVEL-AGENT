@@ -34,6 +34,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from pydantic import BaseModel, ConfigDict, field_validator
+
 from src.utils.llm_client import LLMClient
 from src.utils.logger import logger
 
@@ -187,47 +189,104 @@ def _normalize_relationship(info: Any) -> dict:
 
 # ========== 数据模型 ==========
 
-@dataclass
-class PersonalityShift:
+class PersistedModel(BaseModel):
+    """落盘模型的共同配置（P1-2：类型声明的校验交给 pydantic）。
+
+    两条刻意的选择：
+
+    - ``extra="allow"``，而不是 pydantic 默认的 ``"ignore"``。默认值会把档案里
+      我们不认识的键**静默丢掉** —— 那正是 `_normalize_relationship` 刚修掉的
+      "描述 消失" 同一类问题。允许额外键后，`to_dict` 再把它们并回去，
+      手工编辑过或更新版本写出的字段就不会丢。
+    - **不开** ``validate_assignment``。引擎会在原地改字段和容器
+      （`profile.personality[t] = v`、`upsert_event` 里下标赋值 + sort），
+      开了赋值校验会让这些既有路径直接报错。
+    """
+
+    model_config = ConfigDict(extra="allow", validate_assignment=False)
+
+
+def _with_extras(model: BaseModel, data: dict) -> dict:
+    """把 pydantic 收下的「额外键」并回序列化结果，保证落盘不丢字段。"""
+    for key, value in (getattr(model, "__pydantic_extra__", None) or {}).items():
+        data.setdefault(key, value)
+    return data
+
+
+class PersonalityShift(PersistedModel):
     """人格变化记录。"""
-    trait: str              # 变化的特质名，如 "谨慎"
-    old_value: int          # 旧值 0-10
-    new_value: int          # 新值 0-10
+    trait: str = ""         # 变化的特质名，如 "谨慎"
+    old_value: int = 0      # 旧值 0-10
+    new_value: int = 0      # 新值 0-10
     reason: str = ""        # 变化原因
 
+    # 直接构造（LLM 输出路径）与 from_dict 走同一套兜底：null/字符串/越界都夹到 0-10（A9）
+    @field_validator("trait", "reason", mode="before")
+    @classmethod
+    def _coerce_text(cls, value: Any) -> str:
+        return _as_str(value)
+
+    @field_validator("old_value", "new_value", mode="before")
+    @classmethod
+    def _coerce_score(cls, value: Any) -> int:
+        return _to_int_0_10(value)
+
     def to_dict(self) -> dict:
-        return {
+        return _with_extras(self, {
             "trait": self.trait, "old": self.old_value,
             "new": self.new_value, "reason": self.reason,
-        }
+        })
 
     @classmethod
     def from_dict(cls, data: Any) -> "PersonalityShift":
-        """防御式读取：缺字段/null/越界一律兜底（A4/A9）。"""
+        """防御式读取：缺字段/null/越界一律兜底（A4/A9）；未知键原样带走。"""
         raw = data if isinstance(data, dict) else {}
+        extra = {key: value for key, value in raw.items() if key not in cls.model_fields}
         return cls(
             trait=_as_str(raw.get("trait")).strip(),
             old_value=_to_int_0_10(raw.get("old")),
             new_value=_to_int_0_10(raw.get("new")),
             reason=_as_str(raw.get("reason")),
+            **extra,
         )
 
 
-@dataclass
-class ChapterEvent:
+class ChapterEvent(PersistedModel):
     """角色在某一章发生的事件。"""
-    chapter: int
+    chapter: int = 0
     mood: str = ""                                              # 情绪状态
-    key_actions: list[str] = field(default_factory=list)
-    relationship_changes: list[dict] = field(default_factory=list)  # [{target, old, new, reason}]
-    personality_shifts: list[PersonalityShift] = field(default_factory=list)
-    skills_gained: list[str] = field(default_factory=list)
-    belief_changes: list[str] = field(default_factory=list)      # 信念变化
+    key_actions: list[str] = []
+    # ⚠️ 保持「纯 dict 列表」：to_dict 与写作卡片都用 isinstance(rc, dict) 判定，
+    # 换成嵌套模型会让关系变化在落盘时被静默丢掉（A4 事故的翻版）
+    relationship_changes: list[dict] = []
+    personality_shifts: list["PersonalityShift"] = []
+    skills_gained: list[str] = []
+    belief_changes: list[str] = []                              # 信念变化
     summary: str = ""                                           # 本章角色摘要
+
+    @field_validator("chapter", mode="before")
+    @classmethod
+    def _coerce_chapter(cls, value: Any) -> int:
+        return _to_chapter(value)
+
+    @field_validator("mood", "summary", mode="before")
+    @classmethod
+    def _coerce_text(cls, value: Any) -> str:
+        return _as_str(value)
+
+    @field_validator("key_actions", "skills_gained", "belief_changes", mode="before")
+    @classmethod
+    def _coerce_str_list(cls, value: Any) -> list[str]:
+        return _as_str_list(value)
+
+    @field_validator("relationship_changes", mode="before")
+    @classmethod
+    def _keep_only_dict_changes(cls, value: Any) -> list[dict]:
+        return [rc for rc in _as_list(value) if isinstance(rc, dict)]
 
     def to_dict(self) -> dict:
         """序列化。A4：relationship_changes 此前被漏掉，导致落盘即丢。"""
-        return {
+        return _with_extras(self, {
             "chapter": self.chapter,
             "mood": self.mood,
             "key_actions": list(self.key_actions),
@@ -237,12 +296,13 @@ class ChapterEvent:
             "skills_gained": list(self.skills_gained),
             "belief_changes": list(self.belief_changes),
             "summary": self.summary,
-        }
+        })
 
     @classmethod
     def from_dict(cls, data: Any) -> "ChapterEvent":
         """防御式读取：手工编辑过的存档缺 mood/chapter 也不再让项目打不开（A4）。"""
         raw = data if isinstance(data, dict) else {}
+        extra = {key: value for key, value in raw.items() if key not in cls.model_fields}
         return cls(
             chapter=_to_chapter(raw.get("chapter")),
             mood=_as_str(raw.get("mood")),
@@ -254,30 +314,59 @@ class ChapterEvent:
             skills_gained=_as_str_list(raw.get("skills_gained")),
             belief_changes=_as_str_list(raw.get("belief_changes")),
             summary=_as_str(raw.get("summary")),
+            **extra,
         )
 
 
-@dataclass
-class CharacterProfile:
+class CharacterProfile(PersistedModel):
     """角色完整档案。"""
-    name: str
-    aliases: list[str] = field(default_factory=list)
+    name: str = ""
+    aliases: list[str] = []
     role: str = ""       # 主角/反派/配角/路人
     # 核心人格（相对稳定，但可以逐步变化）
-    personality: dict = field(default_factory=dict)  # {特质名: 值0-10}
+    # ⚠️ 保持无参 dict：存量档案里有 {"善良": None} 这类值，读取时由
+    # personality_summary()/_to_int_0_10 兜底；收紧成 dict[str, int] 会让老存档直接打不开
+    personality: dict = {}  # {特质名: 值0-10}
     speaking_style: str = ""
     core_desire: str = ""
     core_fear: str = ""
-    moral_compass: dict = field(default_factory=dict)  # {诚实:7, 忠诚:9, ...}
+    moral_compass: dict = {}  # {诚实:7, 忠诚:9, ...}
     # 背景
     background: str = ""
     appearance: str = ""
     # 逐章事件记录
-    chapter_events: list[ChapterEvent] = field(default_factory=list)
-    # 全局关系网
-    relationships: dict = field(default_factory=dict)  # {角色名: {状态, 强度0-10, 起始章}}
+    chapter_events: list[ChapterEvent] = []
+    # 全局关系网（值可能是 dict，也可能是历史遗留的字符串描述）
+    relationships: dict = {}  # {角色名: {状态, 强度0-10, 起始章}}
     # 弧线总结
     arc_summary: str = ""
+
+    @field_validator("name", "role", "speaking_style", "core_desire", "core_fear",
+                     "background", "appearance", "arc_summary", mode="before")
+    @classmethod
+    def _coerce_text(cls, value: Any) -> str:
+        return _as_str(value).strip() if value is not None else ""
+
+    @field_validator("aliases", mode="before")
+    @classmethod
+    def _coerce_aliases(cls, value: Any) -> list[str]:
+        return _as_str_list(value)
+
+    @field_validator("personality", "moral_compass", mode="before")
+    @classmethod
+    def _coerce_mapping(cls, value: Any) -> dict:
+        return _as_dict(value)
+
+    @field_validator("relationships", mode="before")
+    @classmethod
+    def _normalize_relationships(cls, value: Any) -> dict:
+        """关系表统一走 _normalize_relationship（字符串→dict、未知键原样带走）。"""
+        out: dict = {}
+        for target, info in _as_dict(value).items():
+            target = _as_str(target).strip()
+            if target:
+                out[target] = _normalize_relationship(info)
+        return out
 
     # ---- 逐章视图（一律按章号排序，A11）----
 
@@ -334,7 +423,7 @@ class CharacterProfile:
     # ---- 序列化（A4）----
 
     def to_dict(self) -> dict:
-        return {
+        return _with_extras(self, {
             "name": self.name,
             "aliases": list(self.aliases), "role": self.role,
             "personality": dict(self.personality), "speaking_style": self.speaking_style,
@@ -345,12 +434,13 @@ class CharacterProfile:
             "chapter_events": [event.to_dict() for event in self.sorted_events()],
             "relationships": dict(self.relationships),
             "arc_summary": self.arc_summary,
-        }
+        })
 
     @classmethod
     def from_dict(cls, data: Any, fallback_name: str = "") -> "CharacterProfile":
-        """防御式反序列化：任何缺字段/类型异常都用默认值兜底（A4）。"""
+        """防御式反序列化：任何缺字段/类型异常都用默认值兜底（A4）；未知键原样带走。"""
         raw = data if isinstance(data, dict) else {}
+        extra = {key: value for key, value in raw.items() if key not in cls.model_fields}
         profile = cls(
             name=_as_str(raw.get("name"), fallback_name).strip() or fallback_name,
             aliases=_as_str_list(raw.get("aliases")),
@@ -361,6 +451,7 @@ class CharacterProfile:
             background=_as_str(raw.get("background")),
             appearance=_as_str(raw.get("appearance")),
             arc_summary=_as_str(raw.get("arc_summary")),
+            **extra,
         )
         for trait, value in _as_dict(raw.get("personality")).items():
             trait = _as_str(trait).strip()
