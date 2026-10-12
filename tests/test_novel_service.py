@@ -374,3 +374,65 @@ def test_write_chapter_call_profile_with_outline_is_three():
         assert llm.count("plot") == 1, "缺剧情设计时应自动补一次"
         assert llm.count("chapter") == 1
         assert llm.count("character_analysis") == 1
+
+
+# ========== 契约：tier 必须真的传到模型（A16 回归） ==========
+
+class TierRecordingLLM(RoutingFakeLLM):
+    """记录每次调用用的档位 —— 用来证明 tier 没有被中间层吞掉。"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.tiers: list[tuple[str, str]] = []
+
+    def chat(self, messages, model_tier: str = "flash", **kwargs) -> str:
+        self.tiers.append((self.kind(messages), model_tier))
+        return super().chat(messages, model_tier=model_tier, **kwargs)
+
+    def tier_of(self, kind: str):
+        return next((tier for k, tier in self.tiers if k == kind), None)
+
+
+def test_generate_characters_passes_tier_to_llm():
+    """A16：服务层以前只把 tier 写进日志，design_characters 里硬编码 flash。"""
+    with _Fixture() as tmp:
+        llm = TierRecordingLLM()
+        svc = StubService(str(tmp), llm)
+        assert svc.generate_characters("测试书本", tier="pro").ok
+        assert llm.tier_of("characters") == "pro"
+
+
+def test_design_plot_passes_tier_to_llm():
+    with _Fixture() as tmp:
+        llm = TierRecordingLLM()
+        svc = StubService(str(tmp), llm)
+        svc.update_outline_item("测试书本", 1, "开端", "主角登场")
+        assert svc.design_plot("测试书本", 1, tier="pro").ok
+        assert llm.tier_of("plot") == "pro"
+
+
+def test_auto_plot_inside_write_chapter_passes_tier():
+    """写正文时"自动补剧情设计"那条路径也必须带 tier（以前漏传）。"""
+    with _Fixture() as tmp:
+        llm = TierRecordingLLM(chapters=["正文" * 60])
+        svc = StubService(str(tmp), llm)
+        svc.update_outline_item("测试书本", 1, "开端", "主角登场")
+        assert svc.write_chapter("测试书本", 1, target_words=100, tier="pro").ok
+        assert llm.tier_of("plot") == "pro"
+        assert llm.tier_of("chapter") == "pro"
+
+
+def test_generate_outline_passes_tier_to_llm():
+    with _Fixture() as tmp:
+        llm = TierRecordingLLM()
+        svc = StubService(str(tmp), llm)
+        assert svc.generate_outline("测试书本", 2, "主角寻妹", tier="pro").ok
+        assert llm.tier_of("outline") == "pro"
+
+
+def test_plot_engine_signature_accepts_tier():
+    """直接锁住引擎签名：以后有人把 model_tier 删掉，这里会先红。"""
+    import inspect
+    from src.novel.plot_engine import PlotEngine
+    for fn in (PlotEngine.design_characters, PlotEngine.design_chapter_plot):
+        assert "model_tier" in inspect.signature(fn).parameters, fn.__name__
