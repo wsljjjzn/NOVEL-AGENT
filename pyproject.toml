@@ -1,3 +1,9 @@
+[build-system]
+# 需要它才能把项目安装成包 —— console_scripts（na / na-tui / …）只在
+# "项目自身被安装"时才会生成。见 AGENTS.md 与 plan/03-uv.md。
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "novel-agent"
 version = "0.1.0"
@@ -18,6 +24,12 @@ dependencies = [
     "tqdm>=4.65.0",
 ]
 
+[project.scripts]
+# 入口实现在 src/cli/entrypoints.py：切到仓库根再委派，保证与 python tui.py 行为一致
+na = "src.cli.entrypoints:na"
+na-tui = "src.cli.entrypoints:na_tui"
+na-tools-preprocess = "src.cli.entrypoints:na_tools_preprocess"
+
 [project.optional-dependencies]
 # 板块一：读 60GB 文献、embedding、向量检索（数 GB，按需再装）
 #   uv sync --extra full     /  pip install -r requirements.txt
@@ -36,8 +48,13 @@ full = [
 test = ["pytest>=8.0.0"]
 
 [tool.uv]
-# 这是应用而不是要发布的库：uv 只负责建环境装依赖，不要把项目本身装进去
-package = false
+# 需要 true：console_scripts 只在项目自身被安装时才生成。
+# uv 默认装成 editable（.pth 指回仓库根），所以改 src/ 立即生效，不会用到副本。
+package = true
+
+[tool.hatch.build.targets.wheel]
+# src 是代码包；scripts 是 na-tools-preprocess 要用的顶层包
+packages = ["src", "scripts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

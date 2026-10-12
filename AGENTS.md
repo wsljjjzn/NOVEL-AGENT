@@ -46,24 +46,40 @@ uv sync --extra gpu                         # ③ 语料预处理（torch 系，
 uv sync --group dev --extra ai --extra gpu  # 全量
 ```
 
+> ⚠️ **上面这段 extras / groups 尚未落地**：`pyproject.toml` 现在只有 `full` 与 `test`
+> 两个 extra，没有 `ai` / `gpu`，也还没有 `[dependency-groups]`。**今天可用的等价写法**：
+>
+> ```bash
+> uv sync                 # 核心：CLI + TUI + 领域引擎
+> uv sync --extra test    # 核心 + pytest（跑测试用；不加会把 pytest 从环境里移除）
+> uv sync --extra full    # 语料预处理那一大坨（数 GB）
+> ```
+>
+> 分组改造属 [`plan/03-uv.md`](plan/03-uv.md) 的范围，尚未实施。
+
 ### 可调用的命令
 
 `uv run` 会补全以下入口。**不要新增临时脚本，把能力注册成入口。**
 
-| 命令 | 用途 |
-|---|---|
-| `uv run na` | 主 CLI（novel / article / kb 三组） |
-| `uv run na-tui` | 交互式终端界面（Textual） |
-| `uv run na-mcp` | 以 MCP 服务器启动（stdio） |
-| `uv run na-mcp --http` | 以 MCP 服务器启动（Streamable HTTP） |
-| `uv run na-tools-preprocess` | 批量语料预处理 |
-| `uv run na-tools-index` | 重建 `index.csv` |
-| `uv run na-tools-doctor` | 环境自检（Python 版本、依赖、Key、数据目录） |
+| 命令 | 用途 | 当前可用 |
+|---|---|---|
+| `uv run na` | 主 CLI（novel / article / kb 三组） | ✅ |
+| `uv run na-tui` | 交互式终端界面（Textual） | ✅ |
+| `uv run na-tools-preprocess` | 批量语料预处理 | ✅ |
+| `uv run na-tools-index` | 重建 `index.csv` | ❌ 未实现 |
+| `uv run na-tools-doctor` | 环境自检（Python 版本、依赖、Key、数据目录） | ❌ 未实现 |
+| `uv run na-mcp` / `na-mcp --http` | MCP 服务器（stdio / Streamable HTTP） | ❌ 未实现（属 plan P3b） |
 
-**验证优先用 doctor**：
+> 前三条由 `[project.scripts]` 注册，实现在 [`src/cli/entrypoints.py`](src/cli/entrypoints.py)：
+> 先把工作目录切到仓库根再委派，因此与"在仓库根跑 `python tui.py`"行为一致
+> （数据/日志/语料都是相对仓库根的路径）。
+> **未实现的那几条现在跑会报 `Failed to spawn`**，排期见 [`plan/00-phases.md`](plan/00-phases.md)。
+
+**验证优先用 doctor**（⏳ 未实现；先跑这两条）：
 
 ```bash
-uv run na-tools-doctor       # 任何"跑不起来"的问题先跑这个
+uv run na novel list          # 能列出项目 = 数据目录 + 核心依赖都正常
+uv run python -c "import src.cli.main, src.tui.app; print('核心依赖 OK')"
 ```
 
 ---
