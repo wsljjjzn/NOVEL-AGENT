@@ -166,16 +166,19 @@ def _normalize_name(name: str) -> str:
 
 
 def _normalize_relationship(info: Any) -> dict:
-    """把关系表项统一成 {状态, 强度, 起始章[, 最近变化]}。"""
+    """把关系表项统一成 {状态, 强度, 起始章[, 最近变化]}，并**原样保留未知键**。
+
+    未知键必须带走：真实存档里的遗留键 `描述` 以前会在 load→save 时被静默丢掉
+    （50 章项目里 8 条，见 tests/test_roundtrip_baseline.py 的往返基线）。
+    """
     if isinstance(info, str):
         return {"状态": info, "强度": SCORE_DEFAULT, "起始章": 0}
     if not isinstance(info, dict):
         return {"状态": "", "强度": SCORE_DEFAULT, "起始章": 0}
-    entry = {
-        "状态": _as_str(info.get("状态", info.get("status"))),
-        "强度": _to_int_0_10(info.get("强度", info.get("intensity"))),
-        "起始章": _to_chapter(info.get("起始章", info.get("start_chapter"))),
-    }
+    entry = dict(info)          # 先原样收下，再覆盖需要规范化的已知键
+    entry["状态"] = _as_str(info.get("状态", info.get("status")))
+    entry["强度"] = _to_int_0_10(info.get("强度", info.get("intensity")))
+    entry["起始章"] = _to_chapter(info.get("起始章", info.get("start_chapter")))
     latest = info.get("最近变化")
     if isinstance(latest, dict):
         entry["最近变化"] = dict(latest)

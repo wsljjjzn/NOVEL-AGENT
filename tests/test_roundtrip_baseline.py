@@ -13,10 +13,13 @@ load → dump 后 **39/45（87%）** 与磁盘不一致，差异收敛为四类�
 
 | # | 差异 | 性质 | 本文件中的断言 |
 |---|------|------|----------------|
-| 1 | 关系表遗留键 `描述` 被丢弃（真实存档 8 条） | 🔴 **数据丢失** | 期望保留 → strict xfail |
+| 1 | 关系表遗留键 `描述` 被丢弃（真实存档 8 条） | 🔴 **数据丢失** | ✅ **已修**（`_normalize_relationship` 改为原样保留未知键），直接断言 |
 | 2 | 字符串关系 `"乙": "父亲，又敬又怕"` 被改写成 dict | 🟠 格式漂移 | 期望保持原样 → strict xfail |
 | 3 | 同章重复的 `chapter_events` 被去重（保留后者） | ✅ **修复性**（A8） | 直接断言，当前通过 |
 | 4 | 空 `relationship_changes` 键被补写到每个事件 | 🟠 格式漂移 | 期望保持磁盘原样 → strict xfail |
+
+差异 4 已确认为**有意行为**（`to_dict` 无条件写出该键，是 A4 序列化对称的一部分，且无测试
+要求空键存在），故不改，只留基线记录。
 
 `strict=True` 的含义：一旦 1/2/4 被修好，这些用例会 **XPASS 并报失败**，
 强制修的人回来更新这份基线，而不是让"已知漂移"悄悄变成"规范"。
@@ -35,10 +38,10 @@ def roundtrip(raw: dict) -> dict:
     return CharacterProfile.from_dict(raw, fallback_name=name).to_dict()
 
 
-# ========== 差异 1：遗留键 描述 被丢弃（数据丢失） ==========
+# ========== 差异 1：遗留键 描述 被保留（曾丢失，已修） ==========
 
-@pytest.mark.xfail(strict=True, reason="已知漂移：关系表遗留键 描述 在 from_dict→to_dict 后被丢弃")
 def test_legacy_relationship_description_key_survives_roundtrip():
+    """遗留键 `描述` 必须原样带走 —— 它以前会在 load→save 时被静默丢掉。"""
     raw = {
         "name": "甲",
         "relationships": {"乙": {"状态": "信赖的挚友", "强度": 8, "描述": "隐约察觉他有秘密但从不追问"}},
@@ -46,7 +49,10 @@ def test_legacy_relationship_description_key_survives_roundtrip():
 
     out = roundtrip(raw)
 
-    assert out["relationships"]["乙"].get("描述") == "隐约察觉他有秘密但从不追问"
+    assert out["relationships"]["乙"]["描述"] == "隐约察觉他有秘密但从不追问"
+    # 规范化后的已知键仍在，且被正确归一化
+    assert out["relationships"]["乙"]["状态"] == "信赖的挚友"
+    assert out["relationships"]["乙"]["强度"] == 8
 
 
 # ========== 差异 2：字符串关系被规范化成 dict（格式漂移） ==========
