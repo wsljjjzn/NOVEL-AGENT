@@ -19,12 +19,36 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .common import console, load_bundle, create_project, project_summary, render_project_table, first_lines
+from src.novel.service import NovelService
 
 
 def _ensure_tier(tier: str) -> str:
     if tier not in ("flash", "pro"):
         raise SystemExit(f"无效模型层级: {tier}（可选 flash/pro）")
     return tier
+
+
+# 项目根目录（测试可 patch 本模块的 BASE_DIR 指向临时目录）
+BASE_DIR = "data/projects"
+
+
+def _service() -> NovelService:
+    """构造服务层：CLI 与 TUI 共用同一条编排（P0-1）。
+
+    以前这四条命令各自内联了一遍"大纲→角色→剧情→写作"，于是
+    "覆盖前备份 / 空输出报失败 / 只往后写"三类护栏只留在服务层里，CLI 全都丢了。
+    现在 CLI 只做三件事：收集参数、展示结果、把结果映射成退出码。
+    """
+    return NovelService(BASE_DIR, log=lambda m: console.print(f"[cyan]{m}[/cyan]"))
+
+
+def _report(result) -> int:
+    """统一把服务层结果映射成输出与退出码（契约：失败必须非 0 退出）。"""
+    style = "green" if result.ok else "red"
+    console.print(f"[{style}]{result.title}[/{style}]")
+    for line in result.lines:
+        console.print(f"  {line}")
+    return 0 if result.ok else 1
 
 
 # ========== 工具 ==========
@@ -203,210 +227,128 @@ def cmd_outline(args) -> int:
     return 0
 
 
-def _fill_characters(project, engine, plot, keep_existing: bool = True) -> int:
-    """生成角色系统并入库（对齐 gradio novel_stage2_characters）。"""
-    existing_events = {}
-    if keep_existing:
-        for c in engine.all_characters():
-            if c.chapter_events:
-                existing_events[c.name] = c.chapter_events
-
-    chars, world = plot.design_characters(
-        project.title, project.genre,
-        project.description, project.get_outline_context(),
-    )
-    from src.novel.character_engine import CharacterProfile
-    for cd in chars:
-        if not isinstance(cd, dict) or not cd.get("name"):
-            continue
-        profile = CharacterProfile(
-            name=cd["name"], role=cd.get("role", ""),
-            personality=cd.get("personality", {}),
-            speaking_style=cd.get("speaking_style", ""),
-            core_desire=cd.get("core_desire", ""), core_fear=cd.get("core_fear", ""),
-            background=cd.get("background", ""), appearance=cd.get("appearance", ""),
-            relationships=cd.get("relationships", {}),
-            arc_summary=cd.get("arc_summary", ""),
-        )
-        engine.add_character(profile)
-    for name, events in existing_events.items():
-        if name in engine._characters and not engine._characters[name].chapter_events:
-            engine._characters[name].chapter_events = events
-
-    engine.save(str(project.base_dir / "characters.json"))
-    plot.save(str(project.base_dir / "plots.json"))
-    return len(engine.all_characters())
-
-
 def cmd_characters(args) -> int:
-    try:
-        project, engine, plot, writer = load_bundle(args.name)
-    except Exception as e:
-        console.print(f"[red]加载失败: {e}[/red]")
+    """生成角色系统 —— 编排在 NovelService（P0-1），CLI 只收集参数与展示结果。"""
+    tier = _ensure_tier(args.tier)
+    svc = _service()
+    if not svc.exists(args.name):
+        console.print(f"[red]项目不存在：{args.name}[/red]")
         return 1
-    if not project.outline:
+    if not svc.load(args.name).project.outline:
         console.print("[yellow]当前没有大纲，角色生成缺少上下文。建议先: novel outline[/yellow]")
-    console.print(f"[cyan]正在用 {_ensure_tier(args.tier)} 生成角色系统…[/cyan]")
-    try:
-        n = _fill_characters(project, engine, plot)
-    except Exception as e:
-        console.print(f"[red]角色生成失败: {e}[/red]")
-        return 1
-    _character_table(engine)
-    console.print(f"[green]角色已保存 characters.json（{n} 个）[/green]")
-    return 0
+    console.print(f"[cyan]正在用 {tier} 生成角色系统…[/cyan]")
+    r = svc.generate_characters(args.name, tier=tier)
+    code = _report(r)
+    if r.ok:
+        _character_table(svc.load(args.name).engine)
+    return code
 
 
 def cmd_plot(args) -> int:
-    try:
-        project, engine, plot, writer = load_bundle(args.name)
-    except Exception as e:
-        console.print(f"[red]加载失败: {e}[/red]")
-        return 1
-    item = next((o for o in project.outline if o.chapter == args.chapter), None)
-    if item is None:
-        console.print(f"[red]大纲中没有第{args.chapter}章（请先 novel outline）[/red]")
+    """设计/导入单章剧情 —— 编排在 NovelService（P0-1）。"""
+    tier = _ensure_tier(args.tier)
+    svc = _service()
+    if not svc.exists(args.name):
+        console.print(f"[red]项目不存在：{args.name}[/red]")
         return 1
     if args.import_file:
         p = Path(args.import_file)
         if not p.exists():
             console.print(f"[red]文件不存在: {p}[/red]")
             return 1
-        from src.novel.plot_engine import ChapterPlot
-        plot_obj = plot.plots.get(args.chapter) or ChapterPlot(args.chapter)
-        plot_obj.user_notes = p.read_text("utf-8")
-        plot.plots[args.chapter] = plot_obj
-        plot.save(str(project.base_dir / "plots.json"))
-        console.print(Panel(plot_obj.user_notes, title=f"第{args.chapter}章 剧情笔记（已导入）", border_style="green"))
-        return 0
+        notes = p.read_text("utf-8")
+        code = _report(svc.save_plot_notes(args.name, args.chapter, notes))
+        console.print(Panel(notes, title=f"第{args.chapter}章 剧情笔记（已导入）", border_style="green"))
+        return code
 
-    console.print(f"[cyan]正在用 {_ensure_tier(args.tier)} 设计第{args.chapter}章剧情…[/cyan]")
-    try:
-        plot_obj = plot.design_chapter_plot(
-            args.chapter,
-            {"title": item.title, "expected_content": item.expected_content},
-            project.get_recap(args.chapter),
-            project.foreshadowing,
-        )
-        plot.save(str(project.base_dir / "plots.json"))
-    except Exception as e:
-        console.print(f"[red]剧情设计失败: {e}[/red]")
-        return 1
-    console.print(Panel(plot_obj.to_prompt_text(), title=f"第{args.chapter}章 剧情设计", border_style="blue"))
-    if args.out:
-        Path(args.out).write_text(plot_obj.to_prompt_text(), encoding="utf-8")
-        console.print(f"[green]已写入: {args.out}[/green]")
-    return 0
+    console.print(f"[cyan]正在用 {tier} 设计第{args.chapter}章剧情…[/cyan]")
+    r = svc.design_plot(args.name, args.chapter, tier=tier)
+    code = _report(r)
+    if r.ok:
+        text = "\n".join(r.lines)
+        console.print(Panel(text, title=f"第{args.chapter}章 剧情设计", border_style="blue"))
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            console.print(f"[green]已写入: {args.out}[/green]")
+    return code
 
 
 def cmd_write(args) -> int:
-    _ensure_tier(args.tier)
-    try:
-        project, engine, plot, writer = load_bundle(args.name)
-    except Exception as e:
-        console.print(f"[red]加载失败: {e}[/red]")
-        return 1
+    """撰写单章 —— 编排在 NovelService（P0-1）。
 
-    instructions = args.instructions or ""
-    plot_obj = plot.plots.get(args.chapter)
-    if plot_obj is None and args.plot in ("auto", "if_missing"):
-        item = next((o for o in project.outline if o.chapter == args.chapter), None)
-        if item is not None:
-            console.print(f"[cyan]第{args.chapter}章尚无剧情设计，先自动生成…[/cyan]")
-            try:
-                plot_obj = plot.design_chapter_plot(
-                    args.chapter,
-                    {"title": item.title, "expected_content": item.expected_content},
-                    project.get_recap(args.chapter),
-                    project.foreshadowing,
-                )
-                plot.save(str(project.base_dir / "plots.json"))
-            except Exception as e:
-                console.print(f"[red]剧情自动设计失败: {e}[/red]")
-                return 1
-    if plot_obj is not None and args.plot != "none":
-        instructions += "\n\n## 本章剧情设计（请严格遵循）\n" + plot_obj.to_prompt_text()
-        for fp in plot_obj.foreshadowing_planted:
-            project.add_foreshadowing(fp)
-        for fr in plot_obj.foreshadowing_resolved:
-            project.resolve_foreshadowing(fr)
-
-    console.print(f"[cyan]正在用 {args.tier} 撰写第{args.chapter}章（目标 {args.words} 字）…[/cyan]")
-    try:
-        text = writer.write_chapter(args.chapter, instructions, args.words, model_tier=args.tier)
-    except Exception as e:
-        console.print(f"[red]写作失败: {e}[/red]")
+    旧版无论模型返回什么，都打印绿色"写作完成（N 字）并已保存"并 exit 0；
+    现在空文本由服务层判为 ok=False → 非 0 退出（契约：不许假成功）。
+    """
+    tier = _ensure_tier(args.tier)
+    svc = _service()
+    if not svc.exists(args.name):
+        console.print(f"[red]项目不存在：{args.name}[/red]")
         return 1
-    wc = len(project.chapters.get(args.chapter, ""))
-    console.print(f"[green]第{args.chapter}章写作完成（{wc:,} 字）并已保存[/green]")
-    console.print(Panel(first_lines(text, 8), title="开头预览", border_style="green"))
-    return 0
+    console.print(f"[cyan]正在用 {tier} 撰写第{args.chapter}章（目标 {args.words} 字）…[/cyan]")
+    r = svc.write_chapter(
+        args.name, args.chapter, target_words=args.words, tier=tier,
+        instructions=args.instructions or "",
+        use_plot=args.plot != "none",
+        auto_plot=args.plot in ("auto", "if_missing"),
+    )
+    code = _report(r)
+    if r.ok:
+        text = svc.load(args.name).project.chapters.get(args.chapter, "")
+        console.print(Panel(first_lines(text, 8), title="开头预览", border_style="green"))
+    return code
 
 
 def cmd_auto(args) -> int:
-    """一键生成：大纲→角色→逐章（剧情设计+写作）。需要较多 API 调用。"""
-    _ensure_tier(args.tier)
-    try:
-        project, engine, plot, writer = load_bundle(args.name)
-    except FileNotFoundError:
-        project, engine, plot, writer = create_project(args.name, args.genre, args.desc)
+    """一键生成：大纲→角色→逐章 —— 全部委托 NovelService（P0-1）。
+
+    旧版把三段编排又抄了一遍，于是把服务层的三类护栏全丢了：覆盖 characters.json
+    前不备份、空输出照报成功、批量续写从第 1 章重写。现在 CLI 只做分阶段提示与退出码。
+    """
+    tier = _ensure_tier(args.tier)
+    svc = _service()
+
+    if not svc.exists(args.name):
+        if not args.name.strip():
+            console.print("[red]项目名不能为空[/red]")
+            return 1
+        r = svc.create(args.name, args.genre, args.desc)
+        if _report(r):
+            return 1
         console.print(f"[green]已自动创建项目「{args.name}」[/green]")
-    except Exception as e:
-        console.print(f"[red]加载失败: {e}[/red]")
-        return 1
 
     console.print("[cyan][1/3] 生成大纲…[/cyan]")
-    if not project.outline:
-        writer.generate_outline(args.chapters, args.prompt or project.description or "自动生成故事", model_tier=args.tier)
-        console.print(f"[green]大纲 {len(project.outline)} 章已生成[/green]")
+    if not svc.load(args.name).project.outline:
+        prompt = args.prompt or svc.load(args.name).project.description or "自动生成故事"
+        code = _report(svc.generate_outline(args.name, args.chapters, prompt, tier=tier))
+        if code:
+            return code
     else:
         console.print("[yellow]大纲已存在，跳过[/yellow]")
 
     console.print("[cyan][2/3] 生成角色系统…[/cyan]")
-    if not engine.all_characters():
-        n = _fill_characters(project, engine, plot)
-        console.print(f"[green]角色 {n} 个已生成[/green]")
+    if not svc.load(args.name).engine.all_characters():
+        code = _report(svc.generate_characters(args.name, tier=tier))
+        if code:
+            return code
     else:
         console.print("[yellow]角色已存在，跳过[/yellow]")
 
     console.print("[cyan][3/3] 逐章：剧情设计+写作…[/cyan]")
-    # 只往后写：从第一个未写章节开始。旧版是 range(1, N+1)，对已有正文的项目
-    # 会从第 1 章开始整本重写（回归：与 service.batch_write 的语义对齐）
+    # "只往后写"与"拒绝重写已有章"都由 service.batch_write 负责（护栏只有一处）
+    project = svc.load(args.name).project
     written_to = max(project.chapters) if project.chapters else 0
     if written_to:
         console.print(f"[yellow]已有正文写到第 {written_to} 章，只往后写、不重写已有章节[/yellow]")
     if written_to >= args.chapters:
         console.print(f"[green]目标 {args.chapters} 章已完成，无需续写[/green]")
-    else:
-        for ch in range(written_to + 1, args.chapters + 1):
-            item = next((o for o in project.outline if o.chapter == ch), None)
-            plot_obj = plot.plots.get(ch)
-            if plot_obj is None and item is not None:
-                plot_obj = plot.design_chapter_plot(
-                    ch, {"title": item.title, "expected_content": item.expected_content},
-                    project.get_recap(ch), project.foreshadowing,
-                )
-                plot.save(str(project.base_dir / "plots.json"))
-            instructions = ""
-            if plot_obj is not None:
-                instructions = "\n\n## 本章剧情设计（请严格遵循）\n" + plot_obj.to_prompt_text()
-                for fp in plot_obj.foreshadowing_planted:
-                    project.add_foreshadowing(fp)
-                for fr in plot_obj.foreshadowing_resolved:
-                    project.resolve_foreshadowing(fr)
-            try:
-                writer.write_chapter(ch, instructions, args.words, model_tier=args.tier)
-            except Exception as e:
-                console.print(f"[red]第{ch}章写作失败: {e}（已停止）[/red]")
-                break
-            wc = len(project.chapters.get(ch, ""))
-            console.print(f"[green]第{ch}章完成（{wc:,} 字）[/green]")
-
-    project.save()
-    engine.save(str(project.base_dir / "characters.json"))
-    plot.save(str(project.base_dir / "plots.json"))
-    console.print(f"[green]全部完成。导出全文可运行: python tui.py novel export {args.name}[/green]")
-    return 0
+        return 0
+    code = _report(svc.batch_write(
+        args.name, count=args.chapters - written_to,
+        target_words=args.words, tier=tier,
+    ))
+    if code == 0:
+        console.print(f"[green]全部完成。导出全文可运行: python tui.py novel export {args.name}[/green]")
+    return code
 
 
 def cmd_export(args) -> int:

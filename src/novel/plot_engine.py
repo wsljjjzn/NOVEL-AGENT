@@ -158,7 +158,8 @@ class PlotEngine:
 
     def design_chapter_plot(self, chapter_num: int, outline_item: dict,
                             prev_chapter_summary: str = "",
-                            existing_foreshadowing: list[str] = None) -> ChapterPlot:
+                            existing_foreshadowing: list[str] = None,
+                            model_tier: str = "flash") -> ChapterPlot:
         """设计单章详细剧情。
 
         Args:
@@ -166,6 +167,7 @@ class PlotEngine:
             outline_item: {title, expected_content}
             prev_chapter_summary: 上一章内容摘要
             existing_foreshadowing: 当前开放的伏笔列表
+            model_tier: 模型档位（A16：以前这里硬编码 flash，--tier pro 被静默忽略）
 
         Returns:
             ChapterPlot
@@ -184,7 +186,7 @@ class PlotEngine:
             response = self.llm.chat(
                 [{"role": "system", "content": self.PLOT_DESIGN_SYSTEM},
                  {"role": "user", "content": prompt}],
-                model_tier="flash", temperature=0.5,
+                model_tier=model_tier, temperature=0.5,
             )
             return self._parse_plot(response, chapter_num, outline_item.get("title", ""))
         except Exception as e:
@@ -219,10 +221,14 @@ class PlotEngine:
         return plot
 
     def design_characters(self, novel_title: str, genre: str,
-                          description: str, outline_text: str) -> Pair[
+                          description: str, outline_text: str,
+                          model_tier: str = "flash") -> Pair[
         list[dict], WorldSetting
     ]:
         """生成完整的角色系统。
+
+        Args:
+            model_tier: 模型档位（A16：以前这里硬编码 flash，--tier pro 被静默忽略）
 
         Returns:
             (字符列表, 世界观设定)
@@ -236,7 +242,7 @@ class PlotEngine:
             response = self.llm.chat(
                 [{"role": "system", "content": self.CHARACTER_SYSTEM_PROMPT},
                  {"role": "user", "content": prompt}],
-                model_tier="flash", temperature=0.5,
+                model_tier=model_tier, temperature=0.5,
             )
         except Exception as e:
             logger.warning(f"角色系统生成失败: {e}")

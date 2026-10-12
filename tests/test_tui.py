@@ -261,8 +261,27 @@ def test_llm_action_blocked_without_key():
     asyncio.run(main())
 
 
-def test_batch_write_refuses_to_rewrite_existing_chapters():
-    """批量续写的起点必须"往后写"；填已有章号要被拒绝（这是 CLI auto 的坑）。"""
+def test_batch_write_refuses_to_rewrite_existing_chapters(monkeypatch):
+    """批量续写的起点必须"往后写"；填已有章号要被拒绝（这是 CLI auto 的坑）。
+
+    P0-4：断言之前**必须先把 writer 换掉**。旧写法直接拿真 NovelService 断言，
+    于是"护栏"本身成了这个测试的前提 —— 一旦护栏回归，它会真的发起 LLM 调用
+    （花钱 + 依赖网络），而不是干脆地失败。
+    """
+    written: list[int] = []
+
+    class RefusingWriter:
+        """替身：一旦被调用就记账，供下面断言"根本不该被调到"。"""
+
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def write_chapter(self, chapter_num, *args, **kwargs) -> str:
+            written.append(chapter_num)
+            return "这个替身不该被调用" * 20
+
+    monkeypatch.setattr("src.novel.service.ChapterWriter", RefusingWriter)
+
     async def main():
         with _Fixture() as tmp:
             svc = NovelService(str(tmp))
@@ -275,6 +294,7 @@ def test_batch_write_refuses_to_rewrite_existing_chapters():
 
     r = asyncio.run(main())
     assert r is not None
+    assert written == [], f"护栏失效：批量续写真的去写第 {written} 章了"
 
 
 def test_settings_modal_renders_status():

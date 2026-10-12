@@ -199,6 +199,7 @@ class NovelService:
             chars, _world = plot.design_characters(
                 project.title, project.genre, project.description,
                 project.get_outline_context(),
+                model_tier=tier,          # A16：以前这里没传，日志说 pro、实际走 flash
             )
         except Exception as e:
             return Result(False, f"角色生成失败：{type(e).__name__}: {e}")
@@ -244,6 +245,7 @@ class NovelService:
         plot_obj = plot.design_chapter_plot(
             chapter, {"title": item.title, "expected_content": item.expected_content},
             project.get_recap(chapter), project.foreshadowing,
+            model_tier=tier,              # A16：以前这里没传
         )
         empty = not (plot_obj.opening_hook or plot_obj.scenes or plot_obj.climax)
         plot.save(str(project.base_dir / "plots.json"))
@@ -276,6 +278,7 @@ class NovelService:
                 plot_obj = plot.design_chapter_plot(
                     chapter, {"title": item.title, "expected_content": item.expected_content},
                     project.get_recap(chapter), project.foreshadowing,
+                    model_tier=tier,      # A16：以前这里没传
                 )
                 plot.save(str(project.base_dir / "plots.json"))
 
