@@ -8,12 +8,16 @@
 
 ### 1. 作为 MCP 服务器（主要形态）
 
+> ⚠️ **尚未实现**：MCP 层还没有代码（全仓 `src/` 0 处 `mcp` 引用，见
+> [`REVIEW-2026-10-12.md`](REVIEW-2026-10-12.md) F1.3、[`plan/00-phases.md`](plan/00-phases.md) P3b）。
+> 本节描述的是目标形态，`na-mcp` 这条命令现在跑会报 `Failed to spawn`。
+
 让宿主（Claude / DSH / Cursor 等）驱动：
 
 ```bash
-uv sync --extra ai
-uv run na-mcp                 # stdio
-uv run na-mcp --http          # Streamable HTTP
+uv sync
+uv run na-mcp                 # stdio（未实现）
+uv run na-mcp --http          # Streamable HTTP（未实现）
 ```
 
 宿主会看到两类工具：
@@ -24,7 +28,7 @@ uv run na-mcp --http          # Streamable HTTP
 ### 2. 作为 CLI / TUI 独立运行
 
 ```bash
-uv sync --extra ai
+uv sync                                 # 核心依赖即可，CLI / TUI 不需要额外依赖
 uv run na novel list                    # 看有哪些项目
 uv run na novel show <项目> --chars      # 看角色状态
 uv run na novel write <项目> --chapter 5 # 写一章
@@ -35,48 +39,51 @@ uv run na-tui                           # 交互式界面
 
 ```bash
 git clone <repo> && cd NOVEL-AGENT
-uv sync --extra ai            # 装核心 + LLM 层
+uv sync --extra test          # 核心 + pytest；只跑程序不写测试的话 `uv sync` 就够
 cp .env.example .env          # 填 DEEPSEEK_API_KEY（走宿主采样时不需要）
-uv run na-tools-doctor        # 环境自检
-uv run na novel list
+uv run na novel list          # 能列出项目 = 环境就绪
+uv run na-tui                 # 交互式界面
 ```
 
-**跑不起来先跑 doctor**：
+**跑不起来先自检**（`na-tools-doctor` 尚未实现，先用这两条）：
 
 ```bash
-uv run na-tools-doctor
+uv run na novel list
+uv run python -c "import src.cli.main, src.tui.app; print('核心依赖 OK')"
 ```
 
 ## 环境分层
 
-本项目**只用 uv**，依赖分三层按需装：
+本项目**只用 uv**，依赖按需装：
 
 | 命令 | 内容 | 体积 |
 |---|---|---|
-| `uv sync` | 核心（CLI / TUI / MCP / 领域引擎） | 小 |
-| `uv sync --extra ai` | + LLM 调用层（Pydantic AI、MCP SDK） | 中 |
-| `uv sync --extra gpu` | + 语料预处理（torch 系） | 数 GB |
+| `uv sync` | 核心（CLI / TUI / 领域引擎） | 小 |
+| `uv sync --extra test` | + pytest（跑测试） | 小 |
+| `uv sync --extra full` | + 语料预处理与检索（torch 系、chromadb、gradio） | 数 GB |
 
-开发还要加组：
+> ⚠️ 目标形态里还有 `--extra ai`（LLM 调用层）与 `--extra gpu` 的拆分，
+> 以及 `--group dev` / `--group lint`：**尚未实施**，见 [`plan/03-uv.md`](plan/03-uv.md)。
+> 今天请用上面这三条。
+
+开发时：
 
 ```bash
-uv sync --extra ai --group dev --group lint
+uv sync --extra test
 uv run pytest
-uv run ruff check . && uv run mypy src
+uv run ruff check . && uv run mypy src      # 需自行装 ruff / mypy
 ```
-
-> **领域引擎零 LLM 依赖**——不装 `--extra ai` 也能用角色/剧情/项目管理。这是刻意设计的：`ai` 是 extra，**依赖图本身就是架构约束**。
 
 ## 命令一览
 
-| 命令 | 用途 |
-|---|---|
-| `uv run na` | 主 CLI（`novel` / `article` / `kb` 三组） |
-| `uv run na-tui` | 交互式终端界面 |
-| `uv run na-mcp` | MCP 服务器 |
-| `uv run na-tools-doctor` | 环境自检 |
-| `uv run na-tools-preprocess` | 批量语料预处理 |
-| `uv run na-tools-index` | 重建 `index.csv` |
+| 命令 | 用途 | 当前可用 |
+|---|---|---|
+| `uv run na` | 主 CLI（`novel` / `article` / `kb` 三组） | ✅ |
+| `uv run na-tui` | 交互式终端界面 | ✅ |
+| `uv run na-tools-preprocess` | 批量语料预处理 | ✅ |
+| `uv run na-mcp` | MCP 服务器 | ❌ 未实现 |
+| `uv run na-tools-doctor` | 环境自检 | ❌ 未实现 |
+| `uv run na-tools-index` | 重建 `index.csv` | ❌ 未实现 |
 
 ```bash
 uv run na --help          # 全部子命令
