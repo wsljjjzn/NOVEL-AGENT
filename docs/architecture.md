@@ -109,7 +109,7 @@
 | 7 | `characters.json` 损坏**不应让整个项目打不开** | `CharacterEngine.load` |
 | 8 | 领域层不 import LLM 模块 | 全仓 |
 
-> 第 5 条是**已知缺口**：`project_manager.py:186` 的 `outline` 章号至今未做 int 归一化，模型返回 `"chapter": "3"` 会让 `list_chapters()` 抛 `TypeError`，TUI 章节页签与 `novel show` 一起挂。见 `plan/01-tasks.md`。
+> `OutlineItem` 在读盘时已把章节号归一化为 `int`，字符串章号不会再破坏章节排序。
 
 ---
 

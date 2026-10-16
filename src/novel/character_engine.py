@@ -27,18 +27,17 @@ novel.character_engine — 角色人格引擎。
 """
 
 import json
-import os
 import re
-import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from src.utils.file_utils import atomic_write_json
 from src.utils.llm_client import LLMClient
 from src.utils.logger import logger
-
 
 # ========== 常量 ==========
 
@@ -74,6 +73,7 @@ class CharacterDataError(ValueError):
 
 
 # ========== 值归一化（LLM 输出与手工编辑的存档都可能不规范，统一在这里兜底）==========
+
 
 def _to_int_0_10(value: Any, default: int = SCORE_DEFAULT) -> int:
     """把任意值夹到 0-10 的整数。None/空串/非法值/越界一律兜底（A9）。"""
@@ -177,7 +177,7 @@ def _normalize_relationship(info: Any) -> dict:
         return {"状态": info, "强度": SCORE_DEFAULT, "起始章": 0}
     if not isinstance(info, dict):
         return {"状态": "", "强度": SCORE_DEFAULT, "起始章": 0}
-    entry = dict(info)          # 先原样收下，再覆盖需要规范化的已知键
+    entry = dict(info)  # 先原样收下，再覆盖需要规范化的已知键
     entry["状态"] = _as_str(info.get("状态", info.get("status")))
     entry["强度"] = _to_int_0_10(info.get("强度", info.get("intensity")))
     entry["起始章"] = _to_chapter(info.get("起始章", info.get("start_chapter")))
@@ -188,6 +188,7 @@ def _normalize_relationship(info: Any) -> dict:
 
 
 # ========== 数据模型 ==========
+
 
 class PersistedModel(BaseModel):
     """落盘模型的共同配置（P1-2：类型声明的校验交给 pydantic）。
@@ -215,10 +216,11 @@ def _with_extras(model: BaseModel, data: dict) -> dict:
 
 class PersonalityShift(PersistedModel):
     """人格变化记录。"""
-    trait: str = ""         # 变化的特质名，如 "谨慎"
-    old_value: int = 0      # 旧值 0-10
-    new_value: int = 0      # 新值 0-10
-    reason: str = ""        # 变化原因
+
+    trait: str = ""  # 变化的特质名，如 "谨慎"
+    old_value: int = 0  # 旧值 0-10
+    new_value: int = 0  # 新值 0-10
+    reason: str = ""  # 变化原因
 
     # 直接构造（LLM 输出路径）与 from_dict 走同一套兜底：null/字符串/越界都夹到 0-10（A9）
     @field_validator("trait", "reason", mode="before")
@@ -232,10 +234,15 @@ class PersonalityShift(PersistedModel):
         return _to_int_0_10(value)
 
     def to_dict(self) -> dict:
-        return _with_extras(self, {
-            "trait": self.trait, "old": self.old_value,
-            "new": self.new_value, "reason": self.reason,
-        })
+        return _with_extras(
+            self,
+            {
+                "trait": self.trait,
+                "old": self.old_value,
+                "new": self.new_value,
+                "reason": self.reason,
+            },
+        )
 
     @classmethod
     def from_dict(cls, data: Any) -> "PersonalityShift":
@@ -253,16 +260,17 @@ class PersonalityShift(PersistedModel):
 
 class ChapterEvent(PersistedModel):
     """角色在某一章发生的事件。"""
+
     chapter: int = 0
-    mood: str = ""                                              # 情绪状态
+    mood: str = ""  # 情绪状态
     key_actions: list[str] = []
     # ⚠️ 保持「纯 dict 列表」：to_dict 与写作卡片都用 isinstance(rc, dict) 判定，
     # 换成嵌套模型会让关系变化在落盘时被静默丢掉（A4 事故的翻版）
     relationship_changes: list[dict] = []
     personality_shifts: list["PersonalityShift"] = []
     skills_gained: list[str] = []
-    belief_changes: list[str] = []                              # 信念变化
-    summary: str = ""                                           # 本章角色摘要
+    belief_changes: list[str] = []  # 信念变化
+    summary: str = ""  # 本章角色摘要
 
     @field_validator("chapter", mode="before")
     @classmethod
@@ -286,17 +294,21 @@ class ChapterEvent(PersistedModel):
 
     def to_dict(self) -> dict:
         """序列化。A4：relationship_changes 此前被漏掉，导致落盘即丢。"""
-        return _with_extras(self, {
-            "chapter": self.chapter,
-            "mood": self.mood,
-            "key_actions": list(self.key_actions),
-            "relationship_changes": [dict(rc) for rc in self.relationship_changes
-                                     if isinstance(rc, dict)],
-            "personality_shifts": [shift.to_dict() for shift in self.personality_shifts],
-            "skills_gained": list(self.skills_gained),
-            "belief_changes": list(self.belief_changes),
-            "summary": self.summary,
-        })
+        return _with_extras(
+            self,
+            {
+                "chapter": self.chapter,
+                "mood": self.mood,
+                "key_actions": list(self.key_actions),
+                "relationship_changes": [
+                    dict(rc) for rc in self.relationship_changes if isinstance(rc, dict)
+                ],
+                "personality_shifts": [shift.to_dict() for shift in self.personality_shifts],
+                "skills_gained": list(self.skills_gained),
+                "belief_changes": list(self.belief_changes),
+                "summary": self.summary,
+            },
+        )
 
     @classmethod
     def from_dict(cls, data: Any) -> "ChapterEvent":
@@ -307,10 +319,12 @@ class ChapterEvent(PersistedModel):
             chapter=_to_chapter(raw.get("chapter")),
             mood=_as_str(raw.get("mood")),
             key_actions=_as_str_list(raw.get("key_actions")),
-            relationship_changes=[rc for rc in _as_list(raw.get("relationship_changes"))
-                                  if isinstance(rc, dict)],
-            personality_shifts=[PersonalityShift.from_dict(s)
-                                for s in _as_list(raw.get("personality_shifts"))],
+            relationship_changes=[
+                rc for rc in _as_list(raw.get("relationship_changes")) if isinstance(rc, dict)
+            ],
+            personality_shifts=[
+                PersonalityShift.from_dict(s) for s in _as_list(raw.get("personality_shifts"))
+            ],
             skills_gained=_as_str_list(raw.get("skills_gained")),
             belief_changes=_as_str_list(raw.get("belief_changes")),
             summary=_as_str(raw.get("summary")),
@@ -320,9 +334,10 @@ class ChapterEvent(PersistedModel):
 
 class CharacterProfile(PersistedModel):
     """角色完整档案。"""
+
     name: str = ""
     aliases: list[str] = []
-    role: str = ""       # 主角/反派/配角/路人
+    role: str = ""  # 主角/反派/配角/路人
     # 核心人格（相对稳定，但可以逐步变化）
     # ⚠️ 保持无参 dict：存量档案里有 {"善良": None} 这类值，读取时由
     # personality_summary()/_to_int_0_10 兜底；收紧成 dict[str, int] 会让老存档直接打不开
@@ -341,8 +356,17 @@ class CharacterProfile(PersistedModel):
     # 弧线总结
     arc_summary: str = ""
 
-    @field_validator("name", "role", "speaking_style", "core_desire", "core_fear",
-                     "background", "appearance", "arc_summary", mode="before")
+    @field_validator(
+        "name",
+        "role",
+        "speaking_style",
+        "core_desire",
+        "core_fear",
+        "background",
+        "appearance",
+        "arc_summary",
+        mode="before",
+    )
     @classmethod
     def _coerce_text(cls, value: Any) -> str:
         return _as_str(value).strip() if value is not None else ""
@@ -384,14 +408,14 @@ class CharacterProfile(PersistedModel):
             self.chapter_events.append(event)
         self.chapter_events.sort(key=lambda item: item.chapter)
 
-    def recent_events(self, before_chapter: int,
-                      window: int = RECENT_EVENT_WINDOW) -> list[ChapterEvent]:
+    def recent_events(
+        self, before_chapter: int, window: int = RECENT_EVENT_WINDOW
+    ) -> list[ChapterEvent]:
         """第 before_chapter 章之前、最近 window 章的事件（A11）。"""
         events = [e for e in self.sorted_events() if e.chapter < before_chapter]
         return events[-window:] if window > 0 else events
 
-    def appeared_within(self, chapter_num: int,
-                        window: int = RECENT_EVENT_WINDOW) -> bool:
+    def appeared_within(self, chapter_num: int, window: int = RECENT_EVENT_WINDOW) -> bool:
         """是否在"即将写作的这一章之前 window 章内"出场过（A13 筛选用）。
 
         与 recent_events 的区别：recent_events 取"最后 N 条事件"（展示用），
@@ -423,18 +447,25 @@ class CharacterProfile(PersistedModel):
     # ---- 序列化（A4）----
 
     def to_dict(self) -> dict:
-        return _with_extras(self, {
-            "name": self.name,
-            "aliases": list(self.aliases), "role": self.role,
-            "personality": dict(self.personality), "speaking_style": self.speaking_style,
-            "core_desire": self.core_desire, "core_fear": self.core_fear,
-            "moral_compass": dict(self.moral_compass),
-            "background": self.background, "appearance": self.appearance,
-            # 落盘时按章号排序，顺带把旧档案里乱序的事件规范化
-            "chapter_events": [event.to_dict() for event in self.sorted_events()],
-            "relationships": dict(self.relationships),
-            "arc_summary": self.arc_summary,
-        })
+        return _with_extras(
+            self,
+            {
+                "name": self.name,
+                "aliases": list(self.aliases),
+                "role": self.role,
+                "personality": dict(self.personality),
+                "speaking_style": self.speaking_style,
+                "core_desire": self.core_desire,
+                "core_fear": self.core_fear,
+                "moral_compass": dict(self.moral_compass),
+                "background": self.background,
+                "appearance": self.appearance,
+                # 落盘时按章号排序，顺带把旧档案里乱序的事件规范化
+                "chapter_events": [event.to_dict() for event in self.sorted_events()],
+                "relationships": dict(self.relationships),
+                "arc_summary": self.arc_summary,
+            },
+        )
 
     @classmethod
     def from_dict(cls, data: Any, fallback_name: str = "") -> "CharacterProfile":
@@ -482,8 +513,15 @@ class CharacterProfile(PersistedModel):
             实际被补充的字段名列表（日志/测试用）
         """
         filled: list[str] = []
-        for key in ("role", "speaking_style", "core_desire", "core_fear",
-                    "background", "appearance", "arc_summary"):
+        for key in (
+            "role",
+            "speaking_style",
+            "core_desire",
+            "core_fear",
+            "background",
+            "appearance",
+            "arc_summary",
+        ):
             value = _as_str(data.get(key)).strip()
             if value and not getattr(self, key):
                 setattr(self, key, value)
@@ -520,10 +558,13 @@ class CharacterProfile(PersistedModel):
         if self.core_fear:
             parts.append(f"核心恐惧: {_clip(self.core_fear, 120)}")
         if self.moral_compass:
-            parts.append("道德准则: " + ", ".join(
-                f"{trait}{_to_int_0_10(value)}/10"
-                for trait, value in sorted(self.moral_compass.items())
-            ))
+            parts.append(
+                "道德准则: "
+                + ", ".join(
+                    f"{trait}{_to_int_0_10(value)}/10"
+                    for trait, value in sorted(self.moral_compass.items())
+                )
+            )
         if self.background:
             parts.append(f"背景: {_clip(self.background)}")
         if self.appearance:
@@ -536,21 +577,26 @@ class CharacterProfile(PersistedModel):
                 actions = "; ".join(event.key_actions) if event.key_actions else "无关键行动"
                 parts.append(f"  第{event.chapter}章: {actions}（情绪: {event.mood or '未记录'}）")
                 for shift in event.personality_shifts:
-                    parts.append(f"    → 人格变化: {shift.trait} "
-                                 f"{shift.old_value}→{shift.new_value}（{shift.reason}）")
+                    parts.append(
+                        f"    → 人格变化: {shift.trait} "
+                        f"{shift.old_value}→{shift.new_value}（{shift.reason}）"
+                    )
                 for change in event.relationship_changes:
                     target = _as_str(change.get("target")).strip()
                     if target:
-                        parts.append(f"    → 关系变化: {target} "
-                                     f"{_as_str(change.get('old')) or '?'}→"
-                                     f"{_as_str(change.get('new')) or '?'}")
+                        parts.append(
+                            f"    → 关系变化: {target} "
+                            f"{_as_str(change.get('old')) or '?'}→"
+                            f"{_as_str(change.get('new')) or '?'}"
+                        )
 
         if self.relationships:
             relations = []
             for target, info in self.relationships.items():
                 if isinstance(info, dict):
                     relations.append(
-                        f"{target}({info.get('状态', '')} {_to_int_0_10(info.get('强度'))}/10)")
+                        f"{target}({info.get('状态', '')} {_to_int_0_10(info.get('强度'))}/10)"
+                    )
                 else:
                     relations.append(f"{target}({info})")
             parts.append(f"关系: {', '.join(relations)}")
@@ -564,10 +610,10 @@ class AnalysisOutcome:
 
     status: str = STATUS_OK
     updated: list[CharacterProfile] = field(default_factory=list)
-    created: list[str] = field(default_factory=list)            # 本次新建档案的角色
+    created: list[str] = field(default_factory=list)  # 本次新建档案的角色
     merged: list[tuple[str, str]] = field(default_factory=list)  # [(模型给的名字, 归并到的角色)]
     detail: str = ""
-    truncated: bool = False                                      # 正文是否被截断后分析
+    truncated: bool = False  # 正文是否被截断后分析
 
     @property
     def ok(self) -> bool:
@@ -617,7 +663,7 @@ class CharacterEngine:
 - relationship_changes 必须给出 intensity（这段关系的亲疏/信任强度，0-10）。
 - 只分析本章正文里确实出场的角色。"""
 
-    def __init__(self, llm_client: Optional[LLMClient] = None):
+    def __init__(self, llm_client: LLMClient | None = None):
         self.llm = llm_client or LLMClient()
         self._characters: dict[str, CharacterProfile] = {}
 
@@ -626,7 +672,7 @@ class CharacterEngine:
     def add_character(self, profile: CharacterProfile):
         self._characters[profile.name] = profile
 
-    def get_character(self, name: str) -> Optional[CharacterProfile]:
+    def get_character(self, name: str) -> CharacterProfile | None:
         """按名字取角色；名字写法不同但归并到同一角色时同样能取到（A5）。"""
         resolved = self._resolve_existing_name(name)
         return self._characters.get(resolved) if resolved else None
@@ -634,7 +680,7 @@ class CharacterEngine:
     def all_characters(self) -> list[CharacterProfile]:
         return list(self._characters.values())
 
-    def _resolve_existing_name(self, name: str) -> Optional[str]:
+    def _resolve_existing_name(self, name: str) -> str | None:
         """把一个名字解析到引擎里已有的角色键（A5 归并）。
 
         依次尝试：精确匹配 → 别名表 → 归一化名字（去括号注释/全角括号/空白）。
@@ -661,7 +707,7 @@ class CharacterEngine:
         self,
         chapter_num: int,
         chapter_text: str,
-        existing_names: Optional[Iterable[str]] = None,
+        existing_names: Iterable[str] | None = None,
         model_tier: str = "flash",
         max_tokens: int = ANALYSIS_MAX_TOKENS,
     ) -> list[CharacterProfile]:
@@ -674,15 +720,18 @@ class CharacterEngine:
             本章被更新的角色列表
         """
         return self.analyze_chapter_ex(
-            chapter_num, chapter_text, existing_names,
-            model_tier=model_tier, max_tokens=max_tokens,
+            chapter_num,
+            chapter_text,
+            existing_names,
+            model_tier=model_tier,
+            max_tokens=max_tokens,
         ).updated
 
     def analyze_chapter_ex(
         self,
         chapter_num: int,
         chapter_text: str,
-        existing_names: Optional[Iterable[str]] = None,
+        existing_names: Iterable[str] | None = None,
         model_tier: str = "flash",
         max_tokens: int = ANALYSIS_MAX_TOKENS,
     ) -> AnalysisOutcome:
@@ -715,14 +764,20 @@ class CharacterEngine:
         if not known:
             # 首次写作时角色库为空：system prompt 要求"已有角色只输出确实变化的部分"，
             # 不显式引导时模型容易返回空数组（表现为写第一章"0 个角色更新"）
-            prompt += ("\n当前角色库为空：本章所有出场角色都按新角色输出"
-                       "（is_new 置 true，并给出 personality 与 speaking_style）。")
+            prompt += (
+                "\n当前角色库为空：本章所有出场角色都按新角色输出"
+                "（is_new 置 true，并给出 personality 与 speaking_style）。"
+            )
 
         try:
             response = self.llm.chat(
-                [{"role": "system", "content": self.CHARACTER_ANALYSIS_SYSTEM},
-                 {"role": "user", "content": prompt}],
-                model_tier=model_tier, temperature=0.3, max_tokens=max_tokens,
+                [
+                    {"role": "system", "content": self.CHARACTER_ANALYSIS_SYSTEM},
+                    {"role": "user", "content": prompt},
+                ],
+                model_tier=model_tier,
+                temperature=0.3,
+                max_tokens=max_tokens,
             )
         except Exception as exc:
             detail = f"{type(exc).__name__}: {exc}"
@@ -740,12 +795,15 @@ class CharacterEngine:
         elif outcome.created:
             logger.info(f"第{chapter_num}章角色分析新建档案: {', '.join(outcome.created)}")
         if outcome.merged:
-            logger.info(f"第{chapter_num}章角色分析归并了同一角色的不同写法: "
-                        + ", ".join(f"{alias}→{canonical}" for alias, canonical in outcome.merged))
+            logger.info(
+                f"第{chapter_num}章角色分析归并了同一角色的不同写法: "
+                + ", ".join(f"{alias}→{canonical}" for alias, canonical in outcome.merged)
+            )
         return outcome
 
     def _parse_analysis(self, response: str, chapter_num: int) -> AnalysisOutcome:
         from src.utils.json_utils import safe_json_parse
+
         data = safe_json_parse(_as_str(response))
         if not isinstance(data, dict):
             return AnalysisOutcome(
@@ -782,11 +840,11 @@ class CharacterEngine:
                 if existing != name:
                     outcome.merged.append((name, existing))
                     if name not in profile.aliases:
-                        profile.aliases.append(name)   # 记住这次的写法，下次直接命中
+                        profile.aliases.append(name)  # 记住这次的写法，下次直接命中
                 profile.fill_missing(char_data)
 
             if not profile.role:
-                profile.role = "配角"      # 定位缺失时的兜底（A10）
+                profile.role = "配角"  # 定位缺失时的兜底（A10）
 
             self._append_event(profile, char_data, chapter_num)
             if profile.name not in seen:
@@ -799,8 +857,7 @@ class CharacterEngine:
             )
         return outcome
 
-    def _append_event(self, profile: CharacterProfile, char_data: dict,
-                      chapter_num: int) -> None:
+    def _append_event(self, profile: CharacterProfile, char_data: dict, chapter_num: int) -> None:
         """把本章分析落成事件，并更新人格与关系网。"""
         shifts: list[PersonalityShift] = []
         for raw in _as_list(char_data.get("personality_shifts")):
@@ -809,20 +866,25 @@ class CharacterEngine:
             trait = _as_str(raw.get("trait")).strip()
             if not trait:
                 continue
-            current = (_to_int_0_10(profile.personality[trait])
-                       if trait in profile.personality else None)
-            shifts.append(PersonalityShift(
-                trait=trait,
-                # 模型给的 old 没有可信来源（分析 prompt 不含角色当前数值），
-                # 本地有这个特质时以本地状态为准
-                old_value=current if current is not None else _to_int_0_10(raw.get("old")),
-                new_value=_to_int_0_10(
-                    raw.get("new"), default=current if current is not None else SCORE_DEFAULT),
-                reason=_as_str(raw.get("reason")),
-            ))
+            current = (
+                _to_int_0_10(profile.personality[trait]) if trait in profile.personality else None
+            )
+            shifts.append(
+                PersonalityShift(
+                    trait=trait,
+                    # 模型给的 old 没有可信来源（分析 prompt 不含角色当前数值），
+                    # 本地有这个特质时以本地状态为准
+                    old_value=current if current is not None else _to_int_0_10(raw.get("old")),
+                    new_value=_to_int_0_10(
+                        raw.get("new"), default=current if current is not None else SCORE_DEFAULT
+                    ),
+                    reason=_as_str(raw.get("reason")),
+                )
+            )
 
-        relationship_changes = [rc for rc in _as_list(char_data.get("relationship_changes"))
-                                if isinstance(rc, dict)]
+        relationship_changes = [
+            rc for rc in _as_list(char_data.get("relationship_changes")) if isinstance(rc, dict)
+        ]
 
         event = ChapterEvent(
             chapter=chapter_num,
@@ -834,7 +896,7 @@ class CharacterEngine:
             belief_changes=_as_str_list(char_data.get("belief_changes")),
             summary=_as_str(char_data.get("summary")),
         )
-        profile.upsert_event(event)     # A8：同章替换；A11：按章号有序
+        profile.upsert_event(event)  # A8：同章替换；A11：按章号有序
 
         for shift in shifts:
             # A3：未登记过的特质也要落地，否则"人格演变"只存在于事件日志里
@@ -844,8 +906,9 @@ class CharacterEngine:
             self._apply_relationship_change(profile, change, chapter_num)
 
     @staticmethod
-    def _apply_relationship_change(profile: CharacterProfile, change: dict,
-                                   chapter_num: int) -> None:
+    def _apply_relationship_change(
+        profile: CharacterProfile, change: dict, chapter_num: int
+    ) -> None:
         """更新关系网（A6：强度夹紧、起始章只在首次写入、最近变化落盘）。"""
         target = _as_str(change.get("target")).strip()
         if not target:
@@ -860,7 +923,7 @@ class CharacterEngine:
             change.get("intensity", change.get("强度")),
             default=_to_int_0_10(entry.get("强度")),
         )
-        entry.setdefault("起始章", chapter_num)     # A6：不再每章被覆盖
+        entry.setdefault("起始章", chapter_num)  # A6：不再每章被覆盖
         entry["最近变化"] = {
             "chapter": chapter_num,
             "from": _as_str(change.get("old")),
@@ -874,7 +937,7 @@ class CharacterEngine:
     def get_context_for_writing(
         self,
         chapter_num: int,
-        focus: Optional[Iterable[str]] = None,
+        focus: Iterable[str] | None = None,
         include_all: bool = False,
     ) -> str:
         """生成第 N 章写作时需要的角色上下文 prompt。
@@ -893,8 +956,9 @@ class CharacterEngine:
             parts.append("")
         return "\n".join(parts)
 
-    def _select_for_context(self, chapter_num: int, focus: Optional[Iterable[str]],
-                            include_all: bool) -> list[CharacterProfile]:
+    def _select_for_context(
+        self, chapter_num: int, focus: Iterable[str] | None, include_all: bool
+    ) -> list[CharacterProfile]:
         """挑选要进写作 prompt 的角色（A13）。
 
         保留：focus 中指定的、主角/反派、最近几章有事件的、以及还没有任何事件的
@@ -912,11 +976,12 @@ class CharacterEngine:
                 selected.append(profile)
                 continue
             if _normalize_name(name) in wanted or any(
-                    _normalize_name(alias) in wanted for alias in profile.aliases):
+                _normalize_name(alias) in wanted for alias in profile.aliases
+            ):
                 selected.append(profile)
                 continue
             if not profile.chapter_events:
-                selected.append(profile)        # 还没上过场，第一次出场必须有上下文
+                selected.append(profile)  # 还没上过场，第一次出场必须有上下文
                 continue
             if profile.appeared_within(chapter_num, window=RECENT_EVENT_WINDOW):
                 selected.append(profile)
@@ -932,27 +997,9 @@ class CharacterEngine:
         save 在每写完一章都会被调用，因此这里不做备份（覆盖前备份是服务层的职责，
         见 src/novel/service.py 的 generate_characters）。
         """
-        target = Path(path)
-        if target.parent and not target.parent.exists():
-            target.parent.mkdir(parents=True, exist_ok=True)
-
-        payload = json.dumps(
-            {name: profile.to_dict() for name, profile in self._characters.items()},
-            ensure_ascii=False, indent=2,
+        atomic_write_json(
+            path, {name: profile.to_dict() for name, profile in self._characters.items()}
         )
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(target.parent or Path(".")), prefix=f"{target.name}.", suffix=".tmp",
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(payload)
-            os.replace(tmp_path, target)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
 
     def load(self, path: str) -> None:
         """读取角色档案（A4）。

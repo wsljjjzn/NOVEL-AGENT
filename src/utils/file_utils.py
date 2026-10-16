@@ -2,10 +2,31 @@
 utils.file_utils — 文件操作工具函数。
 """
 
+import contextlib
+import json
 import os
-import chardet
+import tempfile
 from pathlib import Path
-from typing import Optional
+
+import chardet
+
+
+def atomic_write_json(path: str | Path, data: object) -> None:
+    """原子写入 JSON，避免进程中断留下半截存档。"""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    fd, tmp_path = tempfile.mkstemp(dir=str(target.parent), prefix=f"{target.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, target)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
 
 
 def detect_encoding(file_path: str) -> str:
@@ -20,10 +41,11 @@ def detect_encoding(file_path: str) -> str:
     with open(file_path, "rb") as f:
         raw = f.read(min(1024 * 1024, os.path.getsize(file_path)))  # 最多读 1MB
     result = chardet.detect(raw)
-    return result.get("encoding", "utf-8")
+    encoding = result.get("encoding")
+    return encoding if isinstance(encoding, str) else "utf-8"
 
 
-def read_text_file(file_path: str, encoding: Optional[str] = None) -> str:
+def read_text_file(file_path: str, encoding: str | None = None) -> str:
     """读取文本文件，自动检测编码。
 
     Args:
@@ -37,17 +59,19 @@ def read_text_file(file_path: str, encoding: Optional[str] = None) -> str:
         encoding = detect_encoding(file_path)
 
     try:
-        with open(file_path, "r", encoding=encoding) as f:
+        with open(file_path, encoding=encoding) as f:
             return f.read()
-    except UnicodeDecodeError:
+    except UnicodeDecodeError as initial_error:
         # 尝试常见编码
+        last_error = initial_error
         for enc in ["utf-8", "gbk", "gb2312", "utf-16", "latin-1"]:
             try:
-                with open(file_path, "r", encoding=enc) as f:
+                with open(file_path, encoding=enc) as f:
                     return f.read()
-            except UnicodeDecodeError:
+            except UnicodeDecodeError as error:
+                last_error = error
                 continue
-        raise ValueError(f"无法解码文件: {file_path}")
+        raise ValueError(f"无法解码文件: {file_path}") from last_error
 
 
 def list_text_files(directory: str, extensions: set[str] | None = None) -> list[str]:

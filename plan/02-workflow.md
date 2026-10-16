@@ -18,7 +18,7 @@
 
 - "正在用 pro 生成角色系统" → 硬编码 `flash`（`plot_engine.py:239`）
 - "写作完成并已保存" → 空响应连盘都没落（`novel_commands.py:341`）
-- "剧情笔记写作时会注入 prompt" → `to_prompt_text()` 不输出 `user_notes`
+- "剧情笔记写作时会注入 prompt" → 曾未输出 `user_notes`，现已补上回归测试
 
 **文档先行不是为了好看，是因为这个项目已经证明"不先写清楚就会撒谎"。**
 

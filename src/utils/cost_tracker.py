@@ -8,15 +8,13 @@ utils.cost_tracker — LLM 调用开销追踪器。
 - 输出到终端日志，并支持查询累计统计
 """
 
-import time
 import sqlite3
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from src.utils.logger import logger
-
 
 # DeepSeek V4 参考定价（$ / 百万 tokens），可通过 configure(pricing=...) 覆盖
 PRICING = {
@@ -36,9 +34,16 @@ class BudgetExceeded(RuntimeError):
 
 class UsageRecord:
     """单次调用的用量记录。"""
-    def __init__(self, model_tier: str, prompt_tokens: int = 0,
-                 completion_tokens: int = 0, duration: float = 0.0,
-                 model: str = "", pricing: Optional[dict] = None):
+
+    def __init__(
+        self,
+        model_tier: str,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        duration: float = 0.0,
+        model: str = "",
+        pricing: dict | None = None,
+    ):
         self.model_tier = model_tier
         self.model = model
         self.prompt_tokens = prompt_tokens
@@ -72,30 +77,35 @@ class UsageRecord:
         return self.cost_usd * USD_TO_CNY
 
     def __str__(self):
-        return (f"[{self.model_tier.upper()}] {self.prompt_tokens}in + "
-                f"{self.completion_tokens}out tokens | "
-                f"¥{self.cost_cny:.5f} | {self.duration:.1f}s")
+        return (
+            f"[{self.model_tier.upper()}] {self.prompt_tokens}in + "
+            f"{self.completion_tokens}out tokens | "
+            f"¥{self.cost_cny:.5f} | {self.duration:.1f}s"
+        )
 
 
 class CostTracker:
     """全局开销追踪器（线程安全）。"""
 
-    def __init__(self, pricing: Optional[dict] = None,
-                 budget_cny: float = 0.0,
-                 usage_db_path: str = ""):
+    def __init__(
+        self, pricing: dict | None = None, budget_cny: float = 0.0, usage_db_path: str = ""
+    ):
         self._records: list[UsageRecord] = []
         self._lock = threading.Lock()
         self._start_time = time.time()
         self._pricing = pricing or dict(PRICING)
         self._budget_cny = budget_cny
         self._usage_db_path = usage_db_path or ""
-        self._usage_conn: Optional[sqlite3.Connection] = None
+        self._persistence_lock = threading.Lock()
 
     # ========== 配置 ==========
 
-    def configure(self, pricing: Optional[dict] = None,
-                  budget_cny: Optional[float] = None,
-                  usage_db_path: Optional[str] = None) -> None:
+    def configure(
+        self,
+        pricing: dict | None = None,
+        budget_cny: float | None = None,
+        usage_db_path: str | None = None,
+    ) -> None:
         """幂等地应用运行时配置（不影响已累计的记录）。"""
         if pricing:
             self._pricing = dict(pricing)
@@ -127,32 +137,37 @@ class CostTracker:
         self._persist(record)
 
     def _persist(self, record: UsageRecord) -> None:
-        """把单条记录写入 llm_usage 小库（尽力而为，失败不影响主流程）。"""
+        """把单条记录写入 llm_usage 小库（尽力而为，失败会明确记日志）。"""
         if not self._usage_db_path:
             return
         try:
-            if self._usage_conn is None:
+            # SQLite 连接不能跨线程复用。TUI 的 worker 可能在不同线程回写，
+            # 因此每次写入都在持久化锁内创建短连接，避免静默丢失用量记录。
+            with self._persistence_lock:
                 path = Path(self._usage_db_path)
                 path.parent.mkdir(parents=True, exist_ok=True)
-                self._usage_conn = sqlite3.connect(str(path))
-                self._usage_conn.execute(
-                    "CREATE TABLE IF NOT EXISTS llm_usage ("
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                    "model_tier TEXT, model TEXT, prompt_tokens INT,"
-                    "completion_tokens INT, cost_cny REAL, duration REAL, created_at TEXT)"
-                )
-                self._usage_conn.commit()
-            self._usage_conn.execute(
-                "INSERT INTO llm_usage (model_tier, model, prompt_tokens, completion_tokens,"
-                " cost_cny, duration, created_at) VALUES (?,?,?,?,?,?,?)",
-                (record.model_tier, record.model, record.prompt_tokens,
-                 record.completion_tokens, round(record.cost_cny, 6),
-                 round(record.duration, 3),
-                 record.timestamp.strftime("%Y-%m-%d %H:%M:%S")),
-            )
-            self._usage_conn.commit()
+                with sqlite3.connect(str(path), timeout=5) as usage_conn:
+                    usage_conn.execute(
+                        "CREATE TABLE IF NOT EXISTS llm_usage ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "model_tier TEXT, model TEXT, prompt_tokens INT,"
+                        "completion_tokens INT, cost_cny REAL, duration REAL, created_at TEXT)"
+                    )
+                    usage_conn.execute(
+                        "INSERT INTO llm_usage (model_tier, model, prompt_tokens, completion_tokens,"
+                        " cost_cny, duration, created_at) VALUES (?,?,?,?,?,?,?)",
+                        (
+                            record.model_tier,
+                            record.model,
+                            record.prompt_tokens,
+                            record.completion_tokens,
+                            round(record.cost_cny, 6),
+                            round(record.duration, 3),
+                            record.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        ),
+                    )
         except Exception as e:
-            logger.debug(f"用量持久化失败: {e}")
+            logger.warning(f"用量持久化失败: {e}")
 
     @property
     def total_calls(self) -> int:
@@ -186,7 +201,7 @@ class CostTracker:
             f"- 输出 tokens: {completion:,}\n"
             f"- 总 tokens: {total_tok:,}\n"
             f"- 总费用: ¥{self.total_cost_cny:.4f}{budget_note}\n"
-            f"- 运行时间: {self.elapsed/60:.1f} 分钟"
+            f"- 运行时间: {self.elapsed / 60:.1f} 分钟"
         )
 
     def markdown_summary(self) -> str:
@@ -206,7 +221,7 @@ class CostTracker:
             f"| 输出 tokens | {completion:,} |",
             f"| 总 tokens | {total_tok:,} |",
             f"| 总费用 | ¥{self.total_cost_cny:.4f}{budget_note} |",
-            f"| 运行时间 | {self.elapsed/60:.1f} 分钟 |",
+            f"| 运行时间 | {self.elapsed / 60:.1f} 分钟 |",
         ]
         return "\n".join(lines)
 
@@ -220,7 +235,7 @@ class CostTracker:
 
     def delta_summary(self) -> str:
         """自上次 snapshot 以来的增量开销。"""
-        if not hasattr(self, '_snapshot_calls'):
+        if not hasattr(self, "_snapshot_calls"):
             self.snapshot()
             return ""
         d_calls = self.total_calls - self._snapshot_calls
@@ -234,7 +249,7 @@ class CostTracker:
 
 
 # 全局单例
-_tracker: Optional[CostTracker] = None
+_tracker: CostTracker | None = None
 _tracker_lock = threading.Lock()
 
 

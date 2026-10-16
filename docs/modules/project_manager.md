@@ -62,27 +62,17 @@ class NovelProject:
 | # | 不变量 | 现状 |
 |---|---|---|
 | 1 | `chapters` / `chapter_titles` 的章号在内存中**一律 int** | ✅ `load` 做了 `int(k)` |
-| 2 | `outline[].chapter` **一律 int** | ❌ **已知缺口，见下** |
+| 2 | `outline[].chapter` **一律 int** | ✅ `OutlineItem` 在读盘时归一化 |
 | 3 | `metadata.total_words` == 所有章节字数之和 | ✅ `add_chapter` 维护 |
-| 4 | `save` 是**原子**的 | ❌ **已知缺口，见下** |
+| 4 | `save` 是**原子**的 | ✅ 同目录临时文件写完后 `os.replace` |
 
 ## 已知陷阱
 
-### ⚠️ 陷阱 1：`outline` 章号未归一化（**未修**）
+### 数据安全：原子保存与项目名边界
 
-`project_manager.py:186` 的 `outline` 解析**不做 int 归一化**，而 `chapters`（`:178`）与 `chapter_titles`（`:181`）都做了。
+`save()` 与 `PlotEngine.save()`、`CharacterEngine.save()` 共用原子 JSON 写入：先在目标目录写临时文件，再以 `os.replace` 提交。因此在写入中断时，旧版 `project.json` 仍保持可读。
 
-**后果**：模型返回 `"chapter": "3"`（字符串）会让 `list_chapters()` 的 `sorted(int + str)` 抛 `TypeError`，**TUI 章节页签与 `novel show` 一起挂**。同时所有 `o.chapter == chapter` 的查找失效。
-
-**修法**：三处统一走一个 `_to_int_chapter()`。归在 P6 或独立修。
-
-### ⚠️ 陷阱 2：`save` 非原子写
-
-`project_manager.py:162` 是 `open(w)` + `json.dump`。写到一半被打断 → 下次 `load` 抛 `JSONDecodeError` → **项目完全打不开**。
-
-**注意**：`character_engine.save` **已经是**原子写（`os.replace`），而本模块**不是**。两处不一致。
-
-**修法**：改成与 `character_engine.save` 相同的临时文件 + `os.replace`。
+项目名必须是单个目录名，不能包含路径分隔符、`..` 或首尾空白。创建、读取与删除都在项目根目录内解析路径，避免命令把数据目录外的文件当作项目处理。
 
 ### ⚠️ 陷阱 3：`_get_chapter_summary` 是取前 80 字
 
@@ -94,6 +84,6 @@ class NovelProject:
 
 ## 测试
 
-`tests/novel/test_project_manager.py`（P1 时新建，配合读写往返基线）。
+`tests/test_project_manager.py`（路径边界与原子保存）以及 `tests/test_roundtrip_baseline.py`（存量项目读写往返）。
 
-**必测**：章号 int 归一化（三种输入：int / str / 缺失）、原子写（模拟中断后仍可读）、损坏文件不炸项目。
+**必测**：章号 int 归一化（三种输入：int / str / 缺失）、原子写（成功后无临时文件）、非法项目名不得越界删除。
