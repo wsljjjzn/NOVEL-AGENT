@@ -12,7 +12,7 @@
 |---|---|---|
 | "正在用 pro 生成角色系统" | 硬编码 `flash` | `plot_engine.py:239` |
 | "第 N 章写作完成（0 字）**并已保存**" | 空响应**根本不落盘** | `novel_commands.py:341` + `chapter_writer.py:86-88` |
-| "剧情笔记写作时会注入 prompt" | `to_prompt_text()` 不输出 `user_notes` | `plot_engine.py:62-91` |
+| "剧情笔记写作时会注入 prompt" | 已修复：`to_prompt_text()` 输出并标记用户笔记 | `plot_engine.py` |
 | "已加载风格模板 / 知识库检索" | 结果写进 `raw_input`，**无 prompt 读取该字段** | `orchestrator.py:64-67` |
 | "深度分析模型层级 --tier" | `cmd_learn` 从不读 `args.tier` | `kb_commands.py:230` |
 

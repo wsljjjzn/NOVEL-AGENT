@@ -91,6 +91,7 @@ class TestMissingKeyHandling:
 
     def test_client_is_none_without_key(self, monkeypatch):
         import config.settings as settings
+
         monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         monkeypatch.setattr(settings, "_config", None)
         client = LLMClient()
@@ -101,7 +102,9 @@ class TestMissingKeyHandling:
 
     def test_chat_raises_clear_error_without_key(self, monkeypatch):
         import pytest
+
         import config.settings as settings
+
         monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         monkeypatch.setattr(settings, "_config", None)
         client = LLMClient()
@@ -112,8 +115,32 @@ class TestMissingKeyHandling:
     def test_placeholder_key_is_not_treated_as_configured(self, monkeypatch):
         """哪怕配置里留着 ${VAR} 字面量也视为未配置（settings 层已解析成空串）。"""
         from config.settings import LLMConfig
+
         client = LLMClient()
         assert client._has_key(LLMConfig(api_key="")) is False
         assert client._has_key(LLMConfig(api_key="   ")) is False
         assert client._has_key(LLMConfig(api_key="\\${DEEPSEEK_API_KEY}")) is False
         assert client._has_key(LLMConfig(api_key="sk-real")) is True
+
+
+def test_configured_budget_fails_closed_when_guard_cannot_start(monkeypatch, tmp_path):
+    """预算配置失效时不能静默取消上限。"""
+    from types import SimpleNamespace
+
+    import pytest
+
+    import src.utils.llm_client as llm_client
+
+    class BrokenTracker:
+        def configure(self, **kwargs):
+            raise OSError("tracker unavailable")
+
+    cfg = SimpleNamespace(
+        budget=SimpleNamespace(max_cny_per_session=50, usage_db="usage.db"),
+        project_root=str(tmp_path),
+    )
+    monkeypatch.setattr(llm_client, "get_tracker", lambda: BrokenTracker())
+    client = llm_client.LLMClient.__new__(llm_client.LLMClient)
+
+    with pytest.raises(RuntimeError, match="预算保护"):
+        client._apply_session_guards(cfg)

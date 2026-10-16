@@ -8,15 +8,18 @@ novel.plot_engine — 剧情引擎。
 """
 
 import json
-from typing import Optional, Tuple as Pair
+
+from src.utils.file_utils import atomic_write_json
 from src.utils.llm_client import LLMClient
 from src.utils.logger import logger
 
 
 class Scene:
     """剧情中的一个场景。"""
-    def __init__(self, order: int, location: str, characters: list[str],
-                 summary: str, purpose: str = ""):
+
+    def __init__(
+        self, order: int, location: str, characters: list[str], summary: str, purpose: str = ""
+    ):
         self.order = order
         self.location = location
         self.characters = characters
@@ -25,32 +28,37 @@ class Scene:
 
     def to_dict(self):
         return {
-            "order": self.order, "location": self.location,
-            "characters": self.characters, "summary": self.summary,
+            "order": self.order,
+            "location": self.location,
+            "characters": self.characters,
+            "summary": self.summary,
             "purpose": self.purpose,
         }
 
 
 class ChapterPlot:
     """单章剧情设计。"""
+
     def __init__(self, chapter_num: int, title: str = ""):
         self.chapter_num = chapter_num
         self.title = title
         self.scenes: list[Scene] = []
-        self.opening_hook: str = ""        # 开篇钩子
-        self.climax: str = ""              # 本章高潮
-        self.ending_hook: str = ""         # 结尾钩子（承接下一章）
-        self.foreshadowing_planted: list[str] = []   # 本章埋下的伏笔
+        self.opening_hook: str = ""  # 开篇钩子
+        self.climax: str = ""  # 本章高潮
+        self.ending_hook: str = ""  # 结尾钩子（承接下一章）
+        self.foreshadowing_planted: list[str] = []  # 本章埋下的伏笔
         self.foreshadowing_resolved: list[str] = []  # 本章回收的伏笔
         self.character_appearances: dict[str, str] = {}  # {角色名: 出场方式}
-        self.emotional_arc: str = ""       # 本章情感曲线
-        self.user_notes: str = ""          # 用户编辑后的剧情笔记（手动修改）
+        self.emotional_arc: str = ""  # 本章情感曲线
+        self.user_notes: str = ""  # 用户编辑后的剧情笔记（手动修改）
 
     def to_dict(self) -> dict:
         return {
-            "chapter": self.chapter_num, "title": self.title,
+            "chapter": self.chapter_num,
+            "title": self.title,
             "scenes": [s.to_dict() for s in self.scenes],
-            "opening_hook": self.opening_hook, "climax": self.climax,
+            "opening_hook": self.opening_hook,
+            "climax": self.climax,
             "ending_hook": self.ending_hook,
             "foreshadowing_planted": self.foreshadowing_planted,
             "foreshadowing_resolved": self.foreshadowing_resolved,
@@ -82,21 +90,24 @@ class ChapterPlot:
         if self.foreshadowing_resolved:
             parts.append(f"**本章回收的伏笔**: {'; '.join(self.foreshadowing_resolved)}")
         if self.character_appearances:
-            parts.append(f"\n**角色出场**:")
+            parts.append("\n**角色出场**:")
             for name, method in self.character_appearances.items():
                 parts.append(f"  - {name}: {method}")
         if self.emotional_arc:
             parts.append(f"\n**情感曲线**: {self.emotional_arc}")
+        if self.user_notes.strip():
+            parts.append(f"\n**用户补充要求（优先遵循）**: {self.user_notes.strip()}")
 
         return "\n".join(parts)
 
 
 class WorldSetting:
     """世界观设定。"""
+
     def __init__(self):
         self.timeline: str = ""
         self.geography: str = ""
-        self.power_system: str = ""       # 修炼体系/魔法体系/科技体系
+        self.power_system: str = ""  # 修炼体系/魔法体系/科技体系
         self.factions: list[str] = []
         self.custom_rules: list[str] = []  # 特殊规则
         self.notes: str = ""
@@ -151,15 +162,19 @@ class PlotEngine:
   }
 }"""
 
-    def __init__(self, llm_client: Optional[LLMClient] = None):
+    def __init__(self, llm_client: LLMClient | None = None):
         self.llm = llm_client or LLMClient()
         self.plots: dict[int, ChapterPlot] = {}  # {章号: ChapterPlot}
         self.world = WorldSetting()
 
-    def design_chapter_plot(self, chapter_num: int, outline_item: dict,
-                            prev_chapter_summary: str = "",
-                            existing_foreshadowing: list[str] = None,
-                            model_tier: str = "flash") -> ChapterPlot:
+    def design_chapter_plot(
+        self,
+        chapter_num: int,
+        outline_item: dict,
+        prev_chapter_summary: str = "",
+        existing_foreshadowing: list[str] | None = None,
+        model_tier: str = "flash",
+    ) -> ChapterPlot:
         """设计单章详细剧情。
 
         Args:
@@ -184,9 +199,12 @@ class PlotEngine:
 
         try:
             response = self.llm.chat(
-                [{"role": "system", "content": self.PLOT_DESIGN_SYSTEM},
-                 {"role": "user", "content": prompt}],
-                model_tier=model_tier, temperature=0.5,
+                [
+                    {"role": "system", "content": self.PLOT_DESIGN_SYSTEM},
+                    {"role": "user", "content": prompt},
+                ],
+                model_tier=model_tier,
+                temperature=0.5,
             )
             return self._parse_plot(response, chapter_num, outline_item.get("title", ""))
         except Exception as e:
@@ -195,6 +213,7 @@ class PlotEngine:
 
     def _parse_plot(self, response: str, chapter_num: int, title: str) -> ChapterPlot:
         from src.utils.json_utils import safe_json_parse
+
         data = safe_json_parse(response)
         if not data:
             return ChapterPlot(chapter_num, title)
@@ -209,22 +228,27 @@ class PlotEngine:
         plot.emotional_arc = data.get("emotional_arc", "")
 
         for s in data.get("scenes", []):
-            plot.scenes.append(Scene(
-                order=s.get("order", len(plot.scenes) + 1),
-                location=s.get("location", ""),
-                characters=s.get("characters", []),
-                summary=s.get("summary", ""),
-                purpose=s.get("purpose", ""),
-            ))
+            plot.scenes.append(
+                Scene(
+                    order=s.get("order", len(plot.scenes) + 1),
+                    location=s.get("location", ""),
+                    characters=s.get("characters", []),
+                    summary=s.get("summary", ""),
+                    purpose=s.get("purpose", ""),
+                )
+            )
 
         self.plots[chapter_num] = plot
         return plot
 
-    def design_characters(self, novel_title: str, genre: str,
-                          description: str, outline_text: str,
-                          model_tier: str = "flash") -> Pair[
-        list[dict], WorldSetting
-    ]:
+    def design_characters(
+        self,
+        novel_title: str,
+        genre: str,
+        description: str,
+        outline_text: str,
+        model_tier: str = "flash",
+    ) -> tuple[list[dict], WorldSetting]:
         """生成完整的角色系统。
 
         Args:
@@ -240,15 +264,19 @@ class PlotEngine:
 
         try:
             response = self.llm.chat(
-                [{"role": "system", "content": self.CHARACTER_SYSTEM_PROMPT},
-                 {"role": "user", "content": prompt}],
-                model_tier=model_tier, temperature=0.5,
+                [
+                    {"role": "system", "content": self.CHARACTER_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                model_tier=model_tier,
+                temperature=0.5,
             )
         except Exception as e:
             logger.warning(f"角色系统生成失败: {e}")
             return [], self.world
 
         from src.utils.json_utils import safe_json_parse
+
         data = safe_json_parse(response)
         if not data:
             return [], self.world
@@ -290,11 +318,10 @@ class PlotEngine:
         }
 
     def save(self, path: str):
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+        atomic_write_json(path, self.to_dict())
 
     def load(self, path: str):
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         self.plots = {}
         for k, v in data.get("plots", {}).items():
@@ -308,11 +335,15 @@ class PlotEngine:
             plot.emotional_arc = v.get("emotional_arc", "")
             plot.user_notes = v.get("user_notes", "")
             for s in v.get("scenes", []):
-                plot.scenes.append(Scene(
-                    order=s.get("order", 0), location=s.get("location", ""),
-                    characters=s.get("characters", []),
-                    summary=s.get("summary", ""), purpose=s.get("purpose", ""),
-                ))
+                plot.scenes.append(
+                    Scene(
+                        order=s.get("order", 0),
+                        location=s.get("location", ""),
+                        characters=s.get("characters", []),
+                        summary=s.get("summary", ""),
+                        purpose=s.get("purpose", ""),
+                    )
+                )
             self.plots[int(k)] = plot
         wb = data.get("world", {})
         self.world.timeline = wb.get("timeline", "")

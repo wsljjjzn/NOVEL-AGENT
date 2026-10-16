@@ -1,0 +1,40 @@
+name: Reliability checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev --group lint
+      - name: Lint reliability-critical modules
+        run: >-
+          uv run ruff check
+          src/utils/file_utils.py
+          src/utils/cost_tracker.py
+          src/utils/llm_client.py
+          src/novel/project_manager.py
+          src/novel/character_engine.py
+          src/novel/plot_engine.py
+          src/novel/service.py
+          scripts/batch_preprocess.py
+          scripts/_reset_db.py
+      - name: Type-check reliability-critical modules
+        run: >-
+          uv run mypy
+          src/utils/file_utils.py
+          src/utils/cost_tracker.py
+          src/utils/llm_client.py
+          src/novel/project_manager.py
+          src/novel/character_engine.py
+          src/novel/plot_engine.py
+          src/novel/service.py
+          scripts/batch_preprocess.py
+          scripts/_reset_db.py
+      - run: uv run pytest -q
