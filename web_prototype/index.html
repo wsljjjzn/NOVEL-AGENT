@@ -2156,6 +2156,9 @@
       showToast(`正在通过 ${currentModelTier === 'pro' ? 'Pro 档' : 'Flash 档'} 推演第 ${currentChapterNum} 章角色经历与性格偏移...`);
       const box = document.getElementById('ai-suggestion-box');
       const actions = document.getElementById('ai-suggestion-actions');
+      const target = {project: currentProject.name, chapter: currentChapterNum};
+      evolutionProposal = null;
+      actions.classList.add('hidden');
       box.classList.remove('hidden');
       box.innerHTML = '<div class="text-emerald-300 py-1 flex items-center space-x-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>正在比对本章正文与角色人格契约...</span></div>';
 
@@ -2165,6 +2168,8 @@
         });
         if (res.ok) {
           const data = await res.json();
+          if (currentProject?.name !== target.project || currentChapterNum !== target.chapter) return;
+          evolutionProposal = {...target, id: data.proposal_id};
           curEvolutionSuggestions = data.suggestions || [];
           if (curEvolutionSuggestions.length === 0) {
             box.innerHTML = '<div class="text-emerald-500/80 py-1">本章剧情对角色人格与关系未产生显著剧烈偏离，当前参数保持稳定。</div>';
@@ -2195,7 +2200,7 @@
           box.innerHTML = html;
           actions.classList.remove('hidden');
         } else {
-          box.innerHTML = '<div class="text-emerald-500/80 py-1">当前章节无足够正文或已是最新状态。</div>';
+          box.textContent = (await res.json()).detail || '分析失败，请重试';
         }
       } catch (err) {
         console.error("推演失败:", err);
@@ -2204,11 +2209,21 @@
     }
 
     async function applyAiSuggestionReal() {
-      if (!currentProject) return;
+      if (!currentProject || !evolutionProposal || evolutionProposal.project !== currentProject.name || evolutionProposal.chapter !== currentChapterNum) {
+        showToast('请先分析当前章节，再确认提议', false);
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/chapters/${currentChapterNum}/confirm_character_evolution?tier=${currentModelTier}`, {
           method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({proposal_id: evolutionProposal.id}),
         });
+        if (!res.ok) {
+          showToast((await res.json()).detail || '确认失败，请重新分析', false);
+          return;
+        }
+        evolutionProposal = null;
         if (res.ok) {
           showToast(`已成功将第 ${currentChapterNum} 章角色演变持久化写入 characters.json！`);
           document.getElementById('ai-suggestion-box').innerHTML = `
@@ -3234,6 +3249,11 @@
     // ==========================================
     const API_BASE = window.location.origin.includes(':8000') ? '/api' : 'http://127.0.0.1:8000/api';
     let currentProject = null;
+    let evolutionProposal = null;
+    let editorTarget = null;
+    let chapterLoadVersion = 0;
+    let projectLoadVersion = 0;
+    let chapterLoading = false;
     let currentChapterNum = 1;
     let currentModelTier = "flash";
 
@@ -4130,10 +4150,17 @@
     // 切换小说工程：彻底刷新全屏三大透视视角！
     async function onSelectProject(name) {
       if (!name) return;
+      const version = ++projectLoadVersion;
+      ++chapterLoadVersion;
+      chapterLoading = true;
+      editorTarget = null;
+      evolutionProposal = null;
       try {
         const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(name)}`);
         if (!res.ok) return;
-        currentProject = await res.json();
+        const project = await res.json();
+        if (version !== projectLoadVersion) return;
+        currentProject = project;
 
         // 顶栏更新
         document.getElementById('header-genre').innerText = currentProject.genre || "未分类";
@@ -4534,7 +4561,10 @@
     // 加载单章完整正文与上下文
     async function loadRealChapter(chNum) {
       if (!currentProject) return;
-      currentChapterNum = Number(chNum);
+      const projectName = currentProject.name;
+      const version = ++chapterLoadVersion;
+      chapterLoading = true;
+      evolutionProposal = null;
 
       // 同步更新左侧章节下拉菜单的选中状态
       const selector = document.getElementById('chapter-selector');
@@ -4547,6 +4577,10 @@
           return;
         }
         const data = await res.json();
+        if (version !== chapterLoadVersion || currentProject?.name !== projectName) return;
+        editorTarget = null;
+        currentChapterNum = Number(chNum);
+        if (selector) selector.value = currentChapterNum;
         
         // 安全更新各显示节点
         const curTitle = document.getElementById('editor-cur-title');
@@ -4646,6 +4680,7 @@
           }
         }
 
+        editorTarget = {project: projectName, chapter: Number(chNum)};
         // 刷新左侧章节列表激活高亮
         if (currentProject.chapters) {
           renderChaptersTree(currentProject.chapters);
@@ -4654,6 +4689,11 @@
       } catch (err) {
         console.error("读取章节失败:", err);
         showToast("读取章节发生网络错误", true);
+      } finally {
+        if (version === chapterLoadVersion) {
+          chapterLoading = false;
+          if (selector) selector.value = currentChapterNum;
+        }
       }
     }
 
@@ -4685,6 +4725,8 @@
     }
 
     async function saveCurrentChapterToBackend() {
+      if (chapterLoading || !editorTarget || editorTarget.project !== currentProject?.name) return;
+      const target = {...editorTarget};
       if (!currentProject) {
         showToast("已在本地内存模拟保存 (未连接工程)");
         return;
@@ -4701,15 +4743,18 @@
       }
       
       try {
-        const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/chapters/${currentChapterNum}/save`, {
+        const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(target.project)}/chapters/${target.chapter}/save`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: fullText }),
         });
         if (res.ok) {
           const ret = await res.json();
+          if (chapterLoading || editorTarget?.project !== target.project || editorTarget?.chapter !== target.chapter) return;
           document.getElementById('editor-words-status').innerText = `本章 ${Number(ret.word_count).toLocaleString()} 字 (已落盘)`;
           showToast(`第 ${currentChapterNum} 章正文已成功持久化落盘！`);
+        } else {
+          showToast('保存失败：' + ((await res.json()).detail || res.status), false);
         }
       } catch (err) {
         console.error("保存失败:", err);
