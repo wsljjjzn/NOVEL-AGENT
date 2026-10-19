@@ -3,6 +3,10 @@ tests.test_novel_api — Novel Studio Web / IDE API 路由测试。
 离线测试：使用 Fake LLM / 模拟数据，不花钱、不联网。
 """
 import pytest
+
+pytest.importorskip("starlette")
+pytest.importorskip("fastapi")
+
 from starlette.testclient import TestClient
 
 from src.api.server import app

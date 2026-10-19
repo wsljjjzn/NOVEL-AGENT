@@ -12,7 +12,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-      - run: uv sync --group dev --group lint
+      - run: uv sync --group dev --group lint --extra web
       - name: Lint reliability-critical modules
         run: >-
           uv run ruff check
