@@ -60,7 +60,7 @@ class Result:
     report: str = ""
     # 结构化结果（如 AggregatedReview），供界面做"勾选哪条改哪条"这类交互；
     # 与 docs/specs/contracts.md §3 的 data 字段同一个用途
-    data: Optional[object] = None
+    data: object | None = None
 
     def as_text(self) -> str:
         return "\n".join([self.title, *self.lines])
@@ -416,7 +416,7 @@ class NovelService:
         return self._reviewer
 
     @staticmethod
-    def _backup_project(project: NovelProject) -> Optional[Path]:
+    def _backup_project(project: NovelProject) -> Path | None:
         """覆盖正文前备份 project.json（审稿自动改写属于「覆盖既有正文」）。"""
         src = project.base_dir / "project.json"
         if not src.exists():
