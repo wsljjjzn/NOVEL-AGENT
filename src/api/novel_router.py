@@ -10,6 +10,10 @@ api.novel_router — 面向现代小说家 IDE（Novel Studio）的高性能交�
 from __future__ import annotations
 
 import json
+import hashlib
+import secrets
+import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -22,9 +26,23 @@ from src.novel.project_manager import OutlineItem
 from src.utils.doctor import run_system_doctor
 from src.utils.llm_client import LLMClient
 from src.utils.logger import logger
+from src.utils.file_utils import atomic_write_json
 
 router = APIRouter(prefix="/api", tags=["novel-ide"])
 svc = NovelService()
+
+# 提议只保存服务端生成的快照，避免确认时再次调用模型或接受任意客户端档案。
+_evolution_proposals: dict[str, dict] = {}
+_proposal_lock = threading.RLock()
+
+
+def _evolution_fingerprint(project, engine):
+    payload = [project.chapters, {c.name: c.to_dict() for c in engine.all_characters()}]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+class EvolutionConfirmReq(BaseModel):
+    proposal_id: str
 
 
 # ==========================================
@@ -44,7 +62,7 @@ class ProjectUpdateReq(BaseModel):
 
 
 class ChapterCreateReq(BaseModel):
-    number: Optional[int] = None
+    number: Optional[int] = Field(default=None, ge=1)
     title: str
     content: str = ""
     expected_content: str = ""
@@ -365,6 +383,8 @@ def create_chapter(name: str, req: ChapterCreateReq):
         existing = set(list(p.chapters.keys()) + [o.chapter for o in p.outline])
         ch_num = max(existing) + 1 if existing else 1
 
+    if ch_num in p.chapters or any(o.chapter == ch_num for o in p.outline):
+        raise HTTPException(status_code=409, detail="章节已存在，请使用编辑功能修改正文")
     p.add_chapter(ch_num, req.title, req.content)
     existing_item = next((o for o in p.outline if o.chapter == ch_num), None)
     if existing_item:
@@ -651,7 +671,25 @@ def analyze_chapter_characters(name: str, chapter: int, tier: str = "flash"):
         raise HTTPException(status_code=400, detail=f"第{chapter}章无正文，无法分析角色")
 
     existing_names = [c.name for c in engine.all_characters()]
+    fingerprint = _evolution_fingerprint(project, engine)
     outcome = engine.analyze_chapter_ex(chapter, text, existing_names, model_tier=tier)
+    if outcome.status == "failed":
+        raise HTTPException(status_code=502, detail=outcome.detail or "角色分析失败，请重试")
+
+    proposal_id = secrets.token_urlsafe(24)
+    with _proposal_lock:
+        now = time.monotonic()
+        for key in list(_evolution_proposals):
+            if _evolution_proposals[key]["expires"] <= now:
+                del _evolution_proposals[key]
+        while len(_evolution_proposals) >= 128:
+            del _evolution_proposals[next(iter(_evolution_proposals))]
+        _evolution_proposals[proposal_id] = {
+            "path": str(project.base_dir.resolve()), "chapter": chapter,
+            "fingerprint": fingerprint, "expires": now + 1800,
+            "characters": {c.name: c.to_dict() for c in engine.all_characters()},
+            "updated": [c.name for c in outcome.updated],
+        }
 
     # 转换为前端可呈现与确认的提议卡片结构
     suggestions = []
@@ -677,28 +715,30 @@ def analyze_chapter_characters(name: str, chapter: int, tier: str = "flash"):
 
     return {
         "status": outcome.status,
+        "proposal_id": proposal_id,
         "detail": outcome.detail,
         "suggestions": suggestions,
     }
 
 
 @router.post("/projects/{name}/chapters/{chapter}/confirm_character_evolution")
-def confirm_character_evolution(name: str, chapter: int, tier: str = "flash"):
+def confirm_character_evolution(name: str, chapter: int, req: EvolutionConfirmReq):
     """作者一键确认采纳本章演化提议，正式保存到 characters.json。"""
     if not svc.exists(name):
         raise HTTPException(status_code=404, detail="项目不存在")
-    bundle = svc.load(name)
-    project, engine = bundle.project, bundle.engine
-    text = project.get_chapter(chapter)
-    existing_names = [c.name for c in engine.all_characters()]
-    
-    # 真实执行写入与保存
-    updated = engine.analyze_chapter(chapter, text, existing_names, model_tier=tier)
-    engine.save(str(project.base_dir / "characters.json"))
-    return {
-        "ok": True,
-        "updated_characters": [c.name for c in updated],
-    }
+    with _proposal_lock:
+        bundle = svc.load(name)
+        project, engine = bundle.project, bundle.engine
+        proposal = _evolution_proposals.get(req.proposal_id)
+        if (not proposal or proposal["expires"] <= time.monotonic()
+                or proposal["path"] != str(project.base_dir.resolve())
+                or proposal["chapter"] != chapter):
+            raise HTTPException(status_code=409, detail="提议不存在或已过期，请重新分析")
+        if proposal["fingerprint"] != _evolution_fingerprint(project, engine):
+            raise HTTPException(status_code=409, detail="正文或角色已修改，请重新分析后确认")
+        atomic_write_json(project.base_dir / "characters.json", proposal["characters"])
+        del _evolution_proposals[req.proposal_id]
+        return {"ok": True, "updated_characters": proposal["updated"]}
 
 
 # ==========================================
