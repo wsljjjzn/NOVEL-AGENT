@@ -52,10 +52,16 @@ web = [
     "uvicorn[standard]>=0.23.0",
 ]
 
+[dependency-groups]
+# 开发工具不属于运行时依赖；保留 test extra 兼容已有的 uv sync --extra test 用法。
+dev = ["pytest>=8.0.0"]
+lint = ["ruff>=0.8", "mypy>=1.13"]
+
 [tool.uv]
 # 需要 true：console_scripts 只在项目自身被安装时才生成。
 # uv 默认装成 editable（.pth 指回仓库根），所以改 src/ 立即生效，不会用到副本。
 package = true
+default-groups = []
 
 [tool.hatch.build.targets.wheel]
 # src 是代码包；scripts 是 na-tools-preprocess 要用的顶层包
@@ -63,3 +69,16 @@ packages = ["src", "scripts"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+disallow_untyped_defs = false

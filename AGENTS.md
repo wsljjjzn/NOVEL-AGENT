@@ -46,16 +46,16 @@ uv sync --extra gpu                         # ③ 语料预处理（torch 系，
 uv sync --group dev --extra ai --extra gpu  # 全量
 ```
 
-> ⚠️ **上面这段 extras / groups 尚未落地**：`pyproject.toml` 现在只有 `full` 与 `test`
-> 两个 extra，没有 `ai` / `gpu`，也还没有 `[dependency-groups]`。**今天可用的等价写法**：
+> ⚠️ `ai` / `gpu` extra 尚未落地；但 `dev`（pytest）与 `lint`（ruff / mypy）依赖组已经可用。
+> `test` extra 仍保留，兼容已有命令。当前可用写法：
 >
 > ```bash
-> uv sync                 # 核心：CLI + TUI + 领域引擎
-> uv sync --extra test    # 核心 + pytest（跑测试用；不加会把 pytest 从环境里移除）
+> uv sync --group dev --group lint  # 核心 + 测试与静态检查
+> uv sync --extra test              # 兼容写法：核心 + pytest
 > uv sync --extra full    # 语料预处理那一大坨（数 GB）
 > ```
 >
-> 分组改造属 [`plan/03-uv.md`](plan/03-uv.md) 的范围，尚未实施。
+> `ai` / `gpu` 的分层仍属 [`plan/03-uv.md`](plan/03-uv.md) 的后续范围。
 
 ### 可调用的命令
 

@@ -8,27 +8,28 @@ P0-1 硬化：
 - 每次调用前检查会话预算（cost_tracker.assert_budget，超支抛 BudgetExceeded）
 """
 
-from pathlib import Path
-from typing import Any, Optional
-from openai import OpenAI
-from openai import (
-    RateLimitError,
-    APIConnectionError,
-    APITimeoutError,
-    APIStatusError,
-)
-import time
 import threading
+import time
+from pathlib import Path
+from typing import Any
+
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    APITimeoutError,
+    OpenAI,
+    RateLimitError,
+)
 
 from config.settings import get_config
+from src.utils.cost_tracker import UsageRecord, get_tracker
 from src.utils.logger import logger
-from src.utils.cost_tracker import get_tracker, UsageRecord
 
 
 class LLMUnavailableError(RuntimeError):
     """LLM API 在重试后仍不可用（网络/429/5xx/超时）。"""
 
-    def __init__(self, message: str, cause: Optional[BaseException] = None):
+    def __init__(self, message: str, cause: BaseException | None = None):
         super().__init__(message)
         self.cause = cause
 
@@ -147,26 +148,29 @@ class LLMClient:
         self.pro_cfg = cfg.llm.get("deepseek_v4_pro")
         # 运行时动态覆盖配置（优先级高于静态配置）
         self._overrides: dict[str, _DynamicLLMConfig] = {}
-        self._flash_client: Optional[OpenAI] = None
-        self._pro_client: Optional[OpenAI] = None
+        self._flash_client: OpenAI | None = None
+        self._pro_client: OpenAI | None = None
         self._rl: dict[str, _RateLimiter] = {}
         self._rl_lock = threading.Lock()
         self._apply_session_guards(cfg)
 
     def _apply_session_guards(self, cfg) -> None:
         """把 config.yaml 的预算/用量落库配置应用到全局 tracker。"""
+        budget = getattr(cfg, "budget", None)
+        if budget is None:
+            return
         try:
             tracker = get_tracker()
-            budget = getattr(cfg, "budget", None)
-            if budget is not None:
-                if budget.max_cny_per_session and budget.max_cny_per_session > 0:
-                    tracker.configure(budget_cny=budget.max_cny_per_session)
-                usage_db = budget.usage_db or ""
-                if usage_db:
-                    if not Path(usage_db).is_absolute():
-                        usage_db = str(Path(cfg.project_root) / usage_db)
-                    tracker.configure(usage_db_path=usage_db)
+            if budget.max_cny_per_session and budget.max_cny_per_session > 0:
+                tracker.configure(budget_cny=budget.max_cny_per_session)
+            usage_db = budget.usage_db or ""
+            if usage_db:
+                if not Path(usage_db).is_absolute():
+                    usage_db = str(Path(cfg.project_root) / usage_db)
+                tracker.configure(usage_db_path=usage_db)
         except Exception as e:
+            if getattr(budget, "max_cny_per_session", 0) > 0:
+                raise RuntimeError("无法启用会话预算保护，已阻止发起模型调用") from e
             logger.warning(f"会话预算/用量配置失败: {e}")
 
     def _get_effective_cfg(self, tier: str):
@@ -179,7 +183,7 @@ class LLMClient:
             return self.pro_cfg
         return None
 
-    def _get_client(self, tier: str) -> Optional[OpenAI]:
+    def _get_client(self, tier: str) -> OpenAI | None:
         """获取 tier 对应的 OpenAI 客户端（考虑动态覆盖）。
 
         未配置 api_key 时返回 None（而不是拿空 Key 去构造客户端）—— 这样
@@ -220,21 +224,21 @@ class LLMClient:
             return rl
 
     @property
-    def flash(self) -> Optional[OpenAI]:
+    def flash(self) -> OpenAI | None:
         return self._get_client("flash")
 
     @property
-    def pro(self) -> Optional[OpenAI]:
+    def pro(self) -> OpenAI | None:
         return self._get_client("pro")
 
     def chat(
         self,
         messages: list[dict],
         model_tier: str = "flash",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        timeout: Optional[float] = None,
-        thinking: Optional[bool] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        timeout: float | None = None,
+        thinking: bool | None = None,
         json_mode: bool = False,
     ) -> str:
         """调用 LLM chat 补全（带限流 + 重试 + 预算检查）。
@@ -284,45 +288,70 @@ class LLMClient:
         base_delay = _fnum(getattr(cfg, "retry_base_delay", None), 1.0)
         model = getattr(cfg, "model", "deepseek-chat")
 
-        last_exc: Optional[BaseException] = None
+        last_exc: BaseException | None = None
         for attempt in range(max_retries + 1):
             try:
                 return self._request(
-                    client, cfg, model, model_tier, messages,
-                    temperature, max_tokens, timeout, thinking, json_mode,
+                    client,
+                    cfg,
+                    model,
+                    model_tier,
+                    messages,
+                    temperature,
+                    max_tokens,
+                    timeout,
+                    thinking,
+                    json_mode,
                 )
             except (RateLimitError, APIConnectionError, APITimeoutError) as e:
                 last_exc = e
                 if attempt >= max_retries:
                     break
-                delay = base_delay * (2 ** attempt)
-                logger.warning(f"{model_tier} 调用失败（{type(e).__name__}），"
-                               f"{delay:.1f}s 后重试 ({attempt + 1}/{max_retries}): {str(e)[:120]}")
+                delay = base_delay * (2**attempt)
+                logger.warning(
+                    f"{model_tier} 调用失败（{type(e).__name__}），"
+                    f"{delay:.1f}s 后重试 ({attempt + 1}/{max_retries}): {str(e)[:120]}"
+                )
                 time.sleep(delay)
             except APIStatusError as e:
                 last_exc = e
                 code = getattr(e, "status_code", 0) or 0
                 if code >= 500 and attempt < max_retries:
-                    delay = base_delay * (2 ** attempt)
-                    logger.warning(f"{model_tier} 服务端错误 {code}，"
-                                   f"{delay:.1f}s 后重试 ({attempt + 1}/{max_retries})")
+                    delay = base_delay * (2**attempt)
+                    logger.warning(
+                        f"{model_tier} 服务端错误 {code}，"
+                        f"{delay:.1f}s 后重试 ({attempt + 1}/{max_retries})"
+                    )
                     time.sleep(delay)
                     continue
                 raise LLMUnavailableError(
-                    f"{model_tier} API 错误 {code}: {str(e)[:200]}", e,
-                )
+                    f"{model_tier} API 错误 {code}: {str(e)[:200]}",
+                    e,
+                ) from e
 
         raise LLMUnavailableError(
             f"{model_tier} 调用在 {max_retries + 1} 次尝试后仍失败: {str(last_exc)[:200]}",
             last_exc,
         )
 
-    def _request(self, client, cfg, model, model_tier, messages,
-                 temperature, max_tokens, timeout, thinking: bool = True,
-                 json_mode: bool = False) -> str:
-        logger.debug(f"LLM 调用: model_tier={model_tier}, model={model}, "
-                     f"messages={len(messages)}条, temperature={temperature}, "
-                     f"thinking={thinking}, json_mode={json_mode}")
+    def _request(
+        self,
+        client,
+        cfg,
+        model,
+        model_tier,
+        messages,
+        temperature,
+        max_tokens,
+        timeout,
+        thinking: bool = True,
+        json_mode: bool = False,
+    ) -> str:
+        logger.debug(
+            f"LLM 调用: model_tier={model_tier}, model={model}, "
+            f"messages={len(messages)}条, temperature={temperature}, "
+            f"thinking={thinking}, json_mode={json_mode}"
+        )
 
         # 思考**先于**正文消耗 max_tokens：预算不够时会出现
         # 「completion 打满、content 为空串」（2026-10-13 审稿 6 维里 4 维翻车）。
@@ -408,7 +437,7 @@ class LLMClient:
         logger.info(f"运行时更新模型配置: {tier}={model} @ {base_url}")
         return True
 
-    def get_tier_info(self, tier: str) -> Optional[dict[str, Any]]:
+    def get_tier_info(self, tier: str) -> dict[str, Any] | None:
         """获取指定 tier 的当前配置信息（API Key 脱敏）。"""
         cfg = self._get_effective_cfg(tier)
         if cfg is None:

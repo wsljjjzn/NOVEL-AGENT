@@ -16,14 +16,16 @@ novel.service — 长篇小说操作的应用服务层（CLI 与 TUI 共用同�
 - 批量续写从"第一个未写章节"开始（而不是从第 1 章重写）
 - 引擎内部会把 LLM 失败吞成空结果，本层把它还原成 ok=False，避免"假成功"
 """
+
 from __future__ import annotations
 
 import json
 import shutil
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any
 
 from src.novel.chapter_writer import ChapterWriter
 from src.novel.character_engine import CharacterEngine, CharacterProfile
@@ -40,6 +42,7 @@ def _noop(_: str) -> None:
 @dataclass
 class Bundle:
     """一个项目的完整内存态（项目 + 角色引擎 + 剧情引擎 + 写作器）。"""
+
     project: NovelProject
     engine: CharacterEngine
     plot: PlotEngine
@@ -49,6 +52,7 @@ class Bundle:
 @dataclass
 class Result:
     """服务层统一的返回：界面据此显示成功/失败，而不是靠猜。"""
+
     ok: bool
     title: str
     lines: list[str] = field(default_factory=list)
@@ -74,8 +78,8 @@ class NovelService:
 
     # ========== 项目 ==========
 
-    def list_projects(self) -> list[dict]:
-        rows = []
+    def list_projects(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
         root = Path(self.base_dir)
         if not root.exists():
             return rows
@@ -88,20 +92,25 @@ class NovelService:
                 continue
             md = data.get("metadata", {})
             chapters = data.get("chapters", {}) or {}
-            rows.append({
-                "name": d.name,
-                "title": data.get("title", d.name),
-                "genre": data.get("genre", ""),
-                "description": data.get("description", ""),
-                "chapters": len(chapters),
-                "outline": len(data.get("outline", []) or []),
-                "foreshadowing": len(data.get("foreshadowing", []) or []),
-                "words": md.get("total_words") or sum(len(v) for v in chapters.values()),
-            })
+            rows.append(
+                {
+                    "name": d.name,
+                    "title": data.get("title", d.name),
+                    "genre": data.get("genre", ""),
+                    "description": data.get("description", ""),
+                    "chapters": len(chapters),
+                    "outline": len(data.get("outline", []) or []),
+                    "foreshadowing": len(data.get("foreshadowing", []) or []),
+                    "words": md.get("total_words") or sum(len(v) for v in chapters.values()),
+                }
+            )
         return rows
 
     def exists(self, name: str) -> bool:
-        return (Path(self.base_dir) / name / "project.json").exists()
+        try:
+            return (NovelProject.project_path(self.base_dir, name) / "project.json").exists()
+        except ValueError:
+            return False
 
     def load(self, name: str) -> Bundle:
         """从磁盘恢复完整状态（不调用任何 LLM）。"""
@@ -117,8 +126,10 @@ class NovelService:
         return Bundle(project, engine, plot, ChapterWriter(project, engine))
 
     def create(self, name: str, genre: str = "", description: str = "") -> Result:
-        if not name.strip():
-            return Result(False, "项目名不能为空")
+        try:
+            NovelProject.project_path(self.base_dir, name)
+        except ValueError as exc:
+            return Result(False, f"项目名不合法：{exc}")
         if self.exists(name):
             return Result(False, f"项目已存在：{name}")
         project = NovelProject(name, self.base_dir)
@@ -126,11 +137,14 @@ class NovelService:
         project.description = description
         project.save()
         return Result(True, f"项目「{name}」已创建", [str(project.base_dir)])
-
     def delete(self, name: str) -> Result:
-        if not name or "/" in name or "\\" in name or ".." in name or not self.exists(name):
-            return Result(False, f"项目不存在或名称不合法：{name}")
-        shutil.rmtree(Path(self.base_dir) / name)
+        try:
+            path = NovelProject.project_path(self.base_dir, name)
+        except ValueError as exc:
+            return Result(False, f"项目名不合法：{exc}")
+        if not (path / "project.json").exists():
+            return Result(False, f"项目不存在：{name}")
+        shutil.rmtree(path)
         return Result(True, f"项目「{name}」已删除（不可恢复）")
 
     def delete_chapter(self, name: str, chapter: int) -> Result:
@@ -146,7 +160,7 @@ class NovelService:
         p.save()
         return Result(True, f"第 {chapter} 章已删除")
 
-    def export(self, name: str, out: Optional[str] = None) -> Result:
+    def export(self, name: str, out: str | None = None) -> Result:
         bundle = self.load(name)
         if not bundle.project.chapters:
             return Result(False, "项目还没有任何章节")
@@ -158,8 +172,9 @@ class NovelService:
 
     # ========== 大纲 ==========
 
-    def generate_outline(self, name: str, chapters: int, prompt: str,
-                         tier: str = "flash") -> Result:
+    def generate_outline(
+        self, name: str, chapters: int, prompt: str, tier: str = "flash"
+    ) -> Result:
         bundle = self.load(name)
         self.log(f"[大纲] 用 {tier} 生成 {chapters} 章…")
         try:
@@ -178,8 +193,14 @@ class NovelService:
                 lines.append(f"  伏笔: {'; '.join(item.key_foreshadowing)}")
         return lines
 
-    def update_outline_item(self, name: str, chapter: int, title: str,
-                            expected_content: str, foreshadowing: Optional[list[str]] = None) -> Result:
+    def update_outline_item(
+        self,
+        name: str,
+        chapter: int,
+        title: str,
+        expected_content: str,
+        foreshadowing: list[str] | None = None,
+    ) -> Result:
         """手工修改单章大纲（TUI 编辑落盘用）。"""
         bundle = self.load(name)
         project = bundle.project
@@ -195,7 +216,9 @@ class NovelService:
             target.key_foreshadowing = foreshadowing
         project.chapter_titles[chapter] = title
         project.save()
-        return Result(True, f"第{chapter}章大纲已更新", [f"标题：{title}", f"预期内容：{expected_content}"])
+        return Result(
+            True, f"第{chapter}章大纲已更新", [f"标题：{title}", f"预期内容：{expected_content}"]
+        )
 
     # ========== 角色 ==========
 
@@ -205,22 +228,26 @@ class NovelService:
         char_file = project.base_dir / "characters.json"
 
         # 保留已有角色的 chapter_events（避免重新生成时丢掉逐章纪要）
-        existing_events = {c.name: c.chapter_events
-                           for c in engine.all_characters() if c.chapter_events}
+        existing_events = {
+            c.name: c.chapter_events for c in engine.all_characters() if c.chapter_events
+        }
 
         # 护栏：覆盖前自动备份 —— CLI 版本没有这一步
         backup_path = None
         if backup and char_file.exists():
             backup_path = char_file.with_name(
-                f"characters.json.bak-{time.strftime('%Y%m%d-%H%M%S')}")
+                f"characters.json.bak-{time.strftime('%Y%m%d-%H%M%S')}"
+            )
             shutil.copy2(char_file, backup_path)
 
         self.log(f"[角色] 用 {tier} 生成角色系统…")
         try:
             chars, _world = plot.design_characters(
-                project.title, project.genre, project.description,
+                project.title,
+                project.genre,
+                project.description,
                 project.get_outline_context(),
-                model_tier=tier,          # A16：以前这里没传，日志说 pro、实际走 flash
+                model_tier=tier,  # A16：以前这里没传，日志说 pro、实际走 flash
             )
         except Exception as e:
             return Result(False, f"角色生成失败：{type(e).__name__}: {e}")
@@ -231,15 +258,20 @@ class NovelService:
         for cd in chars:
             if not isinstance(cd, dict) or not cd.get("name"):
                 continue
-            engine.add_character(CharacterProfile(
-                name=cd["name"], role=cd.get("role", ""),
-                personality=cd.get("personality", {}),
-                speaking_style=cd.get("speaking_style", ""),
-                core_desire=cd.get("core_desire", ""), core_fear=cd.get("core_fear", ""),
-                background=cd.get("background", ""), appearance=cd.get("appearance", ""),
-                relationships=cd.get("relationships", {}),
-                arc_summary=cd.get("arc_summary", ""),
-            ))
+            engine.add_character(
+                CharacterProfile(
+                    name=cd["name"],
+                    role=cd.get("role", ""),
+                    personality=cd.get("personality", {}),
+                    speaking_style=cd.get("speaking_style", ""),
+                    core_desire=cd.get("core_desire", ""),
+                    core_fear=cd.get("core_fear", ""),
+                    background=cd.get("background", ""),
+                    appearance=cd.get("appearance", ""),
+                    relationships=cd.get("relationships", {}),
+                    arc_summary=cd.get("arc_summary", ""),
+                )
+            )
             added += 1
 
         for cname, events in existing_events.items():
@@ -264,9 +296,11 @@ class NovelService:
             return Result(False, f"大纲里没有第{chapter}章（先生成大纲，或手工补一条）")
         self.log(f"[剧情] 用 {tier} 设计第{chapter}章…")
         plot_obj = plot.design_chapter_plot(
-            chapter, {"title": item.title, "expected_content": item.expected_content},
-            project.get_recap(chapter), project.foreshadowing,
-            model_tier=tier,              # A16：以前这里没传
+            chapter,
+            {"title": item.title, "expected_content": item.expected_content},
+            project.get_recap(chapter),
+            project.foreshadowing,
+            model_tier=tier,  # A16：以前这里没传
         )
         empty = not (plot_obj.opening_hook or plot_obj.scenes or plot_obj.climax)
         plot.save(str(project.base_dir / "plots.json"))
@@ -285,9 +319,16 @@ class NovelService:
 
     # ========== 写作 ==========
 
-    def write_chapter(self, name: str, chapter: int, target_words: int = 2500,
-                      tier: str = "pro", instructions: str = "",
-                      use_plot: bool = True, auto_plot: bool = True) -> Result:
+    def write_chapter(
+        self,
+        name: str,
+        chapter: int,
+        target_words: int = 2500,
+        tier: str = "pro",
+        instructions: str = "",
+        use_plot: bool = True,
+        auto_plot: bool = True,
+    ) -> Result:
         bundle = self.load(name)
         project, plot, writer = bundle.project, bundle.plot, bundle.writer
 
@@ -297,9 +338,11 @@ class NovelService:
             if item is not None:
                 self.log(f"[写作] 第{chapter}章缺剧情设计，先自动生成…")
                 plot_obj = plot.design_chapter_plot(
-                    chapter, {"title": item.title, "expected_content": item.expected_content},
-                    project.get_recap(chapter), project.foreshadowing,
-                    model_tier=tier,      # A16：以前这里没传
+                    chapter,
+                    {"title": item.title, "expected_content": item.expected_content},
+                    project.get_recap(chapter),
+                    project.foreshadowing,
+                    model_tier=tier,  # A16：以前这里没传
                 )
                 plot.save(str(project.base_dir / "plots.json"))
 
@@ -313,8 +356,7 @@ class NovelService:
 
         self.log(f"[写作] 第{chapter}章 用 {tier} 写 {target_words} 字…")
         try:
-            text = writer.write_chapter(chapter, prompt_instructions, target_words,
-                                        model_tier=tier)
+            text = writer.write_chapter(chapter, prompt_instructions, target_words, model_tier=tier)
         except Exception as e:
             return Result(False, f"第{chapter}章写作失败：{type(e).__name__}: {e}")
         if not text.strip():
@@ -326,9 +368,15 @@ class NovelService:
             detail.append("⚠ 与目标字数偏差超过 30%，可考虑重写或续写补足")
         return Result(True, f"第{chapter}章已完成", detail)
 
-    def batch_write(self, name: str, count: int, target_words: int = 2500,
-                    tier: str = "pro", instructions: str = "",
-                    start: Optional[int] = None) -> Result:
+    def batch_write(
+        self,
+        name: str,
+        count: int,
+        target_words: int = 2500,
+        tier: str = "pro",
+        instructions: str = "",
+        start: int | None = None,
+    ) -> Result:
         """批量续写。
 
         默认从**第一个未写章节**开始 —— 这是与 CLI `novel auto` 的关键区别：
@@ -339,9 +387,11 @@ class NovelService:
         first_unwritten = (max(project.chapters) + 1) if project.chapters else 1
         begin = start if start is not None else first_unwritten
         if begin <= (max(project.chapters) if project.chapters else 0):
-            return Result(False,
-                          f"起始章 {begin} 已有正文（现写到第 {max(project.chapters)} 章）。"
-                          f"批量续写只会往后写；若要覆盖某一章请用单章撰写。")
+            return Result(
+                False,
+                f"起始章 {begin} 已有正文（现写到第 {max(project.chapters)} 章）。"
+                f"批量续写只会往后写；若要覆盖某一章请用单章撰写。",
+            )
         done, failed = [], []
         for i in range(begin, begin + count):
             r = self.write_chapter(name, i, target_words, tier, instructions)
@@ -350,7 +400,9 @@ class NovelService:
             else:
                 failed.append(f"第{i}章：{r.title}")
                 break  # 失败即停，避免连续烧钱
-        title = f"批量续写完成：第 {begin}-{begin + len(done) - 1} 章" if done else "批量续写未产生章节"
+        title = (
+            f"批量续写完成：第 {begin}-{begin + len(done) - 1} 章" if done else "批量续写未产生章节"
+        )
         lines = [f"成功 {len(done)} 章"] + failed
         return Result(bool(done), title, lines)
 
@@ -483,10 +535,12 @@ class NovelService:
 
     # ========== 运行时状态 ==========
 
-    def llm_status(self) -> dict:
+    def llm_status(self) -> dict[str, Any]:
         """LLM 配置状态（供界面显示，不泄露 Key）。"""
         from config.settings import get_config
-        out = {"tiers": [], "configured": False, "budget_cny": 0.0}
+
+        tiers: list[dict[str, Any]] = []
+        out: dict[str, Any] = {"tiers": tiers, "configured": False, "budget_cny": 0.0}
         try:
             cfg = get_config()
         except Exception as e:
@@ -495,28 +549,36 @@ class NovelService:
         for tier in ("flash", "pro"):
             # config.yaml 里的键是完整模型名（deepseek_v4_flash），不是档位名，
             # 与 llm_client.py 的取法保持一致，并兼容只写 flash/pro 的配置。
-            c = (cfg.llm.get(f"deepseek_v4_{tier}") or cfg.llm.get(tier)
-                 or next((v for k, v in cfg.llm.items() if k.endswith(f"_{tier}")), None))
+            c = (
+                cfg.llm.get(f"deepseek_v4_{tier}")
+                or cfg.llm.get(tier)
+                or next((v for k, v in cfg.llm.items() if k.endswith(f"_{tier}")), None)
+            )
             if c is None:
                 continue
             key = c.api_key or ""
             looks_placeholder = "${" in key or not key.strip()
-            out["tiers"].append({
-                "tier": tier, "model": c.model, "base_url": c.base_url,
-                "key_ok": not looks_placeholder,
-            })
+            tiers.append(
+                {
+                    "tier": tier,
+                    "model": c.model,
+                    "base_url": c.base_url,
+                    "key_ok": not looks_placeholder,
+                }
+            )
             if not looks_placeholder:
                 out["configured"] = True
         try:
             out["budget_cny"] = float(getattr(cfg.budget, "max_cny_per_session", 0) or 0)
-        except Exception:
-            pass
+        except (AttributeError, TypeError, ValueError):
+            out["budget_cny"] = 0.0
         return out
 
     def reload_config(self) -> tuple[bool, str]:
         """清掉配置单例缓存后重新读取 config.yaml + .env（界面里改完 Key 用）。"""
         try:
             import config.settings as settings
+
             settings._config = None
             settings.get_config()
             return True, "已重新读取配置"
@@ -527,8 +589,13 @@ class NovelService:
         """本进程累计用量/费用。"""
         try:
             from src.utils.cost_tracker import get_tracker
+
             t = get_tracker()
-            return {"calls": t.total_calls, "cost": t.total_cost_cny,
-                    "budget": t.budget_cny, "markdown": t.markdown_summary()}
+            return {
+                "calls": t.total_calls,
+                "cost": t.total_cost_cny,
+                "budget": t.budget_cny,
+                "markdown": t.markdown_summary(),
+            }
         except Exception:
             return {"calls": 0, "cost": 0.0, "budget": 0.0, "markdown": ""}

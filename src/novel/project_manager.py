@@ -7,21 +7,41 @@ novel.project_manager — 长篇小说项目管理。
 - 导出完整小说
 """
 
-import json, os
+import json
+from dataclasses import dataclass
 from pathlib import Path
-from dataclasses import dataclass, field
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from src.utils.file_utils import atomic_write_json
+
+
+def _project_path(base_dir: str, name: str) -> Path:
+    """返回受项目根目录约束的项目路径，拒绝路径穿越与符号链接逃逸。"""
+    if not isinstance(name, str) or not name or name != name.strip():
+        raise ValueError("项目名不能为空，也不能包含首尾空白")
+    candidate = Path(name)
+    if name in {".", ".."} or len(candidate.parts) != 1 or candidate.name != name:
+        raise ValueError("项目名必须是单个目录名，不能包含路径分隔符")
+
+    root = Path(base_dir).resolve()
+    target = (root / name).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("项目路径不能超出项目根目录") from exc
+    return target
 
 
 @dataclass
 class ChapterSummary:
     """章节摘要。"""
+
     number: int
     title: str = ""
-    status: str = "待写"   # 待写/已写/需修改
+    status: str = "待写"  # 待写/已写/需修改
     word_count: int = 0
-    summary: str = ""       # 一句话概要
+    summary: str = ""  # 一句话概要
 
 
 class OutlineItem(BaseModel):
@@ -69,19 +89,24 @@ class OutlineItem(BaseModel):
 class NovelProject:
     """长篇小说项目。"""
 
+    @staticmethod
+    def project_path(base_dir: str, name: str) -> Path:
+        """取得受根目录约束的项目路径，供服务层统一校验。"""
+        return _project_path(base_dir, name)
+
     def __init__(self, name: str, base_dir: str = "data/projects"):
         self.name = name
         self.title = name
         self.description = ""
         self.genre = ""
-        self.base_dir = Path(base_dir) / name
+        self.base_dir = _project_path(base_dir, name)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-        self.chapters: dict[int, str] = {}   # {章号: 内容}
+        self.chapters: dict[int, str] = {}  # {章号: 内容}
         self.chapter_titles: dict[int, str] = {}  # {章号: 标题}
         self.outline: list[OutlineItem] = []
         self.metadata: dict = {"total_words": 0, "chapter_count": 0}
-        self.foreshadowing: list[str] = []    # 开放伏笔
+        self.foreshadowing: list[str] = []  # 开放伏笔
 
     # ---- 章节管理 ----
 
@@ -90,9 +115,7 @@ class NovelProject:
         self.chapter_titles[number] = title
         if number > self.metadata.get("chapter_count", 0):
             self.metadata["chapter_count"] = number
-        self.metadata["total_words"] = sum(
-            len(c) for c in self.chapters.values()
-        )
+        self.metadata["total_words"] = sum(len(c) for c in self.chapters.values())
 
     def get_chapter(self, number: int) -> str:
         return self.chapters.get(number, "")
@@ -121,13 +144,15 @@ class NovelProject:
         for num in sorted(set(list(self.chapters.keys()) + [o.chapter for o in self.outline])):
             content = self.chapters.get(num, "")
             status = "已写" if content else "待写"
-            result.append(ChapterSummary(
-                number=num,
-                title=self.chapter_titles.get(num, ""),
-                status=status,
-                word_count=len(content) if content else 0,
-                summary=self._get_chapter_summary(num, content),
-            ))
+            result.append(
+                ChapterSummary(
+                    number=num,
+                    title=self.chapter_titles.get(num, ""),
+                    status=status,
+                    word_count=len(content) if content else 0,
+                    summary=self._get_chapter_summary(num, content),
+                )
+            )
         return result
 
     def _get_chapter_summary(self, num: int, content: str) -> str:
@@ -185,9 +210,7 @@ class NovelProject:
         parts = []
         for item in self.outline:
             status = "已写" if item.chapter in self.chapters else "待写"
-            parts.append(
-                f"第{item.chapter}章「{item.title}」[{status}]: {item.expected_content}"
-            )
+            parts.append(f"第{item.chapter}章「{item.title}」[{status}]: {item.expected_content}")
             if item.key_foreshadowing:
                 parts.append(f"  伏笔: {'; '.join(item.key_foreshadowing)}")
         return "\n".join(parts) if parts else "暂无大纲"
@@ -196,30 +219,29 @@ class NovelProject:
 
     def save(self):
         data = {
-            "name": self.name, "title": self.title,
-            "description": self.description, "genre": self.genre,
-            "chapters": {
-                str(num): content for num, content in self.chapters.items()
-            },
-            "chapter_titles": {
-                str(num): title for num, title in self.chapter_titles.items()
-            },
+            "name": self.name,
+            "title": self.title,
+            "description": self.description,
+            "genre": self.genre,
+            "chapters": {str(num): content for num, content in self.chapters.items()},
+            "chapter_titles": {str(num): title for num, title in self.chapter_titles.items()},
             "outline": [
-                {"chapter": o.chapter, "title": o.title,
-                 "expected_content": o.expected_content,
-                 "key_foreshadowing": o.key_foreshadowing}
+                {
+                    "chapter": o.chapter,
+                    "title": o.title,
+                    "expected_content": o.expected_content,
+                    "key_foreshadowing": o.key_foreshadowing,
+                }
                 for o in self.outline
             ],
             "metadata": self.metadata,
             "foreshadowing": self.foreshadowing,
         }
-        (self.base_dir / "project.json").write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        atomic_write_json(self.base_dir / "project.json", data)
 
     @classmethod
     def load(cls, base_dir: str, name: str):
-        path = Path(base_dir) / name / "project.json"
+        path = _project_path(base_dir, name) / "project.json"
         if not path.exists():
             raise FileNotFoundError(f"项目不存在: {path}")
 
@@ -229,21 +251,19 @@ class NovelProject:
         project.title = data.get("title", name)
         project.description = data.get("description", "")
         project.genre = data.get("genre", "")
-        project.chapters = {
-            int(k): v for k, v in data.get("chapters", {}).items()
-        }
-        project.chapter_titles = {
-            int(k): v for k, v in data.get("chapter_titles", {}).items()
-        }
+        project.chapters = {int(k): v for k, v in data.get("chapters", {}).items()}
+        project.chapter_titles = {int(k): v for k, v in data.get("chapter_titles", {}).items()}
         project.outline = [
             OutlineItem(
-                chapter=o.get("chapter", 0), title=o.get("title", ""),
+                chapter=o.get("chapter", 0),
+                title=o.get("title", ""),
                 expected_content=o.get("expected_content", ""),
                 key_foreshadowing=o.get("key_foreshadowing", []),
                 # 未知键原样带走：手工编辑/新版写出的字段不能在读盘时消失
                 **{k: v for k, v in o.items() if k not in OutlineItem.model_fields},
             )
-            for o in data.get("outline", []) if isinstance(o, dict)
+            for o in data.get("outline", [])
+            if isinstance(o, dict)
         ]
         project.metadata = data.get("metadata", {})
         project.foreshadowing = data.get("foreshadowing", [])
@@ -271,9 +291,10 @@ class NovelProject:
     def delete(cls, base_dir: str, name: str) -> bool:
         """删除项目目录（不可恢复）。"""
         import shutil
-        if not name or "/" in name or "\\" in name or ".." in name:
+        try:
+            path = _project_path(base_dir, name)
+        except ValueError:
             return False
-        path = Path(base_dir) / name
         if not path.exists():
             return False
         shutil.rmtree(path)

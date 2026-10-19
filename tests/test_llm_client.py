@@ -91,6 +91,7 @@ class TestMissingKeyHandling:
 
     def test_client_is_none_without_key(self, monkeypatch):
         import config.settings as settings
+
         monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         monkeypatch.setattr(settings, "_config", None)
         client = LLMClient()
@@ -101,7 +102,9 @@ class TestMissingKeyHandling:
 
     def test_chat_raises_clear_error_without_key(self, monkeypatch):
         import pytest
+
         import config.settings as settings
+
         monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
         monkeypatch.setattr(settings, "_config", None)
         client = LLMClient()
@@ -112,6 +115,7 @@ class TestMissingKeyHandling:
     def test_placeholder_key_is_not_treated_as_configured(self, monkeypatch):
         """哪怕配置里留着 ${VAR} 字面量也视为未配置（settings 层已解析成空串）。"""
         from config.settings import LLMConfig
+
         client = LLMClient()
         assert client._has_key(LLMConfig(api_key="")) is False
         assert client._has_key(LLMConfig(api_key="   ")) is False
@@ -130,6 +134,7 @@ class TestThinkingSwitch:
 
     def test_thinking_payload_is_an_object_not_a_bool(self):
         from src.utils.llm_client import _thinking_payload
+
         assert _thinking_payload(False) == {"thinking": {"type": "disabled"}}
         assert _thinking_payload(True) == {"thinking": {"type": "enabled"}}
         # 传布尔 false 会被服务端 422 拒绝（expected struct），形状必须锁死
@@ -137,12 +142,29 @@ class TestThinkingSwitch:
 
     def test_chat_resolves_thinking_from_config_then_override(self, monkeypatch):
         client = LLMClient()
-        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
-                                  model="m", thinking=True, rpm_limit=0)
+        client.update_tier_config(
+            "flash",
+            api_key="sk-test",
+            base_url="https://x/v1",
+            model="m",
+            thinking=True,
+            rpm_limit=0,
+        )
         seen = []
 
-        def spy(self, client_, cfg, model, tier, messages, temperature,
-                max_tokens, timeout, thinking=True, json_mode=False):
+        def spy(
+            self,
+            client_,
+            cfg,
+            model,
+            tier,
+            messages,
+            temperature,
+            max_tokens,
+            timeout,
+            thinking=True,
+            json_mode=False,
+        ):
             seen.append(thinking)
             return "ok"
 
@@ -153,8 +175,14 @@ class TestThinkingSwitch:
 
     def test_request_payload_shape(self):
         from src.utils.llm_client import _request_payload
-        base = dict(model="m", messages=[{"role": "user", "content": "x"}],
-                    temperature=0.3, max_tokens=16384, timeout=60)
+
+        base = dict(
+            model="m",
+            messages=[{"role": "user", "content": "x"}],
+            temperature=0.3,
+            max_tokens=16384,
+            timeout=60,
+        )
 
         plain = _request_payload(**base, thinking=True, json_mode=False)
         assert plain["extra_body"] == {"thinking": {"type": "enabled"}}
@@ -167,12 +195,24 @@ class TestThinkingSwitch:
 
     def test_chat_forwards_json_mode(self, monkeypatch):
         client = LLMClient()
-        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
-                                  model="m", rpm_limit=0)
+        client.update_tier_config(
+            "flash", api_key="sk-test", base_url="https://x/v1", model="m", rpm_limit=0
+        )
         seen = {}
 
-        def spy(self, client_, cfg, model, tier, messages, temperature,
-                max_tokens, timeout, thinking=True, json_mode=False):
+        def spy(
+            self,
+            client_,
+            cfg,
+            model,
+            tier,
+            messages,
+            temperature,
+            max_tokens,
+            timeout,
+            thinking=True,
+            json_mode=False,
+        ):
             seen["json_mode"] = json_mode
             return "ok"
 
@@ -182,8 +222,33 @@ class TestThinkingSwitch:
 
     def test_tier_info_exposes_thinking(self):
         from config.settings import LLMConfig
+
         client = LLMClient()
-        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
-                                  model="m", thinking=False)
+        client.update_tier_config(
+            "flash", api_key="sk-test", base_url="https://x/v1", model="m", thinking=False
+        )
         assert client.get_tier_info("flash")["thinking"] is False
-        assert LLMConfig().thinking is True   # 缺省保持现状（开），不悄悄改行为
+        assert LLMConfig().thinking is True  # 缺省保持现状（开），不悄悄改行为
+
+
+def test_configured_budget_fails_closed_when_guard_cannot_start(monkeypatch, tmp_path):
+    """预算配置失效时不能静默取消上限。"""
+    from types import SimpleNamespace
+
+    import pytest
+
+    import src.utils.llm_client as llm_client
+
+    class BrokenTracker:
+        def configure(self, **kwargs):
+            raise OSError("tracker unavailable")
+
+    cfg = SimpleNamespace(
+        budget=SimpleNamespace(max_cny_per_session=50, usage_db="usage.db"),
+        project_root=str(tmp_path),
+    )
+    monkeypatch.setattr(llm_client, "get_tracker", lambda: BrokenTracker())
+    client = llm_client.LLMClient.__new__(llm_client.LLMClient)
+
+    with pytest.raises(RuntimeError, match="预算保护"):
+        client._apply_session_guards(cfg)
