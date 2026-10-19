@@ -34,6 +34,11 @@ class LLMConfig(BaseSettings):
     timeout_seconds: int = 60
     max_retries: int = 3
     retry_base_delay: float = 1.0
+    # DeepSeek V4 默认开启 thinking，而思考会**先于**正文吃 max_tokens：
+    # 预算不足时 completion 打满、content 变成空串（2026-10-13 审稿事故）。
+    # 处置：保留思考、把 max_tokens 加够（见 config.yaml），结构化输出另用
+    # chat(..., json_mode=True) 约束格式。这个开关只留给运维按档位关停。
+    thinking: bool = True
 
 
 class EmbeddingConfig(BaseSettings):
@@ -125,6 +130,7 @@ class AppConfig(BaseSettings):
                 timeout_seconds=cfg.get("timeout_seconds", 60),
                 max_retries=cfg.get("max_retries", 3),
                 retry_base_delay=cfg.get("retry_base_delay", 1.0),
+                thinking=cfg.get("thinking", True),
             )
 
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

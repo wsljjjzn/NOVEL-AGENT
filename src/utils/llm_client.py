@@ -76,6 +76,7 @@ class _DynamicLLMConfig:
         timeout_seconds: int = 60,
         max_retries: int = 3,
         retry_base_delay: float = 1.0,
+        thinking: bool = True,
     ):
         self.api_key = api_key
         self.base_url = base_url
@@ -86,6 +87,7 @@ class _DynamicLLMConfig:
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
         self.retry_base_delay = retry_base_delay
+        self.thinking = thinking
 
 
 def _num(value, default):
@@ -100,6 +102,40 @@ def _fnum(value, default):
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def _thinking_payload(thinking: bool) -> dict:
+    """DeepSeek 的 thinking 开关是**对象**，不是布尔。
+
+    传 `thinking: false` 会被服务端 422 拒绝（expected struct）；
+    正确形状是 `{"thinking": {"type": "disabled"}}`。抽成纯函数便于测试锁定。
+
+    本项目**默认保持思考开启**（`config.yaml` 里 `llm.<tier>.thinking: true`）：
+    思考质量优先，靠"把 max_tokens 加够"来容纳它。这个开关只留给运维按档位关停。
+    """
+    return {"thinking": {"type": "enabled" if thinking else "disabled"}}
+
+
+def _request_payload(*, model: str, messages: list, temperature: float,
+                     max_tokens: int, timeout: float, thinking: bool,
+                     json_mode: bool) -> dict:
+    """构造 `chat.completions.create` 的形参（纯函数，便于测试锁定 wire 形状）。
+
+    `json_mode=True` 时补上 `response_format={"type": "json_object"}`：
+    思考开着时模型偶尔会用散文回答（实测同一提示词 content 无法解析），
+    这个约束是"结构化输出可用"的保证，且**不影响思考**。
+    """
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "timeout": timeout,
+        "extra_body": _thinking_payload(thinking),
+    }
+    if json_mode:
+        payload["response_format"] = {"type": "json_object"}
+    return payload
 
 
 class LLMClient:
@@ -198,6 +234,8 @@ class LLMClient:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         timeout: Optional[float] = None,
+        thinking: Optional[bool] = None,
+        json_mode: bool = False,
     ) -> str:
         """调用 LLM chat 补全（带限流 + 重试 + 预算检查）。
 
@@ -207,6 +245,11 @@ class LLMClient:
             temperature: 温度（默认使用配置值）
             max_tokens: 最大 token 数（默认使用配置值）
             timeout: 单次请求超时秒数（默认使用配置值）
+            thinking: 是否开启思考（None = 用该档配置值，**缺省开启**）。
+                思考会先消耗 max_tokens，所以该档的 max_tokens 必须足够大。
+            json_mode: 需要结构化 JSON 输出时置 True，会补上
+                `response_format={"type": "json_object"}`（与思考可共存，
+                是"折腾半天拿到散文"的解法）。
 
         Returns:
             模型回复文本
@@ -234,6 +277,8 @@ class LLMClient:
             max_tokens = cfg.max_tokens
         if timeout is None:
             timeout = _fnum(getattr(cfg, "timeout_seconds", None), 60)
+        if thinking is None:
+            thinking = bool(getattr(cfg, "thinking", True))
 
         max_retries = max(0, _num(getattr(cfg, "max_retries", None), 3))
         base_delay = _fnum(getattr(cfg, "retry_base_delay", None), 1.0)
@@ -244,7 +289,7 @@ class LLMClient:
             try:
                 return self._request(
                     client, cfg, model, model_tier, messages,
-                    temperature, max_tokens, timeout,
+                    temperature, max_tokens, timeout, thinking, json_mode,
                 )
             except (RateLimitError, APIConnectionError, APITimeoutError) as e:
                 last_exc = e
@@ -273,18 +318,22 @@ class LLMClient:
         )
 
     def _request(self, client, cfg, model, model_tier, messages,
-                 temperature, max_tokens, timeout) -> str:
+                 temperature, max_tokens, timeout, thinking: bool = True,
+                 json_mode: bool = False) -> str:
         logger.debug(f"LLM 调用: model_tier={model_tier}, model={model}, "
-                     f"messages={len(messages)}条, temperature={temperature}")
+                     f"messages={len(messages)}条, temperature={temperature}, "
+                     f"thinking={thinking}, json_mode={json_mode}")
 
-        t0 = time.time()
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            timeout=timeout,
+        # 思考**先于**正文消耗 max_tokens：预算不够时会出现
+        # 「completion 打满、content 为空串」（2026-10-13 审稿 6 维里 4 维翻车）。
+        # 对策是把 max_tokens 加到能容纳思考（见 config.yaml），而不是关掉思考。
+        payload = _request_payload(
+            model=model, messages=messages, temperature=temperature,
+            max_tokens=max_tokens, timeout=timeout,
+            thinking=thinking, json_mode=json_mode,
         )
+        t0 = time.time()
+        response = client.chat.completions.create(**payload)
         elapsed = time.time() - t0
 
         result = response.choices[0].message.content or ""
@@ -300,6 +349,12 @@ class LLMClient:
                 model=model,
             )
             get_tracker().add_record(record)
+            if not result and (usage.completion_tokens or 0) > 0:
+                # 空内容 + 有输出 token = 钱花了但什么都没拿到，必须留下痕迹
+                logger.warning(
+                    f"模型返回空内容，却消耗了 {usage.completion_tokens} 输出 tokens"
+                    f"（思考吃满输出预算？tier={model_tier}, thinking={thinking}）"
+                )
 
         logger.debug(f"LLM 返回: {len(result)} chars ({elapsed:.1f}s)")
         return result
@@ -341,6 +396,7 @@ class LLMClient:
             timeout_seconds=kwargs.get("timeout_seconds", 60),
             max_retries=kwargs.get("max_retries", 3),
             retry_base_delay=kwargs.get("retry_base_delay", 1.0),
+            thinking=kwargs.get("thinking", True),
         )
 
         # 清除客户端缓存，下次访问时用新配置重建
@@ -367,6 +423,7 @@ class LLMClient:
             "timeout_seconds": getattr(cfg, "timeout_seconds", None),
             "max_retries": getattr(cfg, "max_retries", None),
             "retry_base_delay": getattr(cfg, "retry_base_delay", None),
+            "thinking": getattr(cfg, "thinking", True),
         }
 
     def get_available_tiers(self) -> list[str]:

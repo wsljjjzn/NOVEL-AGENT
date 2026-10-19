@@ -85,7 +85,10 @@ def cmd_review(args) -> int:
 
     table_rows = []
     for r in result.reports:
-        table_rows.append(f"- {r.agent}: {r.score:.1f}/10，{len(r.issues)} 个问题")
+        if r.status == "failed":
+            table_rows.append(f"- {r.agent}: ❌ 审稿失败（{r.error[:40]}）")
+        else:
+            table_rows.append(f"- {r.agent}: {r.score:.1f}/10，{len(r.issues)} 个问题")
     console.print(Panel("\n".join(table_rows) if table_rows else "(无报告)", title="各 Agent 评分", border_style="cyan"))
 
     console.print(Panel(reviewer.format_report(result), title="审稿报告", border_style="yellow"))
@@ -104,12 +107,19 @@ def cmd_review(args) -> int:
         console.print(Panel(fixed, title="修改后文章", border_style="green"))
     else:
         console.print(
-            f"[green]Level1 自动修改 {len(result.level1_changes)} 项；"
+            f"[green]Level1 自动修改 {len(result.level1_changes)} 项"
+            f"（实际命中 {result.applied_fixes} 处）；"
             f"Level2 待确认 {len(result.level2_changes)} 项；"
             f"Level3 手动指引 {len(result.level3_guidance)} 项。"
             f"（加 --out 可保存修改后文章）[/green]"
         )
-    return 0
+    if result.failed_reports:
+        console.print(
+            f"[yellow]{len(result.failed_reports)}/{len(result.reports)} 个维度失败，"
+            f"结论不完整[/yellow]"
+        )
+    # 有效维度为 0 = 一次都没审成，必须非零退出（不再假成功）
+    return 0 if result.ok_reports else 1
 
 
 # ========== 端到端 ==========

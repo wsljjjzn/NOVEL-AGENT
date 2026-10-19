@@ -28,6 +28,7 @@ from textual.widgets import (
 
 from src.novel.service import NovelService, Result
 from src.tui.modals import ConfirmModal, FormModal
+from src.tui.review import ReviewModal
 
 TIERS = ("flash", "pro")
 
@@ -237,6 +238,7 @@ class WorkbenchScreen(Screen):
         Binding("c", "gen_characters", "生成角色"),
         Binding("p", "design_plot", "设计剧情"),
         Binding("w", "write_chapter", "撰写本章"),
+        Binding("v", "review_chapter", "审稿"),
         Binding("b", "batch_write", "批量续写"),
         Binding("o", "edit_outline", "改大纲"),
         Binding("t", "edit_plot_notes", "改剧情笔记"),
@@ -283,7 +285,8 @@ class WorkbenchScreen(Screen):
             table = self.query_one(tid, DataTable)
             table.cursor_type = "row"
             table.add_columns(*cols)
-        self.log_line("[dim]提示：g 生成大纲 / c 生成角色 / p 设计剧情 / w 撰写本章 / b 批量续写[/dim]")
+        self.log_line("[dim]提示：g 生成大纲 / c 生成角色 / p 设计剧情 / w 撰写本章 / "
+                      "v 审稿 / b 批量续写[/dim]")
         self.reload()
         # 焦点默认给章节表：否则回车被页签栏吃掉、方向键也用不了
         self.query_one("#chapter-table", DataTable).focus()
@@ -533,6 +536,28 @@ class WorkbenchScreen(Screen):
             self.project_name, int(d["count"] or 1), int(d["words"] or 2500),
             (d.get("tier") or "pro").strip(), start=int(d["start"] or default_ch)))
 
+    def action_review_chapter(self) -> None:
+        """审稿：默认审章节表当前行，没有行则审下一章。"""
+        chapter = self._selected_chapter("#chapter-table") or self._next_chapter()
+        self._open_review(chapter)
+
+    def _open_review(self, chapter: int) -> None:
+        """打开审稿浮层前的护栏：防重入 + 查 Key（与其它花钱动作一致）。"""
+        if self._busy:
+            self.notify("已有任务在执行，等它跑完（避免重复花钱）", severity="warning")
+            return
+        if not self._svc().llm_status().get("configured"):
+            self.notify("未配置 API Key：审稿动作已拦下。按 s 查看怎么配置。",
+                        severity="error", timeout=10)
+            self.log_line("[red]✗ 未配置 API Key，审稿未执行（未产生任何调用）[/red]")
+            return
+        self.app.push_screen(ReviewModal(self.project_name, chapter), self._after_review)
+
+    def _after_review(self, result: Optional[Result]) -> None:
+        """浮层关闭后统一收尾（写日志、通知、刷新数据）。"""
+        if isinstance(result, Result):
+            self._finish("审稿", result)
+
     def action_edit_outline(self) -> None:
         chapter = self._selected_chapter("#outline-table") or self._next_chapter()
         bundle = self._svc().load(self.project_name)
@@ -657,6 +682,7 @@ class ReaderScreen(Screen):
         Binding("escape", "back", "返回"),
         Binding("n", "next_chapter", "下一章"),
         Binding("p", "prev_chapter", "上一章"),
+        Binding("v", "review_chapter", "审稿"),
         Binding("question_mark", "help", "帮助"),
         Binding("q", "quit_app", "退出"),
     ]
@@ -716,6 +742,19 @@ class ReaderScreen(Screen):
             self.notify("已是第一章", severity="warning")
             return
         self.load_chapter(prv)
+
+    def action_review_chapter(self) -> None:
+        """就地审阅当前章（审完若写回了 Level 1 修改则重新载入正文）。"""
+        if not self.app.make_service().llm_status().get("configured"):
+            self.notify("未配置 API Key：审稿动作已拦下。", severity="error", timeout=10)
+            return
+        self.app.push_screen(ReviewModal(self.project_name, self.chapter),
+                             self._after_review)
+
+    def _after_review(self, result: Optional[Result]) -> None:
+        if isinstance(result, Result) and result.ok:
+            self.load_chapter(self.chapter)   # 可能写回了 Level 1 修改
+            self.notify(result.title)
 
     def action_help(self) -> None:
         self.app.push_screen(HelpModal())
@@ -804,17 +843,26 @@ class HelpModal(ModalScreen):
   g  生成大纲（覆盖现有大纲，不动正文）
   c  生成角色系统（覆盖 characters.json，覆盖前自动备份）
   p  设计本章剧情　　w  撰写本章　　b  批量续写（往后写，不会重写已有章节）
+  v  审稿（六维：人物/设定/伏笔/节奏/语言/校对；默认 pro）
   o  改大纲　　t  改剧情笔记（均为本地编辑，免费）
   e  导出全文　l 折叠/展开日志面板　r 刷新　esc 返回
 
 [bold]正文阅读器[/bold]
-  n 下一章　p 上一章　esc 返回
+  n 下一章　p 上一章　v 审稿（就地审阅当前章）　esc 返回
 
 [bold]关于花钱[/bold]
-  · 只有 g / c / p / w / b 五个动作会调用 API，其余操作全免费。
+  · 只有 g / c / p / w / b / v 六个动作会调用 API，其余操作全免费。
   · 未配置 API Key 时这些动作会被直接拦下，不会产生任何调用。
   · 每个动作跑在后台线程，同一时刻只允许一个动作执行，防止连点重复计费。
   · 底部状态栏实时显示本会话调用次数与费用；硬上限见 config.yaml 的 budget。
+
+[bold]关于审稿 (v)[/bold]
+  · 一次审稿 = 6 次模型调用（默认 pro），是本界面最贵的单个动作；改用 flash 可显著便宜。
+  · 审稿会对照角色档案 / 开放伏笔 / 世界观 / 前情做一致性检查。
+  · 审完列出「可机械替换」的修改点：Level 1 默认勾选、Level 2 需你确认。
+  · 勾选哪条就只改哪条（↑↓ 移动、空格勾选）；点「应用勾选并保存」才写回本章。
+  · 没勾选的条目、Level 3 指引都不会动正文；写回前自动备份 project.json。
+  · 「完整报告」按钮看全量 Markdown 报告；审稿进行中不能关闭浮层。
 """
 
     def compose(self) -> ComposeResult:

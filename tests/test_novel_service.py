@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.novel.project_manager import NovelProject  # noqa: E402
 from src.novel.service import NovelService  # noqa: E402
 
 
@@ -436,3 +437,200 @@ def test_plot_engine_signature_accepts_tier():
     from src.novel.plot_engine import PlotEngine
     for fn in (PlotEngine.design_characters, PlotEngine.design_chapter_plot):
         assert "model_tier" in inspect.signature(fn).parameters, fn.__name__
+
+
+# ========== 审稿（服务层护栏） ==========
+
+REVIEW_LEVEL1_JSON = json.dumps({
+    "overall_assessment": "尚可",
+    "score": 8,
+    "issues": [{
+        "level": "Level 1", "description": "措辞",
+        "before_text": "这是第1章的", "after_text": "这里是第1章的",
+    }],
+}, ensure_ascii=False)
+
+REVIEW_CLEAN_JSON = json.dumps(
+    {"overall_assessment": "没问题", "score": 9, "issues": []}, ensure_ascii=False)
+
+# 混合档：可勾选的 Level 1 / Level 2 + 只能人工的 Level 3
+REVIEW_MIXED_JSON = json.dumps({
+    "overall_assessment": "尚可",
+    "score": 8,
+    "issues": [
+        {"level": 1, "description": "L1 措辞", "before_text": "这是第1章的",
+         "after_text": "这里是第1章的"},
+        {"level": 2, "description": "L2 精简", "before_text": "正文内容",
+         "after_text": "正文"},
+        {"level": 3, "description": "L3 结构建议"},
+    ],
+}, ensure_ascii=False)
+
+
+class ReviewFakeLLM:
+    """只服务审稿 Agent 的假 LLM：把预置 JSON 原样返回，并记账调用次数。"""
+
+    def __init__(self, response: str):
+        self.response = response
+        self.calls = 0
+        self.last_messages: list = []
+
+    def chat(self, messages, model_tier: str = "flash", **kwargs) -> str:
+        self.calls += 1
+        self.last_messages = messages
+        return self.response
+
+
+def _project_with_chapter(tmp, text: str = "这是第1章的正文内容。" * 20) -> NovelProject:
+    """在 fixture 项目里补一章正文（review_chapter 需要非空章节）。"""
+    project = NovelProject.load(str(tmp), "测试书本")
+    project.add_chapter(1, "第1章", text)
+    project.save()
+    return project
+
+
+def test_review_chapter_rejects_empty_chapter():
+    """没有正文的章节不该送审：不花钱，也不能把「审稿成功」挂在空章节上。"""
+    with _Fixture() as tmp:
+        called: list[int] = []
+
+        class NeverReviewer:
+            def review(self, *args, **kwargs):
+                called.append(1)
+                raise AssertionError("空章不该调用审稿引擎")
+
+        svc = NovelService(str(tmp), reviewer=NeverReviewer())
+        r = svc.review_chapter("测试书本", 2)
+        assert r.ok is False
+        assert "还没有正文" in r.title
+        assert called == []
+
+
+def test_review_chapter_reports_total_failure():
+    """六个维度全失败 → ok=False，并把原因带出来（不伪装成「没问题」）。"""
+    with _Fixture() as tmp:
+        _project_with_chapter(tmp)
+
+        class AllFailedReviewer:
+            def review(self, *args, **kwargs):
+                from src.models import AggregatedReview, ReviewReport
+                reports = [ReviewReport(agent=f"维度{i}", status="failed",
+                                        error="超时", score=0.0) for i in range(6)]
+                return AggregatedReview(article_id="x", reports=reports)
+
+            def format_report(self, aggregated):
+                return "# 报告（全部失败）"
+
+        svc = NovelService(str(tmp), reviewer=AllFailedReviewer())
+        r = svc.review_chapter("测试书本", 1)
+        assert r.ok is False
+        assert "全部失败" in r.title
+        assert "超时" in r.lines[0]
+        assert r.report == "# 报告（全部失败）"
+
+
+def test_review_chapter_applies_level1_and_backs_up():
+    """Level 1 命中会写回正文，且覆盖前必须留下 project.json 备份。"""
+    with _Fixture() as tmp:
+        from src.review_engine import ReviewOrchestrator
+        _project_with_chapter(tmp)
+        llm = ReviewFakeLLM(REVIEW_LEVEL1_JSON)
+        svc = NovelService(str(tmp), reviewer=ReviewOrchestrator(llm_client=llm))
+
+        r = svc.review_chapter("测试书本", 1, tier="flash")
+        assert r.ok, r.as_text()
+        assert llm.calls == 6, "六维应各调用一次"
+        assert "作品状态" in llm.last_messages[1]["content"], "小说向审稿必须注入作品状态"
+
+        data = json.loads((tmp / "测试书本" / "project.json").read_text("utf-8"))
+        assert data["chapters"]["1"].startswith("这里是第1章的")
+        assert list((tmp / "测试书本").glob("project.json.bak-*")), "覆盖前必须备份"
+        assert "已写回第1章" in "\n".join(r.lines)
+        assert r.report and "审稿报告" in r.report
+
+
+def test_review_chapter_clean_does_not_touch_project():
+    """没有 Level 1 命中就不落盘、不备份（避免无意义改写与磁盘垃圾）。"""
+    with _Fixture() as tmp:
+        from src.review_engine import ReviewOrchestrator
+        _project_with_chapter(tmp, text="正文" * 80)
+        svc = NovelService(str(tmp),
+                           reviewer=ReviewOrchestrator(llm_client=ReviewFakeLLM(REVIEW_CLEAN_JSON)))
+        before = (tmp / "测试书本" / "project.json").read_text("utf-8")
+
+        r = svc.review_chapter("测试书本", 1)
+        assert r.ok, r.as_text()
+        after = (tmp / "测试书本" / "project.json").read_text("utf-8")
+        assert before == after, "没有 Level 1 修改时不该改写项目文件"
+        assert not list((tmp / "测试书本").glob("project.json.bak-*"))
+
+
+# ========== 审稿：勾选哪条改哪条 ==========
+
+def _mixed_reviewer() -> "object":
+    from src.review_engine import ReviewOrchestrator
+    return ReviewOrchestrator(llm_client=ReviewFakeLLM(REVIEW_MIXED_JSON))
+
+
+def test_review_only_mode_lists_issues_without_modifying():
+    """apply_level1=False：只审不改，并把结构化结果带回给界面。"""
+    with _Fixture() as tmp:
+        _project_with_chapter(tmp)
+        svc = NovelService(str(tmp), reviewer=_mixed_reviewer())
+        before = (tmp / "测试书本" / "project.json").read_text("utf-8")
+
+        r = svc.review_chapter("测试书本", 1, apply_level1=False, save=False)
+        assert r.ok, r.as_text()
+        # 关键：审稿本身绝不改正文
+        assert (tmp / "测试书本" / "project.json").read_text("utf-8") == before
+        assert not list((tmp / "测试书本").glob("project.json.bak-*"))
+
+        aggregated = r.data
+        assert aggregated is not None, "界面要靠 data 生成勾选清单"
+        assert len(aggregated.applicable_issues) == 2, "L1 + L2 都可勾选"
+        assert [i.level for i in aggregated.applicable_issues] == [1, 2]
+        assert len(aggregated.guidance_issues) == 1, "L3 只能人工处理"
+        assert "可勾选应用 2 项" in "\n".join(r.lines)
+
+
+def test_apply_review_fixes_applies_only_selected():
+    """只应用勾选的条目：没勾的 Level 2 必须原样保留。"""
+    with _Fixture() as tmp:
+        _project_with_chapter(tmp)
+        svc = NovelService(str(tmp), reviewer=_mixed_reviewer())
+        aggregated = svc.review_chapter("测试书本", 1, apply_level1=False).data
+
+        level1 = [i for i in aggregated.applicable_issues if i.level == 1]
+        r = svc.apply_review_fixes("测试书本", 1, level1)
+        assert r.ok, r.as_text()
+
+        text = NovelProject.load(str(tmp), "测试书本").get_chapter(1)
+        assert text.startswith("这里是第1章的"), "勾选的 L1 应生效"
+        assert "正文内容" in text, "没勾的 L2 不该被改"
+        assert list((tmp / "测试书本").glob("project.json.bak-*")), "覆盖前必须备份"
+
+
+def test_apply_review_fixes_rejects_empty_selection():
+    with _Fixture() as tmp:
+        _project_with_chapter(tmp)
+        svc = NovelService(str(tmp))
+        r = svc.apply_review_fixes("测试书本", 1, [])
+        assert r.ok is False
+        assert "没有勾选" in r.title
+
+
+def test_apply_review_fixes_reports_missed_anchors():
+    """锚点都没命中 → ok=False，且不落盘、不备份（不假装改成功）。"""
+    with _Fixture() as tmp:
+        from src.models import ReviewIssue
+        _project_with_chapter(tmp)
+        svc = NovelService(str(tmp))
+        before = (tmp / "测试书本" / "project.json").read_text("utf-8")
+        ghost = ReviewIssue(agent="校对", level=1, description="不存在",
+                            before_text="这段原文根本不在正文里", after_text="x")
+
+        r = svc.apply_review_fixes("测试书本", 1, [ghost])
+        assert r.ok is False
+        assert "没有实际改动" in r.title
+        assert (tmp / "测试书本" / "project.json").read_text("utf-8") == before
+        assert not list((tmp / "测试书本").glob("project.json.bak-*"))

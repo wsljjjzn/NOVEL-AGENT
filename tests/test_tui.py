@@ -15,6 +15,7 @@ import json
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,7 @@ from src.tui.app import (  # noqa: E402
     HelpModal, NovelWorkbench, ProjectsScreen, ReaderScreen, SettingsModal, WorkbenchScreen,
 )
 from src.tui.modals import ConfirmModal, FormModal  # noqa: E402
+from src.tui.review import ReportModal, ReviewModal  # noqa: E402
 
 
 def _make_project(base: Path, name: str = "测试项目", chapters: int = 3) -> None:
@@ -573,6 +575,316 @@ def test_local_actions_work_without_api_key():
                 await pilot.pause()
                 assert (tmp / "测试项目" / "export.txt").exists(), "本地导出应可用"
                 assert "第1章的正文内容" in (tmp / "测试项目" / "export.txt").read_text("utf-8")
+            app.exit()
+
+    asyncio.run(main())
+
+
+# ========== 审稿（TUI） ==========
+
+REVIEW_LEVEL1_JSON = json.dumps({
+    "overall_assessment": "尚可",
+    "score": 8,
+    "issues": [{
+        "level": "Level 1", "description": "措辞",
+        "before_text": "这是第1章的", "after_text": "这里是第1章的",
+    }],
+}, ensure_ascii=False)
+
+REVIEW_CLEAN_JSON = json.dumps(
+    {"overall_assessment": "没问题", "score": 9, "issues": []}, ensure_ascii=False)
+
+# 混合档：可勾选的 Level 1 / Level 2 + 只能人工处理的 Level 3
+REVIEW_MIXED_JSON = json.dumps({
+    "overall_assessment": "尚可",
+    "score": 8,
+    "issues": [
+        {"level": 1, "description": "L1 措辞", "before_text": "这是第1章的",
+         "after_text": "这里是第1章的"},
+        {"level": 2, "description": "L2 精简", "before_text": "正文内容",
+         "after_text": "正文"},
+        {"level": 3, "description": "L3 结构建议"},
+    ],
+}, ensure_ascii=False)
+
+
+class _ReviewLLM:
+    """只服务审稿 Agent 的假 LLM。delay 用来验证「进行中」的界面护栏。"""
+
+    def __init__(self, response: str, delay: float = 0.0):
+        self.response, self.delay, self.calls = response, delay, 0
+
+    def chat(self, messages, model_tier: str = "flash", **kwargs) -> str:
+        self.calls += 1
+        if self.delay:
+            time.sleep(self.delay)
+        return self.response
+
+
+class _ConfiguredService(NovelService):
+    """报告「Key 已配置」的服务替身：用例结果与本机 .env 无关。"""
+
+    def llm_status(self):
+        return {"tiers": [], "configured": True, "budget_cny": 0.0}
+
+
+def _review_factory(tmp, response: str = REVIEW_LEVEL1_JSON, delay: float = 0.0):
+    """返回 (service_factory, fake_llm)，把真审稿引擎接到假 LLM 上。"""
+    from src.review_engine import ReviewOrchestrator
+    llm = _ReviewLLM(response, delay)
+    reviewer = ReviewOrchestrator(llm_client=llm)
+    factory = lambda log: _ConfiguredService(str(tmp), log=log, reviewer=reviewer)  # noqa: E731
+    return factory, llm
+
+
+def _wait_for(pilot, modal, attr: str = "_result", tries: int = 200):
+    """等 worker 把结果写到 modal 的某个属性上（超时返回 None）。"""
+    async def _poll():
+        for _ in range(tries):
+            await pilot.pause(0.02)
+            value = getattr(modal, attr)
+            if value is not None:
+                return value
+        return None
+
+    return _poll()
+
+
+def _wait_for_result(pilot, modal, tries: int = 200):
+    return _wait_for(pilot, modal, "_result", tries)
+
+
+def test_review_blocked_without_key():
+    """没配 Key 时按 v 必须被拦下：不打开浮层、不产生调用。"""
+    async def main():
+        with _Fixture() as tmp:
+            class Unconfigured(NovelService):
+                def llm_status(self):
+                    return {"tiers": [], "configured": False, "budget_cny": 0.0}
+
+            app = NovelWorkbench(
+                base_dir=str(tmp),
+                service_factory=lambda log: Unconfigured(str(tmp), log=log),
+            )
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                assert not isinstance(app.screen, ReviewModal), "未配置 Key 不该打开审稿浮层"
+                assert "未配置" in _log_text(app), "日志应说明被拦下的原因"
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_review_modal_opens_and_cancels():
+    """按 v 打开审稿浮层；Esc 取消不得产生任何调用。"""
+    async def main():
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                assert isinstance(app.screen, ReviewModal)
+                assert app.screen.chapter == 1, "默认审章节表当前行"
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, WorkbenchScreen)
+                assert llm.calls == 0, "取消不该产生任何 LLM 调用"
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_review_lists_checkable_issues_without_modifying():
+    """审完只列清单、绝不自动改正文：Level 1 默认勾选，Level 2 默认不勾。"""
+    async def main():
+        from textual.widgets import SelectionList
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, response=REVIEW_MIXED_JSON)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                modal = app.screen
+                assert isinstance(modal, ReviewModal)
+
+                await pilot.click("#review-start")
+                result = await _wait_for_result(pilot, modal)
+                assert result is not None, "worker 未在超时内结束"
+                assert result.ok, result.as_text()
+                assert llm.calls == 6, f"六维应各调用一次，实际 {llm.calls}"
+
+                selector = modal.query_one("#review-issues", SelectionList)
+                assert selector.option_count == 2, "L1 + L2 都该出现在勾选清单里"
+                assert selector.selected == [0], "Level 1 默认勾选、Level 2 默认不勾"
+                notice = str(modal.query_one("#review-notice").content)
+                assert "仅人工指引 1 项" in notice, notice
+
+                # 关键回归：审稿本身不得改写正文、不得产生备份
+                data = json.loads((tmp / "测试项目" / "project.json").read_text("utf-8"))
+                assert data["chapters"]["1"].startswith("这是第1章的")
+                assert not list((tmp / "测试项目").glob("project.json.bak-*"))
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_review_applies_only_checked_issues():
+    """勾选哪条改哪条：只勾 Level 2 时，默认勾选的 Level 1 也不该被应用。"""
+    async def main():
+        from textual.widgets import SelectionList
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, response=REVIEW_MIXED_JSON)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                modal = app.screen
+                await pilot.click("#review-start")
+                assert await _wait_for_result(pilot, modal) is not None
+
+                selector = modal.query_one("#review-issues", SelectionList)
+                selector.deselect_all()
+                selector.select(1)                      # 只勾 Level 2
+                await pilot.click("#review-apply")
+                applied = await _wait_for(pilot, modal, "_applied_result")
+                assert applied is not None and applied.ok, applied
+
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, WorkbenchScreen)
+                assert "审稿" in _log_text(app), "收尾应把结果写进日志面板"
+
+            text = json.loads((tmp / "测试项目" / "project.json").read_text("utf-8"))["chapters"]["1"]
+            assert text.startswith("这是第1章的正文。"), "勾选的 Level 2 应生效"
+            assert "这里是第1章的" not in text, "没勾的 Level 1 不该被改"
+            assert list((tmp / "测试项目").glob("project.json.bak-*")), "覆盖前必须备份"
+    asyncio.run(main())
+
+
+def test_review_report_button_opens_full_report():
+    """「完整报告」按钮应打开 Markdown 报告浮层，Esc 回到勾选界面。"""
+    async def main():
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, response=REVIEW_MIXED_JSON)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                modal = app.screen
+                await pilot.click("#review-start")
+                assert await _wait_for_result(pilot, modal) is not None
+
+                await pilot.click("#review-report-btn")
+                await pilot.pause()
+                assert isinstance(app.screen, ReportModal)
+
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, ReviewModal), "关掉报告应回到审稿浮层"
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_review_apply_with_nothing_selected_does_nothing():
+    """全不勾时点应用：不发起写盘、不产生备份、正文原样。"""
+    async def main():
+        from textual.widgets import SelectionList
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, response=REVIEW_MIXED_JSON)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                modal = app.screen
+                await pilot.click("#review-start")
+                assert await _wait_for_result(pilot, modal) is not None
+
+                modal.query_one("#review-issues", SelectionList).deselect_all()
+                await pilot.click("#review-apply")
+                await pilot.pause()
+                assert modal._applied_result is None, "没勾选就不该发起应用"
+
+                data = json.loads((tmp / "测试项目" / "project.json").read_text("utf-8"))
+                assert data["chapters"]["1"].startswith("这是第1章的")
+                assert not list((tmp / "测试项目").glob("project.json.bak-*"))
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_review_busy_modal_refuses_escape_until_done():
+    """审稿进行中不允许关闭浮层（关掉会丢掉已付费的结果）。"""
+    async def main():
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, delay=0.3)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("v")
+                await pilot.pause()
+                modal = app.screen
+                await pilot.click("#review-start")
+                await pilot.pause()
+                assert modal._busy is True, "点开始后应进入进行中状态"
+
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, ReviewModal), "进行中不允许关闭"
+
+                result = await _wait_for_result(pilot, modal)
+                assert result is not None
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, WorkbenchScreen)
+            app.exit()
+
+    asyncio.run(main())
+
+
+def test_reader_screen_can_start_review():
+    """正文阅读器里按 v 也能就地审阅当前章。"""
+    async def main():
+        with _Fixture() as tmp:
+            factory, llm = _review_factory(tmp, response=REVIEW_CLEAN_JSON)
+            app = NovelWorkbench(base_dir=str(tmp), service_factory=factory)
+            async with app.run_test(size=(140, 45)) as pilot:
+                await pilot.pause()
+                await pilot.press("enter")
+                await pilot.pause()
+                await pilot.press("enter")     # 章节表首行 → 阅读器
+                await pilot.pause()
+                assert isinstance(app.screen, ReaderScreen)
+
+                await pilot.press("v")
+                await pilot.pause()
+                assert isinstance(app.screen, ReviewModal)
+                assert app.screen.chapter == 1
+                await pilot.press("escape")
+                await pilot.pause()
+                assert isinstance(app.screen, ReaderScreen)
             app.exit()
 
     asyncio.run(main())

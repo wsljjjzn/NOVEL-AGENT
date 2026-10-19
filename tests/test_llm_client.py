@@ -117,3 +117,73 @@ class TestMissingKeyHandling:
         assert client._has_key(LLMConfig(api_key="   ")) is False
         assert client._has_key(LLMConfig(api_key="\\${DEEPSEEK_API_KEY}")) is False
         assert client._has_key(LLMConfig(api_key="sk-real")) is True
+
+
+class TestThinkingSwitch:
+    """V4 默认开思考，思考**先于**正文吃 max_tokens；思考开着时模型还可能改写成散文。
+
+    根因记录（2026-10-13）：审稿在 flash 档 6 个维度里 4 个失败，实测
+    completion 打满 4096 而 content 是空串（全被思考吃掉）。
+    处置：**保留思考**，档位 max_tokens 提到 16384，并给结构化调用加
+    response_format=json_object（json_mode）——两者都只是"约束/上限"，不牺牲思考。
+    """
+
+    def test_thinking_payload_is_an_object_not_a_bool(self):
+        from src.utils.llm_client import _thinking_payload
+        assert _thinking_payload(False) == {"thinking": {"type": "disabled"}}
+        assert _thinking_payload(True) == {"thinking": {"type": "enabled"}}
+        # 传布尔 false 会被服务端 422 拒绝（expected struct），形状必须锁死
+        assert isinstance(_thinking_payload(False)["thinking"], dict)
+
+    def test_chat_resolves_thinking_from_config_then_override(self, monkeypatch):
+        client = LLMClient()
+        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
+                                  model="m", thinking=True, rpm_limit=0)
+        seen = []
+
+        def spy(self, client_, cfg, model, tier, messages, temperature,
+                max_tokens, timeout, thinking=True, json_mode=False):
+            seen.append(thinking)
+            return "ok"
+
+        monkeypatch.setattr(type(client), "_request", spy)
+        client.chat([{"role": "user", "content": "x"}], model_tier="flash")
+        client.chat([{"role": "user", "content": "x"}], model_tier="flash", thinking=False)
+        assert seen == [True, False], "chat 必须把配置默认值与按次覆盖分别传下去"
+
+    def test_request_payload_shape(self):
+        from src.utils.llm_client import _request_payload
+        base = dict(model="m", messages=[{"role": "user", "content": "x"}],
+                    temperature=0.3, max_tokens=16384, timeout=60)
+
+        plain = _request_payload(**base, thinking=True, json_mode=False)
+        assert plain["extra_body"] == {"thinking": {"type": "enabled"}}
+        assert "response_format" not in plain, "不需要 JSON 时不要强加约束"
+
+        jsoned = _request_payload(**base, thinking=True, json_mode=True)
+        assert jsoned["response_format"] == {"type": "json_object"}
+        # 关键：JSON 模式与思考**可以共存**，不要为了 JSON 去关思考
+        assert jsoned["extra_body"] == {"thinking": {"type": "enabled"}}
+
+    def test_chat_forwards_json_mode(self, monkeypatch):
+        client = LLMClient()
+        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
+                                  model="m", rpm_limit=0)
+        seen = {}
+
+        def spy(self, client_, cfg, model, tier, messages, temperature,
+                max_tokens, timeout, thinking=True, json_mode=False):
+            seen["json_mode"] = json_mode
+            return "ok"
+
+        monkeypatch.setattr(type(client), "_request", spy)
+        client.chat([{"role": "user", "content": "x"}], model_tier="flash", json_mode=True)
+        assert seen["json_mode"] is True
+
+    def test_tier_info_exposes_thinking(self):
+        from config.settings import LLMConfig
+        client = LLMClient()
+        client.update_tier_config("flash", api_key="sk-test", base_url="https://x/v1",
+                                  model="m", thinking=False)
+        assert client.get_tier_info("flash")["thinking"] is False
+        assert LLMConfig().thinking is True   # 缺省保持现状（开），不悄悄改行为

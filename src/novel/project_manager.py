@@ -97,6 +97,25 @@ class NovelProject:
     def get_chapter(self, number: int) -> str:
         return self.chapters.get(number, "")
 
+    def delete_chapter(self, number: int) -> bool:
+        """删除指定章节，同时清理正文、标题与对应大纲条目。"""
+        existed = False
+        if number in self.chapters:
+            del self.chapters[number]
+            existed = True
+        if number in self.chapter_titles:
+            del self.chapter_titles[number]
+            existed = True
+        orig_outline_len = len(self.outline)
+        self.outline = [o for o in self.outline if o.chapter != number]
+        if len(self.outline) != orig_outline_len:
+            existed = True
+
+        all_nums = list(self.chapters.keys()) + [o.chapter for o in self.outline]
+        self.metadata["chapter_count"] = max(all_nums) if all_nums else 0
+        self.metadata["total_words"] = sum(len(c) for c in self.chapters.values())
+        return existed
+
     def list_chapters(self) -> list[ChapterSummary]:
         result = []
         for num in sorted(set(list(self.chapters.keys()) + [o.chapter for o in self.outline])):
@@ -252,6 +271,8 @@ class NovelProject:
     def delete(cls, base_dir: str, name: str) -> bool:
         """删除项目目录（不可恢复）。"""
         import shutil
+        if not name or "/" in name or "\\" in name or ".." in name:
+            return False
         path = Path(base_dir) / name
         if not path.exists():
             return False

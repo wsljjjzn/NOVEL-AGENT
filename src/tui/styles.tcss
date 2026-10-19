@@ -159,3 +159,118 @@ Button {
     padding-top: 1;
     text-align: right;
 }
+
+/* ========== 审稿浮层 ========== */
+ReviewModal {
+    align: center middle;
+    background: $background 60%;
+}
+
+#review-box {
+    width: 100;
+    max-width: 96%;
+    height: 80%;
+    max-height: 90%;
+    border: round $accent;
+    background: $surface;
+    padding: 1 2;
+}
+
+#review-title {
+    text-style: bold;
+    color: $text;
+    padding-bottom: 1;
+}
+
+#review-notice {
+    color: $warning;
+    padding-bottom: 1;
+}
+
+#review-params {
+    height: auto;
+    padding-bottom: 1;
+}
+
+#review-params Select {
+    width: 24;
+}
+
+#review-counts {
+    color: $text-muted;
+    padding-left: 2;
+    content-align-vertical: middle;
+}
+
+/* 可勾选的修改点：SelectionList 自带滚动与 ↑↓/空格 操作 */
+#review-issues {
+    height: 1fr;
+    border: round $primary;
+    padding: 0 1;
+}
+
+#review-guidance-scroll {
+    height: auto;
+    max-height: 10;
+    border: round $warning;
+    padding: 0 1;
+    margin-top: 1;
+}
+
+#review-guidance {
+    height: auto;
+    color: $text-muted;
+}
+
+#review-buttons {
+    height: auto;
+    padding-top: 1;
+    align-horizontal: right;
+}
+
+#review-buttons Button {
+    margin-left: 1;
+}
+
+#review-hint {
+    color: $text-muted;
+    padding-top: 1;
+    text-align: right;
+}
+
+/* ========== 完整报告浮层 ========== */
+ReportModal {
+    align: center middle;
+    background: $background 60%;
+}
+
+#report-box {
+    width: 110;
+    max-width: 96%;
+    height: 85%;
+    border: round $accent;
+    background: $surface;
+    padding: 1 2;
+}
+
+#report-title {
+    text-style: bold;
+    color: $text;
+    padding-bottom: 1;
+}
+
+#report-scroll {
+    height: 1fr;
+    border: round $primary;
+    padding: 0 1;
+}
+
+#report-body {
+    height: auto;
+}
+
+#report-buttons {
+    height: auto;
+    padding-top: 1;
+    align-horizontal: right;
+}

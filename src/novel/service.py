@@ -52,6 +52,11 @@ class Result:
     ok: bool
     title: str
     lines: list[str] = field(default_factory=list)
+    # 需要独立浮层展示的长文本（当前只有审稿报告用）；默认空串，不影响既有调用
+    report: str = ""
+    # 结构化结果（如 AggregatedReview），供界面做"勾选哪条改哪条"这类交互；
+    # 与 docs/specs/contracts.md §3 的 data 字段同一个用途
+    data: Optional[object] = None
 
     def as_text(self) -> str:
         return "\n".join([self.title, *self.lines])
@@ -60,9 +65,12 @@ class Result:
 class NovelService:
     """长篇小说业务服务。所有方法都不会抛 LLM 异常（失败转成 Result.ok=False）。"""
 
-    def __init__(self, base_dir: str = "data/projects", log: LogFn = _noop):
+    def __init__(self, base_dir: str = "data/projects", log: LogFn = _noop,
+                 reviewer=None):
         self.base_dir = base_dir
         self.log = log
+        # 审稿引擎延迟构造：单元测试可注入替身，避免真实 LLM 调用
+        self._reviewer = reviewer
 
     # ========== 项目 ==========
 
@@ -120,10 +128,23 @@ class NovelService:
         return Result(True, f"项目「{name}」已创建", [str(project.base_dir)])
 
     def delete(self, name: str) -> Result:
-        if not self.exists(name):
-            return Result(False, f"项目不存在：{name}")
+        if not name or "/" in name or "\\" in name or ".." in name or not self.exists(name):
+            return Result(False, f"项目不存在或名称不合法：{name}")
         shutil.rmtree(Path(self.base_dir) / name)
         return Result(True, f"项目「{name}」已删除（不可恢复）")
+
+    def delete_chapter(self, name: str, chapter: int) -> Result:
+        """删除指定章节，操作前自动备份 project.json。"""
+        if not self.exists(name):
+            return Result(False, f"项目不存在：{name}")
+        bundle = self.load(name)
+        p = bundle.project
+        self._backup_project(p)
+        ok = p.delete_chapter(chapter)
+        if not ok:
+            return Result(False, f"项目「{name}」未找到第 {chapter} 章")
+        p.save()
+        return Result(True, f"第 {chapter} 章已删除")
 
     def export(self, name: str, out: Optional[str] = None) -> Result:
         bundle = self.load(name)
@@ -332,6 +353,133 @@ class NovelService:
         title = f"批量续写完成：第 {begin}-{begin + len(done) - 1} 章" if done else "批量续写未产生章节"
         lines = [f"成功 {len(done)} 章"] + failed
         return Result(bool(done), title, lines)
+
+    # ========== 审稿 ==========
+
+    def _get_reviewer(self):
+        """延迟构造审稿引擎（导入也延迟，避免服务层在导入期就依赖生成层）。"""
+        if self._reviewer is None:
+            from src.review_engine import ReviewOrchestrator
+            self._reviewer = ReviewOrchestrator()
+        return self._reviewer
+
+    @staticmethod
+    def _backup_project(project: NovelProject) -> Optional[Path]:
+        """覆盖正文前备份 project.json（审稿自动改写属于「覆盖既有正文」）。"""
+        src = project.base_dir / "project.json"
+        if not src.exists():
+            return None
+        dst = src.with_name(f"project.json.bak-{time.strftime('%Y%m%d-%H%M%S')}")
+        shutil.copy2(src, dst)
+        return dst
+
+    def review_chapter(self, name: str, chapter: int, tier: str = "pro",
+                       apply_level1: bool = True, save: bool = True,
+                       profile: str = "novel") -> Result:
+        """对单章做六维审稿，可选把命中的 Level 1 修改写回项目。
+
+        护栏（docs/modules/review_engine.md §7）：
+        - 空章拒绝：没有正文不送审
+        - 全失败不上报成功：六个维度全 failed → ok=False
+        - 写回前备份 project.json；命中 0 处时不落盘
+        """
+        bundle = self.load(name)
+        project, engine, plot = bundle.project, bundle.engine, bundle.plot
+        text = project.get_chapter(chapter)
+        if not text.strip():
+            return Result(False, f"第{chapter}章还没有正文（先撰写，再按 v 审稿）")
+
+        from src.review_engine import build_novel_context
+        context = build_novel_context(project=project, engine=engine, plot=plot,
+                                      chapter_num=chapter)
+        reviewer = self._get_reviewer()
+        self.log(f"[审稿] 第{chapter}章 用 {tier} 做 {profile} 六维审稿…")
+        try:
+            aggregated = reviewer.review(
+                text, article_id=f"{name}#{chapter}", model_tier=tier,
+                context=context, profile=profile,
+            )
+        except Exception as e:
+            return Result(False, f"审稿失败：{type(e).__name__}: {e}")
+
+        report = reviewer.format_report(aggregated)
+        if not aggregated.ok_reports:
+            reasons = "；".join((r.error or r.agent) for r in aggregated.failed_reports) or "未知原因"
+            return Result(False, f"第{chapter}章六维审稿全部失败", [reasons],
+                          report=report, data=aggregated)
+
+        applied_note = "未应用（请勾选要修改的条目）" if not apply_level1 else "未应用"
+        if apply_level1 and aggregated.level1_changes:
+            fixed = reviewer.apply_fixes(text, aggregated)
+            if aggregated.applied_fixes and fixed != text:
+                if save:
+                    backup = self._backup_project(project)
+                    project.add_chapter(
+                        chapter,
+                        project.chapter_titles.get(chapter, f"第{chapter}章"),
+                        fixed,
+                    )
+                    project.save()
+                    applied_note = (f"已写回第{chapter}章"
+                                    f"（{len(text):,} → {len(fixed):,} 字）")
+                    if backup:
+                        applied_note += f"，覆盖前备份 {backup.name}"
+                else:
+                    applied_note = "已生成修改稿（save=False，未落盘）"
+            elif aggregated.applied_fixes == 0:
+                applied_note = "锚点均未命中，正文未改动"
+
+        lines = [
+            f"综合 {aggregated.overall_score:.1f}/10 · 有效维度 {aggregated.coverage}",
+            f"Level1 {len(aggregated.level1_changes)} 项 / "
+            f"Level2 {len(aggregated.level2_changes)} 项 / "
+            f"Level3 {len(aggregated.level3_guidance)} 项",
+        ]
+        if apply_level1:
+            lines.append(f"Level1 命中 {aggregated.applied_fixes} 处 / "
+                         f"未命中 {aggregated.missed_fixes} 处：{applied_note}")
+        else:
+            lines.append(f"可勾选应用 {len(aggregated.applicable_issues)} 项 · "
+                         f"仅人工指引 {len(aggregated.guidance_issues)} 项：{applied_note}")
+        lines.extend(aggregated.warnings)
+        return Result(True, f"第{chapter}章审稿完成", lines,
+                      report=report, data=aggregated)
+
+    def apply_review_fixes(self, name: str, chapter: int,
+                           issues: list) -> Result:
+        """把用户勾选的审稿条目应用到本章并落盘（覆盖前备份）。
+
+        - 只处理带 before_text / after_text 的条目（Level 3 无法机械应用）。
+        - 锚点没命中的如实计数；一处都没改到就返回 ok=False，不假装成功。
+        """
+        from src.review_engine import ArticleFixer
+
+        if not issues:
+            return Result(False, "没有勾选任何修改")
+
+        bundle = self.load(name)
+        project = bundle.project
+        text = project.get_chapter(chapter)
+        if not text.strip():
+            return Result(False, f"第{chapter}章没有正文，无法应用修改")
+
+        outcome = ArticleFixer.apply_confirmed_fixes_detailed(text, issues)
+        lines = [f"命中 {outcome.applied} 处 / 未命中 {outcome.missed} 处 / "
+                 f"跳过 {outcome.skipped} 处"]
+        lines.extend(outcome.details[:10])
+        if not outcome.applied or outcome.text == text:
+            return Result(False, f"第{chapter}章没有实际改动（锚点都没命中）", lines)
+
+        backup = self._backup_project(project)
+        project.add_chapter(
+            chapter, project.chapter_titles.get(chapter, f"第{chapter}章"),
+            outcome.text,
+        )
+        project.save()
+        lines.append(f"已写回第{chapter}章（{len(text):,} → {len(outcome.text):,} 字）")
+        if backup:
+            lines.append(f"覆盖前备份 {backup.name}")
+        return Result(True, f"第{chapter}章已应用 {outcome.applied} 处修改", lines)
 
     # ========== 运行时状态 ==========
 

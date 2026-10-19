@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.writing_engine import WritingOrchestrator, KnowledgeBridge
-from src.review_engine import ReviewOrchestrator
+from src.review_engine import ReviewOrchestrator, build_novel_context
 from src.utils.logger import logger
 from src.utils.cost_tracker import get_tracker
 from src.utils.llm_client import LLMClient
@@ -363,16 +363,26 @@ def handle_write(user_input, use_kb, model_tier):
 
 # ========== 板块三：审稿 ==========
 
-def handle_review(article_text):
+def handle_review(article_text, novel_mode=False):
     if not article_text.strip():
         return "无", "无", "无", "无", "", cost_panel()
     try:
-        result = reviewer.review(article_text)
+        profile = "article"
+        context = ""
+        if novel_mode and _novel_project:
+            profile = "novel"
+            context = build_novel_context(
+                project=_novel_project, engine=_novel_engine, plot=_novel_plot,
+            )
+        result = reviewer.review(article_text, context=context, profile=profile)
         fixed = reviewer.apply_fixes(article_text, result)
         l1 = "\n".join(f"- {i.description}" for i in result.level1_changes) or "无"
         l2 = "\n".join(f"- {i.description}\n  建议: {i.suggestion}" for i in result.level2_changes) or "无"
         l3 = "\n".join(f"- [{i.agent}] {i.description}\n  指引: {i.suggestion}" for i in result.level3_guidance) or "无"
         rpt = reviewer.format_report(result)
+        if result.failed_reports:
+            rpt = (f"> ⚠️ {len(result.failed_reports)}/{len(result.reports)} 个维度失败，"
+                   f"结论不完整。\n\n") + rpt
         return l1, l2, l3, rpt, fixed, cost_panel()
     except Exception as e:
         return f"错误: {e}", "", "", "", "", cost_panel()
@@ -1052,6 +1062,11 @@ def create_app():
                     with gr.Column(scale=1):
                         load_btn = gr.Button("📥 加载写作区文章", variant="secondary")
                         r_input = gr.Textbox(label="文章内容", lines=10)
+                        novel_review_chk = gr.Checkbox(
+                            label="小说向审稿（注入角色/伏笔/世界观状态）",
+                            info="需先在长篇小说工作台加载项目",
+                            value=False,
+                        )
                         r_btn = gr.Button("开始审稿", variant="primary")
                     with gr.Column(scale=2):
                         r1 = gr.Markdown(label="Level 1 · 自动修改")
@@ -1061,7 +1076,7 @@ def create_app():
                         fixed_out = gr.Markdown(label="修改后文章")
 
                 load_btn.click(fn=lambda s: s, inputs=[article_state], outputs=[r_input])
-                r_btn.click(fn=handle_review, inputs=[r_input], outputs=[r1, r2, r3, rpt, fixed_out, cost_md])
+                r_btn.click(fn=handle_review, inputs=[r_input, novel_review_chk], outputs=[r1, r2, r3, rpt, fixed_out, cost_md])
 
                 gr.Markdown("---")
                 gr.Markdown("### 端到端：写作 → 审稿")

@@ -71,7 +71,7 @@ class TestBaseReviewAgent:
         assert report.issues[0].description == "缺少反例"
 
     def test_parse_response_invalid_json(self):
-        """无效 JSON 应返回空 issues（不展示原始文本）。"""
+        """无效 JSON 应显式标记为失败，而不是伪装成「没问题」。"""
         agent = BaseReviewAgent(
             name="proofread",
             system_prompt="test",
@@ -79,9 +79,11 @@ class TestBaseReviewAgent:
         response = "这篇文章没有错别字。"
         report = agent._parse_response(response, "art_002")
         assert report.agent == "proofread"
+        assert report.status == "failed"
+        assert report.error
         assert "JSON 解析失败" in report.overall_assessment
         assert len(report.issues) == 0  # JSON 解析失败返回空 issues
-        assert report.score == 5.0
+        assert report.score == 0.0
 
     def test_parse_response_malformed_json(self):
         """部分解析失败的 JSON。"""
@@ -91,7 +93,8 @@ class TestBaseReviewAgent:
         )
         response = '{"overall_assessment": "好", issues: null}'
         report = agent._parse_response(response, "art_003")
-        # JSON 解析失败（issues: null 非法），返回固定信息 + 空 issues
+        # JSON 解析失败（issues: null 非法），显式标记失败 + 空 issues
+        assert report.status == "failed"
         assert "JSON 解析失败" in report.overall_assessment
         assert len(report.issues) == 0
 
@@ -250,6 +253,22 @@ class TestArticleFixer:
         result = fixer.apply_confirmed_fixes(text, issues)
         assert "长句太复杂。需要拆分调整。" in result
 
+    def test_apply_confirmed_fixes_dict_input(self):
+        from src.review_engine.fixer import ArticleFixer
+        fixer = ArticleFixer()
+        text = "林凡站在山门前，深吸一口气。"
+        dict_issues = [
+            {
+                "description": "用词替换",
+                "before_text": "林凡站在山门前",
+                "after_text": "林凡巍然立于山门前",
+            }
+        ]
+        outcome = fixer.apply_confirmed_fixes_detailed(text, dict_issues)
+        assert outcome.applied == 1
+        assert "林凡巍然立于山门前，深吸一口气。" == outcome.text
+
+
     def test_format_review_report_empty(self):
         from src.review_engine.fixer import ArticleFixer
         fixer = ArticleFixer()
@@ -318,3 +337,41 @@ class TestOrchestratorWithFixer:
         aggregated = AggregatedReview(article_id="art_001")
         report = orchestrator.format_report(aggregated)
         assert "# 📋 审稿报告" in report
+
+
+class TestPassGateAndIssueClassification:
+    """测试达标放行判定与硬伤/灵感分类。"""
+
+    def test_passed_when_no_issues(self):
+        agg = AggregatedReview(article_id="art_001")
+        assert agg.passed is True
+        assert len(agg.blocking_issues) == 0
+        assert len(agg.advisory_issues) == 0
+
+    def test_not_passed_when_has_level1_blocker(self):
+        agg = AggregatedReview(
+            article_id="art_001",
+            level1_changes=[
+                ReviewIssue(agent="校对", level=1, description="错别字", before_text="的", after_text="得")
+            ],
+            reports=[
+                ReviewReport(agent="校对", score=8.5, status="ok")
+            ]
+        )
+        assert len(agg.blocking_issues) == 1
+        assert agg.passed is False
+
+    def test_passed_when_only_advisory_and_score_high(self):
+        agg = AggregatedReview(
+            article_id="art_001",
+            level2_changes=[
+                ReviewIssue(agent="语言文风", level=2, description="动词可更有画面感", severity="info")
+            ],
+            reports=[
+                ReviewReport(agent="语言文风", score=8.5, status="ok")
+            ]
+        )
+        assert len(agg.blocking_issues) == 0
+        assert len(agg.advisory_issues) == 1
+        assert agg.passed is True
+

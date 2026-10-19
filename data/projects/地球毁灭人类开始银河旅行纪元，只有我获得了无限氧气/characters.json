@@ -25,6 +25,7 @@
           "目睹卡尔·霍克的冷酷后，用成本问题反问卡尔",
           "询问07号记忆备份的保存日期"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "反抗意识",
@@ -47,6 +48,7 @@
           "前往服务器机房查看记忆备份文件",
           "尝试突破防火墙权限以访问07号当前的神经信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "勇敢",
@@ -77,6 +79,7 @@
           "与扎克合作下载并转存数据包",
           "发现07号实为表弟苏辰"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "勇敢",
@@ -107,6 +110,7 @@
           "成功进入机房并下载封存数据包",
           "在外界帮助下完成三秒数据中断以掩盖外部设备接入"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -119,6 +123,7 @@
           "查看扎克提供的热成像图，发现十三个红点向深处移动",
           "听到扎克解释后僵住，意识到危险加剧"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -133,6 +138,7 @@
           "接受扎克关于苏辰已死的说法",
           "抓住绳索下井"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "信任",
@@ -151,6 +157,7 @@
         "chapter": 16,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -166,6 +173,7 @@
           "流出蓝色血液",
           "看见妹妹林雪的影子"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "意识连接能力（初步）",
@@ -185,6 +193,7 @@
           "触摸检修面板",
           "钻入垂直通道向下爬"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -200,6 +209,7 @@
           "从林雪掌心接收蓝色珠子并攥紧",
           "说‘我知道路’，决定继续行动"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚定",
@@ -227,6 +237,7 @@
           "与林雪见面并对话",
           "被蓝色纹路覆盖，接受作为触发点"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "获得临时视觉提升，接入意识网络",
@@ -245,6 +256,7 @@
           "接受林雪的指引，理解自己作为原点的角色",
           "主动启动培养皿液体排出"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "成为意识网络的心脏，能感知并连接六十个胎儿的意识"
@@ -261,6 +273,7 @@
           "用心跳同步六十个胎儿",
           "目睹林雪放手"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "意识场同步能力增强"
@@ -275,6 +288,7 @@
           "目送林雪走向自己的方向，没有阻拦",
           "接受与胎儿们的连接断裂"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -288,6 +302,7 @@
           "沿着最细的蓝色纹路走",
           "跟在女人轮廓的影子后面深入管道层"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -303,6 +318,7 @@
           "转身查看黑暗逼近后回身面对影子",
           "坠入蓝色液体"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -317,6 +333,7 @@
           "接收林雪通过涟漪传递的信息",
           "双手出现蓝色纹路"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "获得蓝色纹路（可能与六十个胎儿产生连接能力）"
@@ -334,6 +351,7 @@
           "通过蓝色纹路向胎儿们说出‘我听见了’",
           "激活培养皿碎片各自独立旋转"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "同理心",
@@ -368,6 +386,7 @@
           "选择‘往上’",
           "随平台上升穿过膜"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -386,6 +405,7 @@
           "得知第七十三个心跳不在当前网络层",
           "转身走向根须脱落后露出的缝隙中的阳光"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚定",
@@ -412,6 +432,7 @@
           "检测到远处废墟中规律闪动的蓝光（1.2秒一次）",
           "决定向废墟进发，途中手掌被灌木刺伤"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "谨慎",
@@ -441,6 +462,7 @@
           "解读蓝光莫尔斯电码拼出FATHER",
           "走到井边，与升起的神秘人对视并对话"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -458,6 +480,7 @@
           "目睹父亲融入井中",
           "转身走向第七十四个信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚韧",
@@ -490,6 +513,7 @@
           "与自称‘第七十五个’的女人对话，得知自己是第七十六个和第一个外部节点",
           "感受掌心蓝色纹路彻底消失，按心脏感受六十次脉搏，向山脊方向走去"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "成为外部网络第一个节点，能够感知废墟裂缝中的蓝光连接"
@@ -508,6 +532,7 @@
           "与女人（第七十五个）对话，得知自己是第七十六个",
           "接收父亲发出的莫尔斯电码'走吧'"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -527,6 +552,7 @@
           "在悬空走道上接收到第七十四个信号源的信号",
           "走向暖黄灯光下的人影"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -543,6 +569,7 @@
           "将林雪的培养皿碎片与六十个胎儿信号放在一起",
           "打开探测接口记录第七十四个信号源"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -560,6 +587,7 @@
           "用胸口敲击三次发送信号确认，得到回应后迈上左边桥",
           "走到桥尽头，观察并触碰壳壁，倾听第七十三个节点的讲述"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "谨慎",
@@ -589,6 +617,7 @@
           "用手指关节敲击壳壁回应“我在这里”",
           "重新贴上手，感知频率变化"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -605,6 +634,7 @@
           "探测到古老刻痕中的裂缝并记录数据",
           "接受七十三号给予的培养皿碎片"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "洞察力",
@@ -632,6 +662,7 @@
           "被白发男人塞入金属针",
           "被壳壁裂缝吸入内部信息层"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "可以直接用手感应壳壁内部裂纹",
@@ -651,6 +682,7 @@
           "发现林雪被拆成六十条线系在古老信息层",
           "接入第七十七个更古老的频率，感受到其敲击"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚韧",
@@ -683,6 +715,7 @@
           "闭眼感知六十条线垂向深处",
           "试图用莫尔斯电码询问第七十七个的身份"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -699,6 +732,7 @@
           "向七十七号确认林雪情况",
           "未回答七十七号关于林雪是否还在等的问题"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -714,6 +748,7 @@
           "获得试验场底层逻辑（地基）的信息",
           "停止与任何外部频率共振，独立敲击并转身离开"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚韧",
@@ -746,6 +781,7 @@
           "接过七十三号递来的金属针",
           "转身向更深处走去"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚定",
@@ -778,6 +814,7 @@
           "得知妹妹在竖井深处刻了二十二年",
           "攥紧金属针，进入竖井深处"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "决心",
@@ -793,13 +830,52 @@
           "确认试验场背后存在更深层的真相，妹妹的牺牲与父亲的选择赋予其新的使命感"
         ],
         "summary": "林辰在通道尽头找到父亲的真身，看到刻满名字的壳壁和妹妹的笔迹，得知妹妹在竖井深处刻了二十二年，带着金属针的共鸣毅然踏入竖井。"
+      },
+      {
+        "chapter": 51,
+        "mood": "冷静警觉，掌控节奏后的短暂震动",
+        "key_actions": [
+          "独自走下竖井，数着心跳与台阶，在第六十步台阶消失时用针卡住井壁裂缝",
+          "指出井边女人踝骨的旧伤与新生步伐的矛盾，试探其身份",
+          "以针尖在壳壁上划出横线，援引壳壁规则第四条要求女人站上去说出名字与存在理由，揭穿偏移是假的",
+          "识破通道尽头的真壳壁——名字刻得端正、并无偏移，指出女人把他引到了假壳壁",
+          "向女人与父亲同时提出两条件，并保留第三条不说，逼女人证明",
+          "将针尖对准三秒间隙的空点，掌心裂缝自行裂开，三滴蓝色液体沿手臂流向针尖"
+        ],
+        "relationship_changes": [
+          {
+            "target": "女人（井边的第七十七个）",
+            "old": "陌生的引导者/交易对象",
+            "new": "被识破的欺骗者，暂时保留合作",
+            "reason": "她诱导他切假壳壁，真壳壁上的名字根本未偏移；但他仍需她指路",
+            "intensity": 3
+          },
+          {
+            "target": "父亲（神秘人）",
+            "old": "怀疑、保持距离",
+            "new": "有限度的采信",
+            "reason": "父亲关于女人吞名的警告被当场证实",
+            "intensity": 6
+          }
+        ],
+        "personality_shifts": [],
+        "skills_gained": [
+          "主动运用壳壁规则第四条进行身份验证",
+          "掌心裂缝可自行开裂，渗出蓝色液体注入针身"
+        ],
+        "belief_changes": [
+          "不再接受任何人给的现成路线，改为自己设定验证规则（横线测试）",
+          "意识到妹妹留下的三秒间隙里，还藏着另一个人的三秒"
+        ],
+        "summary": "林辰下到竖井平台，用规则第四条反将井边女人一军，识破她引自己去切假壳壁的算计，随后在父亲与女人对峙中夺回主动权，最终将针尖抵进三秒间隙的空点。"
       }
     ],
     "relationships": {
       "苏晴": {
         "状态": "友好",
         "强度": 8,
-        "描述": "青梅竹马，地球毁灭后重逢，是少数他信任的人之一"
+        "描述": "青梅竹马，地球毁灭后重逢，是少数他信任的人之一",
+        "起始章": 0
       },
       "卡尔·霍克": {
         "状态": "信任与共赴目标",
@@ -809,7 +885,8 @@
       "艾莉亚": {
         "状态": "暗恋",
         "强度": 6,
-        "描述": "自由商贩，精明利落，多次帮助林辰，但林辰不敢暴露深层秘密"
+        "描述": "自由商贩，精明利落，多次帮助林辰，但林辰不敢暴露深层秘密",
+        "起始章": 0
       },
       "安德森博士": {
         "状态": "愧疚与怀疑",
@@ -852,9 +929,15 @@
         "起始章": 35
       },
       "父亲（神秘人）": {
-        "状态": "直接面对并接受指引",
-        "强度": 5,
-        "起始章": 50
+        "状态": "有限度的采信",
+        "强度": 6,
+        "起始章": 50,
+        "最近变化": {
+          "chapter": 51,
+          "from": "怀疑、保持距离",
+          "to": "有限度的采信",
+          "reason": "父亲关于女人吞名的警告被当场证实"
+        }
       },
       "林雪（妹妹的信号源）": {
         "状态": "更深刻的领悟——她成为了规则",
@@ -905,6 +988,17 @@
         "状态": "传承",
         "强度": 5,
         "起始章": 49
+      },
+      "女人（井边的第七十七个）": {
+        "状态": "被识破的欺骗者，暂时保留合作",
+        "强度": 3,
+        "起始章": 51,
+        "最近变化": {
+          "chapter": 51,
+          "from": "陌生的引导者/交易对象",
+          "to": "被识破的欺骗者，暂时保留合作",
+          "reason": "她诱导他切假壳壁，真壳壁上的名字根本未偏移；但他仍需她指路"
+        }
       }
     },
     "arc_summary": "从隐藏能力的幸存者，到被迫卷入势力冲突，最终决定用自己的能力打破银河氧气垄断，创造一个更公平的生存环境"
@@ -936,6 +1030,7 @@
           "用商业逻辑说服/压制安德森",
           "注意到林辰的质疑并回以警告"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -947,6 +1042,7 @@
         "key_actions": [
           "收到安全系统警报后没有立即干预，而是等待林辰的下一步"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "掌控欲",
@@ -966,6 +1062,7 @@
           "通过监控观察林辰的机房行动",
           "命令安保部调出地下三层所有清洁工名单"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "城府",
@@ -988,6 +1085,7 @@
           "发现三秒数据中断并捕捉到来自地下管道层的信号指纹",
           "下令暂缓清洁工名单，要求调查地下三层管道维修记录和生物信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "多疑",
@@ -1009,6 +1107,7 @@
           "调取维修员杰克·罗德的排班记录，发现替班对象编号07",
           "确认林辰潜入时间与抢修时间高度吻合"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1024,6 +1123,7 @@
           "向监察员发送查询请求（后撤回）并改为查询07号紧急联系人",
           "下令封锁C-7区所有出入口，亲自步行下楼"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1037,6 +1137,7 @@
           "要求调取五年前实验体转移记录",
           "要求安德森博士亲自过来"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1054,6 +1155,7 @@
           "要求调取一级权限档案编号C-9-S-17",
           "命令安德森博士携带五年前伦理审查文件原件到地下四层"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1068,6 +1170,7 @@
           "调取一级权限档案并展示证据",
           "接受安德森的失败真相后，收到艾莉亚关于林辰信号消失的消息，中止对话离开"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "掌控欲",
@@ -1089,6 +1192,7 @@
           "前往地下四层样本库，发现苏辰的容器标签显示转移目的地为墨丘利矿区第七号试验场",
           "关闭通讯后独自面对安德森，听取关于黑石重工和项目‘容器’的揭露"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "果断",
@@ -1111,6 +1215,7 @@
           "收起纤维样本密封袋",
           "听到林辰信号后立即下令去顶层"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1127,6 +1232,7 @@
           "得知‘供体’实为饲料，艾莉亚是接收者",
           "感知电梯异常震颤并判断危险"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1144,6 +1250,7 @@
           "推断试验场不在轨道上",
           "在黑暗中紧盯门缝的荧光"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1162,6 +1269,7 @@
           "询问安德森‘他’是谁",
           "发现手背上出现又消褪的淡蓝色纹路"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1177,6 +1285,7 @@
           "质问安德森关于容器项目的真相",
           "跨出电梯，接受自己成为实验的一部分"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1192,6 +1301,7 @@
           "判断出试验场正在评估而非适应他",
           "主动向走廊深处走去，表示要‘去见它’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "果断",
@@ -1212,6 +1322,7 @@
           "体验到视野分裂，看见试验场外部结构及其与胎儿的连接",
           "被光网络包裹、悬浮，身体被蓝色纹路渗透"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "理性掌控感",
@@ -1242,6 +1353,7 @@
           "主动与试验场意识建立连接，成为六十个胎儿的神经中枢",
           "要求安德森博士为六十个未出生的孩子写信"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "冷漠",
@@ -1274,6 +1386,7 @@
           "以倒置树形神经元包裹自身，成为胎儿的大脑",
           "教会胎儿结构、连接与拼写"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "成为意识网络的大脑，能处理并组织胎儿群体的意识信号"
@@ -1287,6 +1400,7 @@
         "key_actions": [
           "向六十个胎儿发送呼吸指令，拆解为生理信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "更精细的意识操控能力"
@@ -1302,6 +1416,7 @@
           "接受仅剩十一个孩子的连接",
           "在意识场中说出‘路，才开始’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "沉重负担感",
@@ -1337,6 +1452,7 @@
           "踩脚感受金属地面的凉意",
           "开始拼合培养皿底座上的花瓣"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1350,6 +1466,7 @@
           "揭示林雪是协议，林辰是心脏",
           "托着培养皿底座"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1364,6 +1481,7 @@
           "承认林雪的离去是‘爱’",
           "收拢花瓣并宣告‘路的开始’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "情感表达",
@@ -1395,6 +1513,7 @@
           "让林辰选择向上或向下",
           "手背烙印蓝色纹路，平台上升"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "真诚",
@@ -1428,12 +1547,14 @@
       "安德森": {
         "状态": "友好",
         "强度": 7,
-        "描述": "首席科学家，忠诚但内心挣扎"
+        "描述": "首席科学家，忠诚但内心挣扎",
+        "起始章": 0
       },
       "银河议会": {
         "状态": "敌对",
         "强度": 5,
-        "描述": "表面合作，实际在渗透议会成员"
+        "描述": "表面合作，实际在渗透议会成员",
+        "起始章": 0
       },
       "安德森博士": {
         "状态": "同病相怜的盟友",
@@ -1500,6 +1621,7 @@
         "chapter": 3,
         "mood": "未知（仍在等待哥哥苏辰）",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1509,6 +1631,7 @@
         "chapter": 4,
         "mood": "未知（本章未直接出场）",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1518,6 +1641,7 @@
         "chapter": 7,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1527,6 +1651,7 @@
         "chapter": 16,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1538,6 +1663,7 @@
         "key_actions": [
           "发送一个名字给胎儿"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1548,12 +1674,14 @@
       "林辰": {
         "状态": "友好",
         "强度": 9,
-        "描述": "信赖的挚友，隐约察觉他有秘密但从不追问"
+        "描述": "信赖的挚友，隐约察觉他有秘密但从不追问",
+        "起始章": 0
       },
       "卡尔·霍克": {
         "状态": "敌对",
         "强度": 7,
-        "描述": "公开反对他的垄断政策，多次在议会上交锋"
+        "描述": "公开反对他的垄断政策，多次在议会上交锋",
+        "起始章": 0
       }
     },
     "arc_summary": "从理想主义的改革者，逐渐认识到权力的残酷，最终与林辰合作走上更务实的抗争之路"
@@ -1580,6 +1708,7 @@
         "chapter": 3,
         "mood": "未知",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1589,6 +1718,7 @@
         "chapter": 7,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1603,6 +1733,7 @@
           "找到第八个实验体档案关联自身，要求卡尔保密",
           "向卡尔坦陈‘熟悉感’源于脑电波频率记忆"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "谨慎",
@@ -1629,6 +1760,7 @@
         "key_actions": [
           "紧急闯入汇报林辰信号出现在轨道电梯终端站（距离地面320公里）"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -1642,6 +1774,7 @@
         "key_actions": [
           "报告林辰信号异常：信号频率与终端站完全匹配，且林辰本身就是信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "沉稳",
@@ -1660,6 +1793,7 @@
         "chapter": 16,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1672,6 +1806,7 @@
           "第一个发送名字",
           "信号穿透岩层抵达胎儿意识空间"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "意识信号穿透能力增强"
@@ -1684,7 +1819,8 @@
       "林辰": {
         "状态": "暗恋",
         "强度": 6,
-        "描述": "感兴趣但保持距离，知道他有秘密"
+        "描述": "感兴趣但保持距离，知道他有秘密",
+        "起始章": 0
       },
       "卡尔·霍克": {
         "状态": "更深的相互依赖与秘密共担",
@@ -1694,7 +1830,8 @@
       "苏晴": {
         "状态": "友好",
         "强度": 4,
-        "描述": "表面客气，实际觉得她太理想化"
+        "描述": "表面客气，实际觉得她太理想化",
+        "起始章": 0
       }
     },
     "arc_summary": "从纯粹的利己主义者，逐渐被林辰和苏晴的理想感染，最终选择站在正义一方"
@@ -1726,6 +1863,7 @@
           "遭卡尔拒绝后同意按原计划进行",
           "对林辰询问记忆备份表现出警惕"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚持伦理",
@@ -1747,6 +1885,7 @@
           "试图用技术术语为记忆清除辩护",
           "面对林辰的直视时回避问题"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "正直",
@@ -1765,6 +1904,7 @@
         "chapter": 3,
         "mood": "情绪崩溃后可能仍在恢复",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1776,6 +1916,7 @@
         "key_actions": [
           "提交了林辰的助手评估报告（已发生）"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1788,6 +1929,7 @@
           "被卡尔凌晨质问时试图辩解但被中断",
           "没有实际行动，仅在通讯中表现出迟疑和语塞"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1797,6 +1939,7 @@
         "chapter": 7,
         "mood": "未出场，但被卡尔点名要求亲自到场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -1811,6 +1954,7 @@
           "坦白了07号因神经稳定剂副作用被秘密封存，以及08号（林辰妹妹）在转移途中死亡的事实",
           "无法回答卡尔关于08号目的地的问题，最终文件袋滑落，陷入绝望"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "诚实",
@@ -1838,6 +1982,7 @@
           "主动向卡尔揭示C-9区掩体由黑石重工按银河议会拨款建造",
           "透露项目代号‘容器’及供体来自墨丘利流浪者聚居区"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "隐瞒倾向",
@@ -1867,6 +2012,7 @@
           "承认清理小组处理过‘废品’",
           "听到林辰在轨道上后震惊后退并推断试验场不在轨上"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "勇敢",
@@ -1889,6 +2035,7 @@
           "透露容器项目真正研究对象是‘我们’（即研究人员）",
           "在电梯失控时跪地崩溃"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "隐瞒倾向",
@@ -1913,6 +2060,7 @@
           "揭示掩体是一个共同接收装置，人类是信号持有者",
           "最后在黑暗中低语‘他来了’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "脆弱",
@@ -1938,6 +2086,7 @@
           "暗示卡尔就是被寻找的对等信号持有者",
           "在黑暗中低语‘信号已经锁定了’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "理性",
@@ -1961,6 +2110,7 @@
           "解释种子与母本的概念，指出容器内的婴儿以卡尔为模版完成触发",
           "跟随卡尔走出电梯，并以研究者的目光注视他"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "理性",
@@ -1989,6 +2139,7 @@
           "指出蓝色纹路已沉入神经末梢并开始逆向流动",
           "警告评估结果将决定试验场接纳还是瓦解卡尔"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "情绪稳定性",
@@ -2009,6 +2160,7 @@
           "轻声说出'终于找到它的主体了'，确认卡尔即触发点",
           "眼眶泛红，流露出对卡尔命运的同情"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "冷漠/学术超然",
@@ -2038,6 +2190,7 @@
           "跪地捡起碎眼镜，在内心决定写六十封信",
           "解码胎儿通过莫尔斯电码传递的信息"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "理性客观",
@@ -2059,6 +2212,7 @@
         "key_actions": [
           "通过通讯器解释培养周期记录"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2070,6 +2224,7 @@
         "key_actions": [
           "在意识空间外围插入声音，解释实验最终阶段"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2081,6 +2236,7 @@
         "key_actions": [
           "监测数据流并告诉扎克这是比最坏更坏的情况"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2094,6 +2250,7 @@
           "听到卡尔道歉后沉默地笑",
           "想说‘做得好’但未说出口"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "固执/偏执",
@@ -2123,6 +2280,7 @@
           "调出二十二年前的实验报告并添加结尾",
           "关掉屏幕"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2136,6 +2294,7 @@
           "手指按在关机键上许久后移开",
           "说‘做得好’并微笑"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "控制欲",
@@ -2217,6 +2376,7 @@
           "使用自己的平板帮助林辰加密转存数据包",
           "离开前留下意味深长的告诫"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "神秘",
@@ -2237,6 +2397,7 @@
         "key_actions": [
           "疑似利用地下管道层接入系统协助林辰（仅推断）"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2250,6 +2411,7 @@
           "指出‘他们’在向更深处移动，并闻到‘死人’的气味",
           "收拾背包准备带领林辰继续深入"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2266,6 +2428,7 @@
           "解释自己帮助林辰的原因：收到过妹妹的虚假数据直到上月停止",
           "先下井，示意林辰跟随"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "自我披露",
@@ -2284,6 +2447,7 @@
         "chapter": 16,
         "mood": "未出场",
         "key_actions": [],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2297,6 +2461,7 @@
           "目睹林辰流血和幻觉",
           "看到自己的影子分裂成六十个"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -2312,6 +2477,7 @@
           "跪在检修平台观察物理变化",
           "质问安德森情况"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -2362,6 +2528,7 @@
           "展示倒置树形神经元符号，将卡尔下坠包裹入光网络",
           "与卡尔提出交易"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2402,6 +2569,7 @@
           "将自身概念包刻写在卡尔与安德森的前额叶皮层",
           "通过网络向林辰的探测器发送新的信号源"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "主动程度",
@@ -2449,6 +2617,7 @@
           "将自身残缺的子宫记忆与存在感传递给他",
           "用莫尔斯电码拼写了单词'BE'（或'是'）"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "首次激活感官与自己从未使用的身体机能",
@@ -2466,6 +2635,7 @@
           "在管道壁上投射出六十个人形剪影",
           "控制探测器屏幕显示指令"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2480,6 +2650,7 @@
           "收缩培养皿网格，瞳仁转向林辰的蓝色血液",
           "告知‘路，才开始’后消失"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2493,6 +2664,7 @@
           "同步模仿林雪的动作",
           "培养皿开始排出液体"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "开始形成初步的意识网络，振动频率同步变化"
@@ -2510,6 +2682,7 @@
           "首次独立搏动",
           "排空液体并裂开培养皿"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "独立性",
@@ -2535,6 +2708,7 @@
           "所有信号节点离线",
           "独立运行，不再需要外部同步"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2547,6 +2721,7 @@
           "意识独立后以培养皿碎片悬浮旋转",
           "通过林雪协议维持个体分离"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2559,6 +2734,7 @@
           "各自独立搏动，产生零三秒的共有间隙",
           "在林辰回应后，培养皿碎片开始各自旋转"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "独立性",
@@ -2588,6 +2764,7 @@
         "key_actions": [
           "在林辰选择时同时加快心跳以示支持"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2599,6 +2776,7 @@
         "key_actions": [
           "在林辰感知中集体停跳半拍后恢复"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2611,6 +2789,7 @@
           "心跳同时停了一拍",
           "随后以更高频率加速跳动"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2622,6 +2801,7 @@
         "key_actions": [
           "心跳与林辰同步爬升，产生共振"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2675,6 +2855,7 @@
           "在试验场深层管道层被林辰的探测器捕获",
           "以林辰妹妹的心跳为频率但强度乘以六十倍开始闪烁"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2709,6 +2890,7 @@
           "用竖起一根食指的动作宣告‘我是这一个’",
           "不再依赖哥哥，转身走向自己选择的方向"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -2725,6 +2907,7 @@
           "以右手按在林辰胸口后转化为光球升空",
           "成为六十个胎儿之间的连接协议"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "成为连接协议（维持六十个胎儿独立）"
@@ -2738,6 +2921,7 @@
         "key_actions": [
           "（以规则形式）在六十个心跳之间留下零三秒的间隙"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "存在形式",
@@ -2765,6 +2949,7 @@
           "通过林辰的回忆被再次讲述（独立、转化为规则、被拆解为六十条线）",
           "成为第七十七个判断‘值不值得’的核心标准"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2811,6 +2996,7 @@
           "对林辰说出‘对不起’",
           "跟随林辰进入通道"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "愧疚感",
@@ -2832,6 +3018,7 @@
           "跪在地上双手抱头颤抖",
           "恢复后告知‘门后面是下行通道’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "决心",
@@ -2855,6 +3042,7 @@
           "目睹种子和林雪",
           "试图拉住林辰阻止他被纹路覆盖"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [
@@ -2872,6 +3060,7 @@
           "叫住林辰问去向",
           "参与拼合花瓣"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2886,6 +3075,7 @@
           "感受碎片内独立的搏动",
           "没有随平台上升，留在原地"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "坚忍",
@@ -2934,6 +3124,7 @@
           "放下右手后抬起左手，弯曲小指发光",
           "最后小指轻轻勾动，仿佛告别"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "意识显现度",
@@ -2953,6 +3144,7 @@
           "蓝色纹路缠绕成女人轮廓",
           "抬起左手弯曲小指发出光信号‘REACH’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2967,6 +3159,7 @@
           "抬起左手食指指向林辰身后的黑暗",
           "双手贴壁发光，与其他影子一起使管道碎裂"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -2982,11 +3175,12 @@
           "指出第七十三个心跳不在当前网络层",
           "退化为网络中的第七十二条纹路，作为永远的锚点"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "存在形态",
-            "old": "信号源",
-            "new": "人类形态+网络锚点",
+            "old": 5,
+            "new": 5,
             "reason": "从抽象的信号凝聚为具象的人，然后主动回归网络作为永久锚点"
           }
         ],
@@ -3026,6 +3220,7 @@
           "在竖井顶部以心跳形式存在，乘以六十倍强度",
           "通过心跳指引林辰"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3066,6 +3261,7 @@
           "说出‘你终于到了’",
           "做出与林雪相同的小指弯曲、食指直指胸口的手势"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3102,6 +3298,7 @@
           "解释妹妹修改规则的事实",
           "后退融入井中，化为光丝连接神经网"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "奉献",
@@ -3128,6 +3325,7 @@
         "key_actions": [
           "在井中通过莫尔斯电码向林辰发出‘等待’指令"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3139,6 +3337,7 @@
         "key_actions": [
           "通过穹顶的莫尔斯电码发出'走吧'信号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3152,6 +3351,7 @@
           "在穹顶核心最后一次闪烁，发送‘往前走’",
           "用蓝光为林辰铺设最后一段路"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3163,6 +3363,7 @@
         "key_actions": [
           "被第七十七个提及为‘在更深处等你’的人"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3176,6 +3377,7 @@
           "用与林雪相同的小指弯曲动作指向自己胸口，自称第七十八个",
           "侧身让开竖井入口，告知林辰妹妹在深处等"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "神秘性",
@@ -3189,30 +3391,84 @@
           "确认自己也是试验场一部分，以自我刻痕的方式完成了第七十八个节点"
         ],
         "summary": "父亲以残缺但真实的身体出现在林辰面前，揭示自己为第七十八个节点，并指引林辰进入竖井深处寻找林雪。"
+      },
+      {
+        "chapter": 51,
+        "mood": "沉重、急迫",
+        "key_actions": [
+          "从通道深处现身，逼近到距林辰、距真壳壁各五步的位置",
+          "警告林辰'别信她'，说明她被规则吞了一半又吐出来、靠吞名撑着",
+          "揭穿她要撬的节点下埋着六十个胎儿之一的真实姓名，撬开则那个胎儿永归规则",
+          "在林辰针触空点时开口提醒'三秒间隙里还有三秒'",
+          "最后一刻喊出'停'"
+        ],
+        "relationship_changes": [
+          {
+            "target": "林辰",
+            "old": "被儿子警惕、话不被采信",
+            "new": "警告被证实，获得有限信任",
+            "reason": "关于女人吞名的判断被当场印证",
+            "intensity": 6
+          },
+          {
+            "target": "女人（井边的第七十七个）",
+            "old": "裂隙中的对峙者",
+            "new": "公开互揭底牌的敌对",
+            "reason": "他必须阻止她撬节点，否则会有胎儿被规则吞掉",
+            "intensity": 2
+          }
+        ],
+        "personality_shifts": [],
+        "skills_gained": [],
+        "belief_changes": [
+          "确认不能让林辰独自进入三秒间隙的空点，最后一刻改口喊停"
+        ],
+        "summary": "父亲从深处走出，当面拆穿井边女人吞名撑身的真相与她真正想撬的节点，但始终不靠近真壳壁；在儿子触到空点时，他与女人一个喊停一个喊走。"
       }
     ],
     "relationships": {
       "林辰": {
-        "状态": "面对面指引",
-        "强度": 5,
-        "起始章": 50
+        "状态": "警告被证实，获得有限信任",
+        "强度": 6,
+        "起始章": 50,
+        "最近变化": {
+          "chapter": 51,
+          "from": "被儿子警惕、话不被采信",
+          "to": "警告被证实，获得有限信任",
+          "reason": "关于女人吞名的判断被当场印证"
+        }
       },
       "林雪（妹妹信号源）": {
         "状态": "她改为‘守护’，他仍为‘等待’，但网络联通",
         "强度": 5,
         "起始章": 36
+      },
+      "女人（井边的第七十七个）": {
+        "状态": "公开互揭底牌的敌对",
+        "强度": 2,
+        "起始章": 51,
+        "最近变化": {
+          "chapter": 51,
+          "from": "裂隙中的对峙者",
+          "to": "公开互揭底牌的敌对",
+          "reason": "他必须阻止她撬节点，否则会有胎儿被规则吞掉"
+        }
       }
     },
     "arc_summary": ""
   },
   "女人（第七十五个）": {
     "name": "女人（第七十五个）",
-    "aliases": [],
+    "aliases": [
+      "女人"
+    ],
     "role": "配角",
     "personality": {
       "冷静": 9,
       "神秘": 8,
-      "果断": 7
+      "果断": 7,
+      "可信度（表象）": 2,
+      "坦诚": 6
     },
     "speaking_style": "寡言但信息量密集，声音沙哑生锈，用简单句子揭示关键事实",
     "core_desire": "",
@@ -3230,6 +3486,7 @@
           "告知林辰自己是第七十五个，井里的人是第七十四个，林辰是第七十六个且是第一个出来的外部节点",
           "指出试验场向外延伸的本质，并观察林辰的反应后删除数据，改手势为摊开手掌"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3243,6 +3500,7 @@
           "用小指蜷起的手势激活穹顶的六边形纹路",
           "告诉林辰他是第七十六个，并指出道路向外"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "冷漠（机械性）",
@@ -3265,17 +3523,84 @@
           "说‘你走。我是观察点。不走。’",
           "嘴角那丝似笑非笑的弧度消退成更安静的表情"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
         "summary": "女人作为第七十五个节点，完成了自己的使命，安然留在场内，不再向前。"
+      },
+      {
+        "chapter": 51,
+        "mood": "被看穿后的干涩与茫然",
+        "key_actions": [
+          "撤掉台阶，把林辰引到自己的平台，提出'切掉一个名字'的交易",
+          "坦白第七十七个只是被林雪收走的原名，自己现在是'看守'，替林雪站空位站了二十二年",
+          "跛脚在需要示弱时发作、在需要取信时消失，反复切换",
+          "把林辰引向一面名字'偏移'的假壳壁，真正想撬的是埋着某个胎儿真名的节点",
+          "被逼站上横线，说出名字与存在理由，导致矩阵自动复位、偏移消失",
+          "承认自己吞了七个失败者的名字，掌心现出七个灰点",
+          "在真壳壁前画圈，标出妹妹停了三秒的空点"
+        ],
+        "relationship_changes": [
+          {
+            "target": "林辰",
+            "old": "交易对象、可引导的来客",
+            "new": "被反制的对手，只能靠'三条路'继续留在局中",
+            "reason": "骗局被当场拆穿，主动权转到林辰手里",
+            "intensity": 3
+          },
+          {
+            "target": "父亲（神秘人）",
+            "old": "互相提防的旧识",
+            "new": "当面互相揭底的僵持",
+            "reason": "父亲当场揭穿她吞名撑着不塌，她也反揭父亲只有一条路",
+            "intensity": 2
+          }
+        ],
+        "personality_shifts": [
+          {
+            "trait": "可信度（表象）",
+            "old": 7,
+            "new": 2,
+            "reason": "假壳壁的偏移是她伪造的，目的是骗林辰切错名字"
+          },
+          {
+            "trait": "坦诚",
+            "old": 3,
+            "new": 6,
+            "reason": "被识破后主动承认吞了七个失败者的名字，不再遮掩"
+          }
+        ],
+        "skills_gained": [],
+        "belief_changes": [
+          "确认'空位不塌我就能说话'——她的存在依赖空位，因此必须阻止矩阵被填",
+          "承认那些被吞的名字'每一个都是自己放弃的'，以此为自我辩护"
+        ],
+        "summary": "井边的女人自曝是失名的第七十七个，二十二年来替林雪站空位、靠吞失败者的名字维持自身；她试图诱林辰切假壳壁失败，被规则第四条逼出真话，最后交出通往核心的空点。"
       }
     ],
     "relationships": {
       "林辰": {
-        "状态": "护送与放手",
-        "强度": 5,
-        "起始章": 39
+        "状态": "被反制的对手，只能靠'三条路'继续留在局中",
+        "强度": 3,
+        "起始章": 39,
+        "最近变化": {
+          "chapter": 51,
+          "from": "交易对象、可引导的来客",
+          "to": "被反制的对手，只能靠'三条路'继续留在局中",
+          "reason": "骗局被当场拆穿，主动权转到林辰手里"
+        }
+      },
+      "父亲（神秘人）": {
+        "状态": "当面互相揭底的僵持",
+        "强度": 2,
+        "起始章": 51,
+        "最近变化": {
+          "chapter": 51,
+          "from": "互相提防的旧识",
+          "to": "当面互相揭底的僵持",
+          "reason": "父亲当场揭穿她吞名撑着不塌，她也反揭父亲只有一条路"
+        }
       }
     },
     "arc_summary": ""
@@ -3307,6 +3632,7 @@
           "按下按钮照亮金色丝线，指引林辰方向",
           "留在平台作为观察点，并拿出另一块满的碎片（第七十六号）低声自语"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3354,6 +3680,7 @@
           "解释自己的经历：第一个从壳壁穿出去的人，失败后意识一分为三，一截留在外侧成为零号，一截弹回成为七十二号",
           "告诉林辰‘还有时间，壳还没合上’"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3382,6 +3709,7 @@
           "通过莫尔斯电码回应林辰的探测，发送信息引导他走左边",
           "持续亮着蓝光作为林辰的后方锚点"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3418,6 +3746,7 @@
           "向林辰说明自己二十二年前被切成三截的经历",
           "在矩阵右下角刻下连接线"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "封闭",
@@ -3441,6 +3770,7 @@
           "在林辰发现裂缝后，在矩阵上再刻一道线形成叉",
           "揭示最终目标：不是合上缝，而是让它不再需要缝"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "信任",
@@ -3471,6 +3801,7 @@
           "将金属针塞入林辰掌心",
           "告诉林辰矩阵之外有更古老的裂缝，并嘱托他记住零号"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "冷漠",
@@ -3523,6 +3854,7 @@
           "在停顿五拍后，以频率连续变化回应林辰的信号",
           "持续稳定闪烁，维持零点三秒的间隙节奏"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3537,6 +3869,7 @@
           "解除与壳壁的锚点连接",
           "最后一次闪烁后信号完全消失"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3571,6 +3904,7 @@
           "用最后一次闪烁为林辰标定裂缝位置",
           "耗尽能量后彻底消失"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3613,6 +3947,7 @@
           "指示林辰放下碎片，并展示碎片渗透矩阵的过程",
           "用七次敲击揭示自己的身份：第一个被切成三截的人，一截成为七十三号，一截成为零号，一截坠入更深层"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3631,6 +3966,7 @@
           "提示林辰‘有人在更深处等你’并让他‘告诉那个在敲的人’",
           "主动关闭裂缝"
         ],
+        "relationship_changes": [],
         "personality_shifts": [
           {
             "trait": "生存目的感",
@@ -3687,6 +4023,7 @@
           "发出第十一次敲击，询问林雪是否还在等待",
           "停止坚持了二十多年的每三百四十一个心跳周期敲一次的习惯"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],
@@ -3730,6 +4067,7 @@
           "将刻满新纹路的金属针交给林辰，让他继续前行",
           "靠在壳壁上闭上眼睛，停止等待，开始休息"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [
           "完成将第七十七个频率完整嵌合自身"
@@ -3774,6 +4112,7 @@
           "在裂缝合上之前将自己的地基图谱嵌进林辰的心跳",
           "通过林辰向七十三号传递‘值得’的确认"
         ],
+        "relationship_changes": [],
         "personality_shifts": [],
         "skills_gained": [],
         "belief_changes": [],

@@ -123,10 +123,15 @@ def design_chapter_plot(self, chapter_num, outline_item, prev_summary="", existi
 
 | 档 | `max_tokens` | 来源 |
 |---|---|---|
-| flash | 4096 | `config.yaml:14` |
-| pro | 8192 | `config.yaml:24` |
+| flash | 16384 | `config.yaml` |
+| pro | 16384 | `config.yaml` |
 
-**注意**：`character_engine.ANALYSIS_MAX_TOKENS = 8192` 是**显式覆盖**（flash 档也要 8192），因为 4096 会把角色 JSON 硬截断——这是 A1 的成因。**fastpath 不得把这个覆盖改回去。**
+> 2026-10-13 两档从 4096 / 8192 提到 **16384**：V4 的思考会**先于**正文消耗这份预算，
+> 实测单次「思考 + 审稿 JSON」需要 6k~13k tokens，4096 会打满后返回**空 content**
+> （审稿 6 维里 4 维翻车）。端点实测可接受到 65536，16384 留了约 2 倍余量；
+> `max_tokens` 只是上限，用不到不会多花钱。
+
+**注意**：`character_engine.ANALYSIS_MAX_TOKENS = 16384` 是**显式覆盖**，因为预算不足会把角色 JSON 硬截断——这是 A1 的成因。**fastpath 不得把这个覆盖改回小值。**
 
 ### 2.5 计费单位
 
@@ -158,6 +163,22 @@ Chat Completions
 | 风险 | 失去 V4 思考能力 |
 
 **默认选它的理由**：**零行为变化**。端点、Key、模型名、`max_tokens` 全部与现状一致，只是补上了 `response_format` 与 thinking 控制。
+
+> **现状（2026-10-13，旧路径已先落地 thinking 与 json_object）**：`src/utils/llm_client.py`
+> 支持 `chat(..., thinking=..., json_mode=...)`：
+>
+> - `thinking` 的 wire 形状是 `extra_body={"thinking": {"type": "enabled"|"disabled"}}`
+>   —— **布尔 `thinking: false` 会被服务端 422 拒绝（expected struct）**，实测确认。
+>   缺省值来自 `config.yaml` 的 `llm.<tier>.thinking`，**当前两档都是 `true`**。
+> - `json_mode=True` 补 `response_format={"type": "json_object"}`。
+>
+> 触发这轮修复的现场：flash 档 6 个审稿维度里 4 个返回**空 content**，而
+> `completion_tokens` 打满 4096——预算全被思考吃掉。**决定保留思考**，把两档
+> `max_tokens` 提到 16384（实测单维「思考+正文」需 6k~13k），并给审稿加
+> `json_object` 约束：6/6 通过且 content 可解析。
+>
+> **P4-7a 迁移时**：把 `thinking` / `json_object` 两个策略收进 FastPath
+> （`build_model_settings` 正是为此设计的），不要在 `llm_client` 里留第二份实现。
 
 ### `strict`（可选）—— 最强约束
 
@@ -245,7 +266,7 @@ class DeepSeekFastPath:
 | 1 | `model_tier="flash"` / `"pro"` **仍然可用** | 现有 `tests/test_llm_client.py` **不改断言**全绿 |
 | 2 | `deepseek_v4_flash` / `deepseek_v4_pro` 两种键名都能解析 | 参数化测试跑 4 种键名形态 |
 | 3 | 改配置键名（如 `myprovider_fast`）**不再导致"模型层未配置"** | 用一个自定义后缀键名的临时配置 |
-| 4 | `ANALYSIS_MAX_TOKENS=8192` 的覆盖**未被回退** | 断言角色分析的 `max_tokens` 是 8192 而非 4096 |
+| 4 | `ANALYSIS_MAX_TOKENS=16384` 的覆盖**未被回退** | 断言角色分析的 `max_tokens` 是 16384，而不是更小的档位值 |
 | 5 | `DEEPSEEK_API_KEY` 仍能覆盖两个档位 | 现有环境变量优先级测试 |
 | 6 | CNY 配置仍生效 | 断言 `cost_limit` 拿到的是 `50 / 7.25` 而非 `50` |
 | 7 | **Compatibility 模式下不设 `openai_previous_response_id`** | 断言构造出的 model settings 里该键不存在（strict 模式同样） |

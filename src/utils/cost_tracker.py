@@ -90,6 +90,8 @@ class CostTracker:
         self._budget_cny = budget_cny
         self._usage_db_path = usage_db_path or ""
         self._usage_conn: Optional[sqlite3.Connection] = None
+        # 并行审稿会有多个 worker 线程同时落库，写操作必须串行化
+        self._db_lock = threading.Lock()
 
     # ========== 配置 ==========
 
@@ -127,32 +129,42 @@ class CostTracker:
         self._persist(record)
 
     def _persist(self, record: UsageRecord) -> None:
-        """把单条记录写入 llm_usage 小库（尽力而为，失败不影响主流程）。"""
+        """把单条记录写入 llm_usage 小库（尽力而为，失败不影响主流程）。
+
+        并行审稿会从多个 worker 线程同时落库：连接必须
+        `check_same_thread=False`，且建连与写入都要在同一把锁里串行化，
+        否则 SQLite 直接拒绝跨线程使用，记录被静默吞掉
+        （REVIEW-2026-10-12.md F3.3；实测 6 个维度只落 0-1 行）。
+        失败用 WARNING 而不是 DEBUG：这条库是对账依据，丢了必须看得见。
+        """
         if not self._usage_db_path:
             return
         try:
-            if self._usage_conn is None:
-                path = Path(self._usage_db_path)
-                path.parent.mkdir(parents=True, exist_ok=True)
-                self._usage_conn = sqlite3.connect(str(path))
+            with self._db_lock:
+                if self._usage_conn is None:
+                    path = Path(self._usage_db_path)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    self._usage_conn = sqlite3.connect(
+                        str(path), check_same_thread=False,
+                    )
+                    self._usage_conn.execute(
+                        "CREATE TABLE IF NOT EXISTS llm_usage ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "model_tier TEXT, model TEXT, prompt_tokens INT,"
+                        "completion_tokens INT, cost_cny REAL, duration REAL, created_at TEXT)"
+                    )
+                    self._usage_conn.commit()
                 self._usage_conn.execute(
-                    "CREATE TABLE IF NOT EXISTS llm_usage ("
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                    "model_tier TEXT, model TEXT, prompt_tokens INT,"
-                    "completion_tokens INT, cost_cny REAL, duration REAL, created_at TEXT)"
+                    "INSERT INTO llm_usage (model_tier, model, prompt_tokens, completion_tokens,"
+                    " cost_cny, duration, created_at) VALUES (?,?,?,?,?,?,?)",
+                    (record.model_tier, record.model, record.prompt_tokens,
+                     record.completion_tokens, round(record.cost_cny, 6),
+                     round(record.duration, 3),
+                     record.timestamp.strftime("%Y-%m-%d %H:%M:%S")),
                 )
                 self._usage_conn.commit()
-            self._usage_conn.execute(
-                "INSERT INTO llm_usage (model_tier, model, prompt_tokens, completion_tokens,"
-                " cost_cny, duration, created_at) VALUES (?,?,?,?,?,?,?)",
-                (record.model_tier, record.model, record.prompt_tokens,
-                 record.completion_tokens, round(record.cost_cny, 6),
-                 round(record.duration, 3),
-                 record.timestamp.strftime("%Y-%m-%d %H:%M:%S")),
-            )
-            self._usage_conn.commit()
         except Exception as e:
-            logger.debug(f"用量持久化失败: {e}")
+            logger.warning(f"用量持久化失败（对账库会少行）: {e}")
 
     @property
     def total_calls(self) -> int:

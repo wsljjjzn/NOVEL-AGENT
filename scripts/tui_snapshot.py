@@ -24,7 +24,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from src.novel.service import NovelService  # noqa: E402
 from src.tui.app import NovelWorkbench, ReaderScreen, SettingsModal  # noqa: E402
+from src.tui.review import ReviewModal  # noqa: E402
+
+
+class _ConfiguredService(NovelService):
+    """快照专用服务替身：报告「Key 已配置」，好让审稿浮层能被打开。
+
+    快照**不会**点「开始六维审稿」，因此这里不产生任何真实调用；
+    换成替身只是为了不依赖本机 .env。
+    """
+
+    def llm_status(self) -> dict:
+        return {"tiers": [], "configured": True, "budget_cny": 0.0}
 
 
 def snapshot(app, height: int) -> str:
@@ -35,13 +48,20 @@ def snapshot(app, height: int) -> str:
 
 async def shoot(screen: str, base_dir: str, width: int, height: int) -> dict[str, str]:
     shots: dict[str, str] = {}
-    app = NovelWorkbench(base_dir=base_dir)
+    # 需要拍审稿浮层的场景用替身服务（不依赖本机 Key；不点开始 = 不花钱）
+    if screen in ("all", "review"):
+        app = NovelWorkbench(
+            base_dir=base_dir,
+            service_factory=lambda log: _ConfiguredService(base_dir, log=log),
+        )
+    else:
+        app = NovelWorkbench(base_dir=base_dir)
     async with app.run_test(size=(width, height)) as pilot:
         await pilot.pause()
         if screen in ("all", "projects"):
             shots["项目列表"] = snapshot(app, height)
 
-        if screen in ("all", "workbench", "reader"):
+        if screen in ("all", "workbench", "reader", "review"):
             await pilot.press("enter")          # 打开第一个项目
             await pilot.pause()
             if screen in ("all", "workbench"):
@@ -51,6 +71,15 @@ async def shoot(screen: str, base_dir: str, width: int, height: int) -> dict[str
                     await pilot.press(key)
                     await pilot.pause()
                     shots[name] = snapshot(app, height)
+            if screen in ("all", "review"):
+                await pilot.press("left", "left")   # 回到章节页签
+                await pilot.pause()
+                await pilot.press("v")              # 打开审稿浮层
+                await pilot.pause()
+                if isinstance(app.screen, ReviewModal):
+                    shots["审稿浮层"] = snapshot(app, height)
+                await pilot.press("escape")
+                await pilot.pause()
             if screen in ("all", "reader"):
                 # 章节表行回车 → 阅读器
                 await pilot.press("left", "left")   # 回到章节页签
@@ -75,7 +104,7 @@ async def shoot(screen: str, base_dir: str, width: int, height: int) -> dict[str
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="给交互式 TUI 拍无头文本快照")
     ap.add_argument("--screen", default="all",
-                    choices=["all", "projects", "workbench", "reader", "settings"])
+                    choices=["all", "projects", "workbench", "reader", "settings", "review"])
     ap.add_argument("--base-dir", default=str(ROOT / "data" / "projects"))
     ap.add_argument("--size", default="150x46", help="终端尺寸 WxH（默认 150x46）")
     ap.add_argument("--out", default="", help="把快照写入文件（默认打印）")

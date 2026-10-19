@@ -29,6 +29,7 @@ dependencies = [
 na = "src.cli.entrypoints:na"
 na-tui = "src.cli.entrypoints:na_tui"
 na-tools-preprocess = "src.cli.entrypoints:na_tools_preprocess"
+na-studio = "src.cli.entrypoints:na_studio"
 
 [project.optional-dependencies]
 # 板块一：读 60GB 文献、embedding、向量检索（数 GB，按需再装）
@@ -46,6 +47,10 @@ full = [
     "gradio>=4.0.0",
 ]
 test = ["pytest>=8.0.0"]
+web = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+]
 
 [tool.uv]
 # 需要 true：console_scripts 只在项目自身被安装时才生成。

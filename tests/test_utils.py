@@ -84,3 +84,38 @@ class TestLogger:
         finally:
             import shutil
             shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+class TestCostTrackerPersistence:
+    """并行审稿会从多个 worker 线程同时落库。
+
+    F3.3（REVIEW-2026-10-12.md）：连接默认 check_same_thread=True，
+    子线程写入被 SQLite 拒绝且异常被 DEBUG 吞掉 —— 6 个维度只落 0~1 行，
+    llm_usage.db 这份"对账依据"实际在撒谎。
+    """
+
+    def test_parallel_persist_keeps_every_row(self):
+        import sqlite3
+        import threading
+        from src.utils.cost_tracker import CostTracker, UsageRecord
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db = str(Path(tmpdir) / "llm_usage.db")
+            tracker = CostTracker(usage_db_path=db)
+
+            def work(i: int) -> None:
+                tracker.add_record(UsageRecord(
+                    model_tier="flash", prompt_tokens=100 + i,
+                    completion_tokens=10 + i, duration=0.5, model="m",
+                ))
+
+            threads = [threading.Thread(target=work, args=(i,)) for i in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            con = sqlite3.connect(db)
+            count = con.execute("SELECT COUNT(*) FROM llm_usage").fetchone()[0]
+            con.close()
+            assert count == 6, f"并行落库丢行：期望 6 行，实际 {count} 行"

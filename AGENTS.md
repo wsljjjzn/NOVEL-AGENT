@@ -188,7 +188,7 @@ DeepSeek 有两个会**静默影响正确性**的行为，因此有独立的 fas
 | `model_tier="flash"` / `"pro"` | **贯穿 10 个模块的透传参数，必须继续可用**。`--tier` 是**保留的别名**，不是被替换掉的旧参数 |
 | 配置键 `deepseek_v4_flash` / `deepseek_v4_pro` | 以及 `flash` / `pro` 简写、任意 `*_flash` / `*_pro` 后缀，都要能解析 |
 | `DEEPSEEK_API_KEY` | 一个 Key 覆盖两个档位 |
-| `max_tokens` 4096(flash) / 8192(pro) | 且 `character_engine.ANALYSIS_MAX_TOKENS = 8192` 的**显式覆盖不得回退**——4096 会截断角色 JSON，那是 A1 事故的成因 |
+| `max_tokens` 16384(flash) / 16384(pro) | 2026-10-13 起两档统一 16384：V4 的思考**先于**正文消耗这份预算，4096/8192 会打满后返回空 `content`。且 `character_engine.ANALYSIS_MAX_TOKENS = 16384` 的**显式覆盖不得回退**——预算不足会截断角色 JSON，那是 A1 事故的成因 |
 | `budget.max_cny_per_session` | 配置**继续写 CNY**（框架的 `cost_limit` 是 USD，换算集中在 `src/llm/budget.py`） |
 | `tests/test_llm_client.py` 的断言 | **不得为了让新代码通过而修改** |
 

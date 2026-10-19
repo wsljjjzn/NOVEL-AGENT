@@ -42,9 +42,10 @@ from src.utils.logger import logger
 
 # ========== 常量 ==========
 
-# 分析调用的输出预算：config.yaml 里 flash 档默认 max_tokens=4096，角色一多 JSON 就会被
-# 硬截断，解析失败后表现为"0 个角色更新"（生产事故见 CODE_REVIEW.md A1）。
-ANALYSIS_MAX_TOKENS = 8192
+# 分析调用的输出预算。历史：flash 档默认 4096 时角色一多 JSON 就被硬截断，
+# 解析失败后表现为"0 个角色更新"（生产事故见 CODE_REVIEW.md A1）。
+# 现在 V4 的思考也吃这份预算，16384 才够同时容纳「思考 + 角色 JSON」。
+ANALYSIS_MAX_TOKENS = 16384
 
 # 进入分析 prompt 的正文字数上限；超出会截断并告警（A12）
 ANALYSIS_TEXT_LIMIT = 6000

@@ -8,26 +8,33 @@ embedding:
   max_seq_length: 8192
   model: BGE-M3
 llm:
+  # thinking 保持开启（质量优先）。注意思考会**先于**正文消耗 max_tokens：
+  # 预算不足时 completion 打满、content 变成空串（2026-10-13 审稿 6 维里 4 维翻车）。
+  # 实测单次「思考 + 正文」需要 6k~13k tokens，两档统一给 16384 留余量
+  # （端点实测接受到 65536；max_tokens 只是上限，用不到不会多花钱）。
+  # 需要结构化 JSON 的调用另用 chat(..., json_mode=True) 约束输出格式。
   deepseek_v4_flash:
     api_key: \${DEEPSEEK_API_KEY}
     base_url: https://api.deepseek.com/v1
-    max_tokens: 4096
+    max_tokens: 16384
     model: deepseek-v4-flash
     rpm_limit: 100
     temperature: 0.7
     timeout_seconds: 60
     max_retries: 3
     retry_base_delay: 1.0
+    thinking: true
   deepseek_v4_pro:
     api_key: \${DEEPSEEK_API_KEY}
     base_url: https://api.deepseek.com/v1
-    max_tokens: 8192
+    max_tokens: 16384
     model: deepseek-v4-pro
     rpm_limit: 50
     temperature: 0.6
     timeout_seconds: 120
     max_retries: 3
     retry_base_delay: 1.0
+    thinking: true
 preprocessing:
   chunk_overlap: 64
   chunk_size: 512

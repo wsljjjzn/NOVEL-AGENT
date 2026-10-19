@@ -49,3 +49,31 @@ def na_tools_preprocess() -> int:
     from scripts.batch_preprocess import main
 
     return main() or 0
+
+
+def na_studio() -> int:
+    """`uv run na-studio` —— 启动 Novel Studio 现代写作 IDE 服务并打开浏览器。"""
+    _enter_repo_root()
+    import threading
+    import time
+    import webbrowser
+    import uvicorn
+    from src.utils.doctor import print_terminal_doctor
+
+    # 1. 终端引擎自检输出
+    print_terminal_doctor()
+
+    def _open_browser():
+        time.sleep(1.0)
+        webbrowser.open("http://127.0.0.1:8000")
+
+    threading.Thread(target=_open_browser, daemon=True).start()
+    uvicorn.run(
+        "src.api.server:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+        reload_dirs=[str(ROOT / "src"), str(ROOT / "web_prototype")],
+        log_level="warning",
+    )
+    return 0

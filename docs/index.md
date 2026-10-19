@@ -13,6 +13,7 @@
 | [`modules/character_engine.md`](modules/character_engine.md) | 角色人格/关系/逐章事件 | 改角色相关 |
 | [`modules/plot_engine.md`](modules/plot_engine.md) | 剧情设计、世界观 | 改剧情相关 |
 | [`modules/project_manager.md`](modules/project_manager.md) | 项目持久化、原子写、章号归一化 | 改文件读写 |
+| [`modules/review_engine.md`](modules/review_engine.md) | 六维审稿、三级修改、失败语义、作品状态注入 | 改审稿相关 |
 | [`modules/tools.md`](modules/tools.md) | 操作注册表、A/B 轨 | 新增操作 |
 | [`modules/mcp_server.md`](modules/mcp_server.md) | MCP 原语、capability 协商 | 改 MCP 接口 |
 
