@@ -107,6 +107,7 @@ class NovelProject:
         self.outline: list[OutlineItem] = []
         self.metadata: dict = {"total_words": 0, "chapter_count": 0}
         self.foreshadowing: list[str] = []  # 开放伏笔
+        self.style_guide: dict | None = None  # 行文风格指南与范文片段（可选）
 
     # ---- 章节管理 ----
 
@@ -203,6 +204,79 @@ class NovelProject:
 
         return "\n".join(parts)
 
+    # ---- 风格与范文指南（伴生 style_guide.json，零 LLM）----
+
+    def set_style_guide(self, guide: dict) -> None:
+        """设置小说的行文风格与参考范例指南。
+
+        支持 dict 或具有 model_dump 方法的模型实例。
+        """
+        if hasattr(guide, "model_dump"):
+            self.style_guide = guide.model_dump()
+        elif isinstance(guide, dict):
+            self.style_guide = guide
+        else:
+            raise TypeError("style_guide 必须是 dict 或可序列化模型")
+        self.save_style_guide()
+
+    def get_style_guide(self) -> dict | None:
+        """获取当前绑定的风格指南。"""
+        return self.style_guide
+
+    def clear_style_guide(self) -> None:
+        """清空风格指南并清理对应文件。"""
+        self.style_guide = None
+        self.save_style_guide()
+
+    def save_style_guide(self) -> None:
+        """原子保存 style_guide.json（为 None 时清理对应磁盘文件）。"""
+        path = self.base_dir / "style_guide.json"
+        if self.style_guide is not None:
+            atomic_write_json(path, self.style_guide)
+        elif path.exists():
+            path.unlink(missing_ok=True)
+
+    def get_style_context(self) -> str:
+        """组装风格提示词（零 LLM）。"""
+        if not self.style_guide:
+            return ""
+        guide = self.style_guide
+        parts = ["## 行文风格与范文指引"]
+        name = guide.get("template_name") or guide.get("name") or guide.get("style_name")
+        if name:
+            parts.append(f"- 参考风格: {name}")
+
+        qual = guide.get("qualitative_profile") or {}
+        tone = qual.get("tone") or guide.get("tone")
+        if tone:
+            parts.append(f"- 语言基调: {tone}")
+
+        rules = guide.get("writing_rules") or guide.get("rules") or []
+        if rules:
+            parts.append("\n### 必须遵循的写作规则：")
+            for r in rules:
+                parts.append(f"- {r}")
+
+        forbidden = guide.get("forbidden_patterns") or guide.get("forbidden_words") or []
+        if forbidden:
+            parts.append("\n### 禁止模式与忌用词：")
+            parts.append(f"严禁出现以下词汇或套路：{', '.join(forbidden)}")
+
+        samples = guide.get("representative_samples") or guide.get("few_shot_examples") or []
+        if samples:
+            parts.append("\n### 范文高光片段（请参考其叙事节奏与笔触）：")
+            for i, s in enumerate(samples[:3], 1):
+                if isinstance(s, dict):
+                    stype = s.get("type", "片段")
+                    snippet = s.get("text_snippet") or s.get("text") or ""
+                else:
+                    stype = "片段"
+                    snippet = str(s)
+                if snippet:
+                    parts.append(f"【示例 {i} · {stype}】\n{snippet.strip()}")
+
+        return "\n".join(parts)
+
     # ---- 大纲 prompt ----
 
     def get_outline_context(self) -> str:
@@ -267,6 +341,14 @@ class NovelProject:
         ]
         project.metadata = data.get("metadata", {})
         project.foreshadowing = data.get("foreshadowing", [])
+
+        style_file = project.base_dir / "style_guide.json"
+        if style_file.exists():
+            try:
+                project.style_guide = json.loads(style_file.read_text("utf-8"))
+            except Exception:
+                project.style_guide = None
+
         return project
 
     def export_novel(self) -> str:

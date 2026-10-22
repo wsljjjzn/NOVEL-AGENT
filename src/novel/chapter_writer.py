@@ -26,6 +26,7 @@ CHAPTER_WRITER_SYSTEM = """你是一位长篇小说作家。请根据提供的�
 3. 本章要有独立的情节完整性（有起因-发展-高潮/转折-收尾）
 4. 为后续章节埋下新的伏笔
 5. 字数控制在要求范围内
+6. 若提供了【行文风格与范文指引】，必须严格遵守其规则与忌用词限制，并参考范文高光片段的笔触与叙事节奏
 
 输出格式：
 只输出本章正文，不要加"本章标题"等额外标记。"""
@@ -128,6 +129,11 @@ class ChapterWriter:
                 if item.key_foreshadowing:
                     parts.append(f"- 关键伏笔: {'; '.join(item.key_foreshadowing)}")
                 break
+
+        # 风格与范文指引
+        style_context = self.project.get_style_context()
+        if style_context:
+            parts.append(style_context)
 
         # 写作要求
         parts.append(f"## 本章写作要求")

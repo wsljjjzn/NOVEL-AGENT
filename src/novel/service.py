@@ -220,6 +220,47 @@ class NovelService:
             True, f"第{chapter}章大纲已更新", [f"标题：{title}", f"预期内容：{expected_content}"]
         )
 
+    # ========== 风格与范文指南 ==========
+
+    def get_style_guide(self, name: str) -> Result:
+        """获取项目绑定的风格指南。"""
+        if not self.exists(name):
+            return Result(False, f"项目不存在：{name}")
+        bundle = self.load(name)
+        guide = bundle.project.get_style_guide()
+        if not guide:
+            return Result(True, f"项目「{name}」未配置风格指南", data=None)
+        style_name = guide.get("style_name") or guide.get("template_name") or "未命名风格"
+        rules_count = len(guide.get("rules") or guide.get("writing_rules") or [])
+        samples_count = len(
+            guide.get("few_shot_examples") or guide.get("representative_samples") or []
+        )
+        return Result(
+            True,
+            f"项目「{name}」风格指南：{style_name}",
+            [f"规则数: {rules_count}", f"范文片段数: {samples_count}"],
+            data=guide,
+        )
+
+    def set_style_guide(self, name: str, guide: dict) -> Result:
+        """为项目绑定风格指南。"""
+        if not self.exists(name):
+            return Result(False, f"项目不存在：{name}")
+        if not isinstance(guide, dict):
+            return Result(False, "风格指南必须为字典格式")
+        bundle = self.load(name)
+        bundle.project.set_style_guide(guide)
+        style_name = guide.get("style_name") or guide.get("template_name") or "自定义风格"
+        return Result(True, f"已为项目「{name}」配置风格指南「{style_name}」", data=guide)
+
+    def clear_style_guide(self, name: str) -> Result:
+        """清空项目绑定的风格指南。"""
+        if not self.exists(name):
+            return Result(False, f"项目不存在：{name}")
+        bundle = self.load(name)
+        bundle.project.clear_style_guide()
+        return Result(True, f"已清空项目「{name}」的风格指南")
+
     # ========== 角色 ==========
 
     def generate_characters(self, name: str, tier: str = "flash", backup: bool = True) -> Result:

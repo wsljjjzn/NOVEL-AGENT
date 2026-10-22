@@ -3,6 +3,7 @@
 ## 负责
 
 `data/projects/<名>/project.json` 的读写：章节正文、标题、大纲、开放伏笔、元数据。
+以及伴生文件 `style_guide.json`（行文风格指南与范文片段 Few-Shot，可选）。
 
 **不负责**：角色（在 `characters.json`）、剧情设计（在 `plots.json`）。三者是**并列文件**，不互相引用。
 
@@ -31,6 +32,13 @@ class NovelProject:
     def add_foreshadowing(self, text: str) -> None
     def resolve_foreshadowing(self, text: str) -> None
 
+    # 风格与范文指南（伴生 style_guide.json，零 LLM）
+    def set_style_guide(self, guide: dict) -> None
+    def get_style_guide(self) -> Optional[dict]
+    def clear_style_guide(self) -> None
+    def save_style_guide(self) -> None
+    def get_style_context(self) -> str
+
     # 上下文组装（零 LLM）
     def get_recap(self, before_chapter: int) -> str
     def get_outline_context(self) -> str
@@ -56,6 +64,22 @@ class NovelProject:
 ```
 
 **`chapters` / `chapter_titles` 的键是字符串**（JSON 限制），load 时转 int。
+
+### 风格指南存储格式 (`style_guide.json`，可选)
+
+```json
+{
+  "style_name": "冷峻写实",
+  "source_articles": ["范文1.txt"],
+  "rules": ["多用短句，强化动词", "避免空洞议论"],
+  "forbidden_words": ["只见", "宛如"],
+  "few_shot_examples": [
+    { "type": "动作", "text": "刀锋划破夜色，他没有迟疑，顺势侧滑一尺……" }
+  ]
+}
+```
+同时兼容 `StyleTemplate` 格式字段（`template_name`, `writing_rules`, `forbidden_patterns`, `representative_samples`）。
+`get_style_context()` 为逐章写作器提供统一的纯确定性 Prompt 拼接。
 
 ## 不变量
 
