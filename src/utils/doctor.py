@@ -147,17 +147,24 @@ def run_system_doctor() -> list[dict[str, Any]]:
 
 def print_terminal_doctor() -> None:
     """在终端格式化输出自检信息。"""
+    # 避免在 Windows 纯 GBK 终端或重定向管道中输出特殊字符时抛 UnicodeEncodeError
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(errors="replace")
+        except Exception:
+            pass
+
     steps = run_system_doctor()
     print("\n" + "=" * 65)
-    print("  🎨 Novel Studio · 长篇小说写作专家系统启动自检")
+    print("  [*] Novel Studio · 长篇小说写作专家系统启动自检")
     print("=" * 65)
     for s in steps:
-        mark = "✓" if s["ok"] else "✕"
+        mark = "OK" if s["ok"] else "FAIL"
         print(f"[{s['index']}/6] [{mark}] {s['title']}")
         print(f"      状态: {s['detail']}")
         for sub in s["sub_items"]:
-            print(f"      • {sub}")
+            print(f"      - {sub}")
         print()
     print("=" * 65)
-    print("🚀 写作工作台已启动，正在浏览器打开: http://127.0.0.1:8000")
+    print("[OK] 写作工作台已启动，正在浏览器打开: http://127.0.0.1:8000")
     print("=" * 65 + "\n")

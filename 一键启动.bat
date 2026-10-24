@@ -13,7 +13,7 @@ echo.
 :: 步骤 1：释放 8000 端口（自动清理先前可能残留的进程）
 :: ------------------------------------------------------------------------
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8000" ^| findstr "LISTENING"') do (
-    echo [提示] 发现 8000 端口被占用 (PID: %%a)，正在自动重置释放...
+    echo [提示] 发现 8000 端口被占用 [PID: %%a]，正在自动重置释放...
     taskkill /F /PID %%a >nul 2>&1
     timeout /t 1 /nobreak >nul
 )
@@ -21,7 +21,7 @@ for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8000" ^| findstr "LI
 :: ------------------------------------------------------------------------
 :: 步骤 2：自动检测或安装 uv 环境
 :: ------------------------------------------------------------------------
-set "PATH=%LOCALAPPDATA%\bin;%USERPROFILE%\.cargo\bin;%PATH%"
+set "PATH=%USERPROFILE%\.local\bin;%LOCALAPPDATA%\bin;%USERPROFILE%\.cargo\bin;%PATH%"
 
 where uv >nul 2>&1
 if %errorlevel% equ 0 goto SYNC_ENV
@@ -33,6 +33,10 @@ powershell -ExecutionPolicy ByPass -NoProfile -Command "irm https://astral.sh/uv
 where uv >nul 2>&1
 if %errorlevel% equ 0 goto SYNC_ENV
 
+if exist "%USERPROFILE%\.local\bin\uv.exe" (
+    set "PATH=%USERPROFILE%\.local\bin;%PATH%"
+    goto SYNC_ENV
+)
 if exist "%LOCALAPPDATA%\bin\uv.exe" (
     set "PATH=%LOCALAPPDATA%\bin;%PATH%"
     goto SYNC_ENV
@@ -82,7 +86,7 @@ uv run na-studio
 if %errorlevel% neq 0 (
     echo.
     echo ========================================================================
-    echo  [提示] 服务异常退出 (退出码: %errorlevel%)。
+    echo  [提示] 服务异常退出 [退出码: %errorlevel%]。
     echo ========================================================================
     pause
 )
