@@ -1,124 +1,108 @@
 @echo off
-:: è®¾ç½®æŽ§åˆ¶å°å­—ç¬¦é›†ä¸º UTF-8ï¼Œé˜²æ­¢ä¸­æ–‡ä¹±ç 
-chcp 65001 >nul
-title Novel Studio - é•¿ç¯‡å°è¯´åˆ›ä½œå·¥ä½œå°
+chcp 936 >nul 2>&1
+title Novel Studio - ³¤ÆªÐ¡Ëµ´´×÷¹¤×÷Ì¨
 
-:: å¼ºåˆ¶åˆ‡æ¢å·¥ä½œç›®å½•ä¸ºè„šæœ¬æ‰€åœ¨ç›®å½•ï¼Œé˜²æ­¢ä»¥ç®¡ç†å‘˜èº«ä»½è¿è¡Œæ—¶ç›®å½•æ¼‚ç§»åˆ° System32
 cd /d "%~dp0"
 
 echo ========================================================================
-echo              Novel Studio å†™ä½œä¸“å®¶ç³»ç»Ÿ Â· Windows ä¸€é”®å¯åŠ¨å™¨
+echo              Novel Studio Ð´×÷×¨¼ÒÏµÍ³ ¡¤ Windows Ò»¼üÆô¶¯Æ÷
 echo ========================================================================
 echo.
 
 :: ------------------------------------------------------------------------
-:: æ­¥éª¤ 1ï¼šæ£€æµ‹ 8000 ç«¯å£æ˜¯å¦å·²è¢«å ç”¨
+:: ²½Öè 1£º¼ì²â 8000 ¶Ë¿ÚÊÇ·ñÒÑ±»Õ¼ÓÃ
 :: ------------------------------------------------------------------------
 set "PORT_PID="
 for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8000" ^| findstr "LISTENING"') do (
     set "PORT_PID=%%a"
 )
 
-if defined PORT_PID (
-    echo [æç¤º] æ£€æµ‹åˆ°ç«¯å£ 8000 å½“å‰å·²åœ¨è¿è¡Œä¸­ (PID: %PORT_PID%)ï¼
-    echo.
-    echo   [1] ç›´æŽ¥åœ¨æµè§ˆå™¨æ‰“å¼€ Web ç•Œé¢ (æŽ¨èï¼Œé»˜è®¤)
-    echo   [2] å¼ºåˆ¶é‡å¯åŽå°æœåŠ¡
-    echo   [3] å½»åº•åœæ­¢æœåŠ¡å¹¶é€€å‡º
-    echo.
-    set /p "CHOICE=è¯·è¾“å…¥é€‰é¡¹ [1/2/3] (ç›´æŽ¥å›žè½¦é»˜è®¤é€‰ 1): "
-    if "%CHOICE%"=="" set "CHOICE=1"
-    if "%CHOICE%"=="1" (
-        start http://127.0.0.1:8000
-        echo å·²åœ¨æµè§ˆå™¨ä¸­æ‰“å¼€ã€‚
-        timeout /t 2 >nul
-        exit /b 0
-    )
-    if "%CHOICE%"=="2" (
-        echo æ­£åœ¨åœæ­¢çŽ°æœ‰åŽå°æœåŠ¡ (PID: %PORT_PID%)...
-        taskkill /F /PID %PORT_PID% >nul 2>&1
-        timeout /t 1 /nobreak >nul
-    )
-    if "%CHOICE%"=="3" (
-        echo æ­£åœ¨å…³é—­æœåŠ¡ (PID: %PORT_PID%)...
-        taskkill /F /PID %PORT_PID% >nul 2>&1
-        echo [æˆåŠŸ] æœåŠ¡å·²å…³é—­ï¼Œæ–‡ä»¶å ç”¨ä¸Žç«¯å£å·²å…¨éƒ¨é‡Šæ”¾ã€‚
-        pause
-        exit /b 0
-    )
+if not defined PORT_PID goto CHECK_UV
+
+echo [ÌáÊ¾] ¼ì²âµ½¶Ë¿Ú 8000 µ±Ç°ÒÑÔÚÔËÐÐÖÐ (PID: %PORT_PID%)£¡
+echo.
+echo   [1] Ö±½ÓÔÚä¯ÀÀÆ÷´ò¿ª Web ½çÃæ (ÍÆ¼ö£¬Ä¬ÈÏ)
+echo   [2] Ç¿ÖÆÖØÆôºóÌ¨·þÎñ
+echo   [3] ³¹µ×Í£Ö¹·þÎñ²¢ÍË³ö
+echo.
+set "CHOICE=1"
+set /p "CHOICE=ÇëÊäÈëÑ¡Ïî [1/2/3] (Ö±½Ó»Ø³µÄ¬ÈÏÑ¡ 1): "
+if "%CHOICE%"=="1" (
+    start http://127.0.0.1:8000
+    exit /b 0
+)
+if "%CHOICE%"=="2" (
+    echo ÕýÔÚÍ£Ö¹ÏÖÓÐºóÌ¨·þÎñ (PID: %PORT_PID%)...
+    taskkill /F /PID %PORT_PID% >nul 2>&1
+    timeout /t 1 /nobreak >nul
+    goto CHECK_UV
+)
+if "%CHOICE%"=="3" (
+    echo ÕýÔÚ¹Ø±Õ·þÎñ (PID: %PORT_PID%)...
+    taskkill /F /PID %PORT_PID% >nul 2>&1
+    echo [³É¹¦] ·þÎñÒÑ¹Ø±Õ£¬ÎÄ¼þÕ¼ÓÃÓë¶Ë¿ÚÒÑÈ«²¿ÊÍ·Å¡£
+    pause
+    exit /b 0
 )
 
+:CHECK_UV
 :: ------------------------------------------------------------------------
-:: æ­¥éª¤ 2ï¼šè‡ªåŠ¨æ£€æµ‹æˆ–å®‰è£… uv çŽ¯å¢ƒ
+:: ²½Öè 2£º×Ô¶¯¼ì²â»ò°²×° uv »·¾³
 :: ------------------------------------------------------------------------
-set "UV_BIN="
+set "PATH=%LOCALAPPDATA%\bin;%USERPROFILE%\.cargo\bin;%PATH%"
+
 where uv >nul 2>&1
-if %errorlevel% equ 0 (
-    set "UV_BIN=uv"
-) else (
-    if exist "%LOCALAPPDATA%\bin\uv.exe" (
-        set "UV_BIN=%LOCALAPPDATA%\bin\uv.exe"
-    ) else if exist "%USERPROFILE%\.cargo\bin\uv.exe" (
-        set "UV_BIN=%USERPROFILE%\.cargo\bin\uv.exe"
-    ) else (
-        echo [1/3] æœªæ£€æµ‹åˆ° uv çŽ¯å¢ƒï¼Œæ­£åœ¨ä¸ºæ‚¨è‡ªåŠ¨ä¸‹è½½å®‰è£…å®˜æ–¹ uvï¼ˆæžé€Ÿè½»é‡ä¾èµ–ç®¡ç†å™¨ï¼‰...
-        echo è¯·ä¿æŒç½‘ç»œç•…é€šï¼Œçº¦éœ€å‡ ç§’é’Ÿ...
-        powershell -ExecutionPolicy ByPass -NoProfile -Command "irm https://astral.sh/uv/install.ps1 | iex"
-        
-        if exist "%LOCALAPPDATA%\bin\uv.exe" (
-            set "UV_BIN=%LOCALAPPDATA%\bin\uv.exe"
-        ) else if exist "%USERPROFILE%\.cargo\bin\uv.exe" (
-            set "UV_BIN=%USERPROFILE%\.cargo\bin\uv.exe"
-        ) else (
-            echo.
-            echo [é”™è¯¯] è‡ªåŠ¨å®‰è£… uv å¤±è´¥ï¼Œå¯èƒ½ç”±äºŽç½‘ç»œå—é™ã€‚
-            echo è¯·æ‰‹åŠ¨è®¿é—® https://github.com/astral-sh/uv ä¸‹è½½ uv.exe å¹¶æ”¾å…¥æœ¬ç›®å½•ã€‚
-            echo.
-            pause
-            exit /b 1
-        )
-        echo [æˆåŠŸ] uv çŽ¯å¢ƒå·²æˆåŠŸå®‰è£…å°±ç»ªï¼
-    )
+if %errorlevel% equ 0 goto SYNC_ENV
+
+echo [1/3] Î´¼ì²âµ½ uv »·¾³£¬ÕýÔÚÎªÄú×Ô¶¯ÏÂÔØ°²×°¹Ù·½ uv£¨¼«ËÙÇáÁ¿ÒÀÀµ¹ÜÀíÆ÷£©...
+echo Çë±£³ÖÍøÂç³©Í¨£¬Ô¼Ðè¼¸ÃëÖÓ...
+powershell -ExecutionPolicy ByPass -NoProfile -Command "irm https://astral.sh/uv/install.ps1 | iex"
+
+where uv >nul 2>&1
+if %errorlevel% equ 0 goto SYNC_ENV
+
+if exist "%LOCALAPPDATA%\bin\uv.exe" (
+    set "PATH=%LOCALAPPDATA%\bin;%PATH%"
+    goto SYNC_ENV
+)
+if exist "%USERPROFILE%\.cargo\bin\uv.exe" (
+    set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
+    goto SYNC_ENV
 )
 
-:: å°† uv æ‰€åœ¨è·¯å¾„ä¸´æ—¶åŠ å…¥å½“å‰ CMD çŽ¯å¢ƒå˜é‡ï¼Œä¿éšœåŽç»­é¡ºåˆ©æ‰§è¡Œ
-for %%i in ("%UV_BIN%") do set "PATH=%%~dpi;%PATH%"
+echo.
+echo [´íÎó] ×Ô¶¯°²×° uv Ê§°Ü£¬¿ÉÄÜÓÉÓÚÍøÂçÊÜÏÞ¡£
+echo Çë·ÃÎÊ https://github.com/astral-sh/uv ÊÖ¶¯°²×° uv ºóÖØÊÔ¡£
+echo.
+pause
+exit /b 1
 
+:SYNC_ENV
 :: ------------------------------------------------------------------------
-:: æ­¥éª¤ 3ï¼šå‡†å¤‡ Python è™šæ‹ŸçŽ¯å¢ƒä¸Žä¾èµ–
+:: ²½Öè 3£º×¼±¸ Python ÔËÐÐ»·¾³ÓëÒÀÀµ
 :: ------------------------------------------------------------------------
-echo [2/3] æ­£åœ¨æ£€æŸ¥å¹¶åŒæ­¥ Python è¿è¡ŒçŽ¯å¢ƒï¼ˆé¦–æ¬¡è¿è¡Œçº¦éœ€ 10-30 ç§’ï¼‰...
-"%UV_BIN%" sync --extra web
+echo [2/3] ÕýÔÚ¼ì²é²¢Í¬²½ Python ÔËÐÐ»·¾³£¨Ê×´ÎÔËÐÐÔ¼Ðè 10-30 Ãë£©...
+uv sync --extra web
 if %errorlevel% neq 0 (
     echo.
-    echo [é”™è¯¯] ä¾èµ–çŽ¯å¢ƒåŒæ­¥å¤±è´¥ï¼Œè¯·æ£€æŸ¥ç½‘ç»œè¿žæŽ¥æˆ–é‡è¯•ã€‚
+    echo [´íÎó] ÒÀÀµ»·¾³Í¬²½Ê§°Ü£¬Çë¼ì²éÍøÂçÁ¬½ÓºóÖØÊÔ¡£
     pause
     exit /b 1
 )
 
 :: ------------------------------------------------------------------------
-:: æ­¥éª¤ 4ï¼šå¯åŠ¨æœåŠ¡ä¸Žè‡ªæ„ˆæ¸…ç†
+:: ²½Öè 4£ºÆô¶¯·þÎñ
 :: ------------------------------------------------------------------------
-echo [3/3] æ­£åœ¨å¯åŠ¨ Novel Studio åˆ›ä½œæœåŠ¡å™¨...
+echo [3/3] ÕýÔÚÆô¶¯ Novel Studio ´´×÷·þÎñÆ÷...
 echo.
 echo ========================================================================
-echo  ã€æœåŠ¡å·²å°±ç»ªã€‘æ­£åœ¨è‡ªåŠ¨åœ¨æµè§ˆå™¨ä¸­æ‰“å¼€: http://127.0.0.1:8000
+echo  ¡¾·þÎñÒÑ¾ÍÐ÷¡¿ÕýÔÚ×Ô¶¯ÔÚä¯ÀÀÆ÷ÖÐ´ò¿ª: http://127.0.0.1:8000
 echo.
-echo  ã€å¦‚ä½•å…³é—­ç¨‹åºã€‘
-echo   - ç›´æŽ¥å…³é—­æœ¬ç»ˆç«¯é»‘æ¡†ï¼ˆç‚¹å‡»å³ä¸Šè§’ [X]ï¼‰å³å¯å½»åº•å…³é—­æ•´ä¸ªç¨‹åºï¼
-echo   - ä¹Ÿå¯ä»¥åœ¨æœ¬çª—å£æŒ‰ [Ctrl + C] é€€å‡ºã€‚
-echo   - åŽå°ç»ä¸æ®‹ç•™ä»»ä½•éšè”½è¿›ç¨‹ï¼Œç«¯å£ 8000 ä¸Žæ–‡ä»¶å ç”¨ä¼šéšçª—å£å…³é—­ç«‹åˆ»é‡Šæ”¾ã€‚
+echo  ¡¾ÈçºÎ¹Ø±Õ³ÌÐò¡¿
+echo   - Ö±½Ó¹Ø±Õ±¾ÖÕ¶ËºÚ¿ò£¨µã»÷ÓÒÉÏ½Ç [X]£©¼´¿É³¹µ×¹Ø±ÕÕû¸ö³ÌÐò£¡
+echo   - Ò²¿ÉÒÔÔÚ±¾´°¿Ú°´ [Ctrl + C] ÍË³ö¡£
+echo   - ¶Ë¿Ú 8000 ÓëÎÄ¼þÕ¼ÓÃ»áËæ´°¿Ú¹Ø±ÕÁ¢¿ÌÊÍ·Å£¬ÎÞÈÎºÎºóÌ¨²ÐÁô¡£
 echo ========================================================================
 echo.
 
-:: è¿è¡ŒæœåŠ¡ï¼ˆé˜»å¡žå¼ï¼Œç›´åˆ°ç”¨æˆ·ä¸­æ–­é€€å‡ºï¼‰
-"%UV_BIN%" run na-studio
-
-:: é€€å‡ºåŽè‡ªåŠ¨æ‰§è¡Œè¿›ç¨‹è‡ªæ„ˆæ¸…ç†
-echo.
-echo æ­£åœ¨å®‰å…¨åœæ­¢æœåŠ¡å¹¶é‡Šæ”¾æ‰€æœ‰æ–‡ä»¶ä¸Žç«¯å£å ç”¨...
-for /f "tokens=5" %%a in ('netstat -aon 2^>nul ^| findstr ":8000" ^| findstr "LISTENING"') do (
-    taskkill /F /PID %%a >nul 2>&1
-)
-echo [å®Œæˆ] åŽå°è¿›ç¨‹å·²å®Œå…¨é€€å‡ºï¼Œç«¯å£ 8000 ä¸Žæ–‡ä»¶å¤¹é”å®šå·²å½»åº•é‡Šæ”¾ï¼
-timeout /t 2 >nul
+uv run na-studio

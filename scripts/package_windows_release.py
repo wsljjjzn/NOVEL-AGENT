@@ -33,6 +33,15 @@ def should_exclude(path: Path) -> bool:
         return True
     return False
 
+def write_to_zip(zf: zipfile.ZipFile, file_path: Path, arcname: str):
+    # Windows 专属包：强制确保批处理与文本以 CRLF 换行存储，杜绝 cmd.exe 偏移漂移
+    if file_path.suffix.lower() in {".bat", ".cmd", ".txt"}:
+        raw = file_path.read_bytes()
+        raw = raw.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        zf.writestr(arcname, raw)
+    else:
+        zf.write(file_path, arcname)
+
 def build_zip():
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     if OUT_ZIP.exists():
@@ -58,7 +67,7 @@ def build_zip():
             p = ROOT / tf
             if p.exists():
                 arcname = f"{archive_root}/{tf}"
-                zf.write(p, arcname)
+                write_to_zip(zf, p, arcname)
                 count += 1
                 print(f"  + {arcname}")
 
@@ -66,7 +75,7 @@ def build_zip():
         html_src = ROOT / "web_prototype" / "index.html"
         if html_src.exists():
             arcname = f"{archive_root}/Novel-Studio-Web.html"
-            zf.write(html_src, arcname)
+            write_to_zip(zf, html_src, arcname)
             count += 1
             print(f"  + {arcname}")
 
@@ -88,7 +97,7 @@ def build_zip():
                         continue
                     rel = file_path.relative_to(ROOT)
                     arcname = f"{archive_root}/{rel.as_posix()}"
-                    zf.write(file_path, arcname)
+                    write_to_zip(zf, file_path, arcname)
                     count += 1
 
     size_mb = OUT_ZIP.stat().st_size / (1024 * 1024)
