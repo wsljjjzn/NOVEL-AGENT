@@ -51,3 +51,7 @@ data/samples/analysis_progress.json
 # OS
 Thumbs.db
 .DS_Store
+
+# 课程学习资料与作业模版（本地留存，不入公共库）
+course_materials/
+
