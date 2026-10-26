@@ -360,6 +360,15 @@ class NovelService:
 
     # ========== 写作 ==========
 
+    def preview_knowledge(self, name: str, chapter: int, query: str = "") -> dict:
+        """预览与实际写作共用同一个检索入口，不调用模型。"""
+        from src.knowledge_base.injection import retrieve_knowledge
+
+        project = self.load(name).project
+        item = next((o for o in project.outline if o.chapter == chapter), None)
+        topic = query.strip() or " ".join([project.genre, item.title if item else "", item.expected_content if item else project.description])
+        return retrieve_knowledge(topic)
+
     def write_chapter(
         self,
         name: str,
@@ -369,6 +378,8 @@ class NovelService:
         instructions: str = "",
         use_plot: bool = True,
         auto_plot: bool = True,
+        use_knowledge_base: bool = False,
+        knowledge_query: str = "",
     ) -> Result:
         bundle = self.load(name)
         project, plot, writer = bundle.project, bundle.plot, bundle.writer
@@ -388,6 +399,11 @@ class NovelService:
                 plot.save(str(project.base_dir / "plots.json"))
 
         prompt_instructions = instructions
+        knowledge = None
+        if use_knowledge_base:
+            knowledge = self.preview_knowledge(name, chapter, knowledge_query)
+            if knowledge["context"]:
+                prompt_instructions += "\n\n" + knowledge["context"]
         if plot_obj is not None and use_plot:
             prompt_instructions += "\n\n## 本章剧情设计（请严格遵循）\n" + plot_obj.to_prompt_text()
             for fp in plot_obj.foreshadowing_planted:
@@ -407,7 +423,9 @@ class NovelService:
         detail = [f"目标 {target_words} 字 → 实际 {wc:,} 字"]
         if target_words and abs(wc - target_words) / target_words > 0.3:
             detail.append("⚠ 与目标字数偏差超过 30%，可考虑重写或续写补足")
-        return Result(True, f"第{chapter}章已完成", detail)
+        if knowledge:
+            detail.append(f"知识注入：{len(knowledge['sources'])} 条来源" if knowledge["sources"] else knowledge["warning"])
+        return Result(True, f"第{chapter}章已完成", detail, data=knowledge)
 
     def batch_write(
         self,

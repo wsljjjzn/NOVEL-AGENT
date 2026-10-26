@@ -77,6 +77,12 @@ class ChapterGenerateReq(BaseModel):
     instructions: str = ""
     target_words: int = 2500
     model_tier: str = "flash"
+    use_knowledge_base: bool = False
+    knowledge_query: str = Field(default="", max_length=200)
+
+
+class KnowledgePreviewReq(BaseModel):
+    query: str = Field(default="", max_length=200)
 
 
 class ChapterSaveReq(BaseModel):
@@ -535,6 +541,8 @@ def generate_chapter_content(name: str, chapter: int, req: ChapterGenerateReq):
         target_words=req.target_words,
         tier=req.model_tier,
         instructions=req.instructions,
+        use_knowledge_base=req.use_knowledge_base,
+        knowledge_query=req.knowledge_query,
     )
     if not res.ok:
         raise HTTPException(status_code=500, detail=res.title)
@@ -550,7 +558,15 @@ def generate_chapter_content(name: str, chapter: int, req: ChapterGenerateReq):
         "word_count": len(content),
         "summary": res.title,
         "detail": res.lines,
+        "knowledge": res.data,
     }
+
+
+@router.post("/projects/{name}/chapters/{chapter}/knowledge/preview")
+def preview_chapter_knowledge(name: str, chapter: int, req: KnowledgePreviewReq):
+    if not svc.exists(name):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    return svc.preview_knowledge(name, chapter, req.query)
 
 
 # ==========================================
