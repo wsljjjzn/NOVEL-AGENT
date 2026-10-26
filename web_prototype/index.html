@@ -459,6 +459,13 @@
           </div>
         </div>
 
+        <details class="mx-6 my-2 p-3 border border-emerald-900 rounded text-xs">
+          <summary>知识注入 · 写作参考与来源</summary>
+          <label class="block my-2"><input id="knowledge-enabled" type="checkbox"> 生成正文时检索并注入知识库资料</label>
+          <input id="knowledge-query" maxlength="200" placeholder="关键词，例如：太空 氧气 生存；留空按本章大纲检索" class="w-full bg-emerald-950 p-2 rounded">
+          <button type="button" onclick="previewKnowledge()" class="my-2 px-3 py-1 border border-emerald-700 rounded">预览参考（不调用模型）</button>
+          <pre id="knowledge-preview" class="whitespace-pre-wrap max-h-48 overflow-y-auto">开启后，生成结果会显示实际使用的来源。</pre>
+        </details>
         <!-- 编辑器主体正文区 -->
         <div class="flex-1 overflow-y-auto px-16 py-10 max-w-4xl mx-auto w-full font-serif text-[17px] leading-[1.85] text-emerald-300 dark:text-emerald-300 relative transition-colors" id="editor-container">
           <h1 class="text-2xl font-bold font-sans text-emerald-200 dark:text-emerald-200 mb-8 border-b border-emerald-900/80 pb-3" id="editor-h1">正在加载正文...</h1>
@@ -3171,6 +3178,8 @@
             instructions: "",
             target_words: 2500,
             model_tier: currentModelTier,
+            use_knowledge_base: document.getElementById('knowledge-enabled').checked,
+            knowledge_query: document.getElementById('knowledge-query').value,
           }),
         });
 
@@ -3179,6 +3188,7 @@
         if (res.ok) {
           const ret = await res.json();
           // 重新读取本章正文装填到编辑器中
+          if (ret.knowledge) renderKnowledge(ret.knowledge);
           await loadRealChapter(currentChapterNum);
           showToast(`✓ 第 ${currentChapterNum} 章正文已成功生成 (${ret.word_count} 字)！您可直接润色修改，或在右上角手动点击「🔍 审稿」`);
         } else {
@@ -3248,6 +3258,27 @@
     // 真实后端 API 联动引擎 (生产级全真实数据驱动)
     // ==========================================
     const API_BASE = window.location.origin.includes(':8000') ? '/api' : 'http://127.0.0.1:8000/api';
+    function renderKnowledge(data) {
+      document.getElementById('knowledge-preview').textContent = data.sources?.length
+        ? data.sources.map(s => `[${s.id}] ${s.source}\n${s.text}`).join('\n\n')
+        : (data.warning || '未启用知识注入');
+    }
+
+    async function previewKnowledge() {
+      if (!currentProject || chapterLoading) return;
+      const project = currentProject.name, chapter = currentChapterNum;
+      try {
+        const response = await fetch(`${API_BASE}/projects/${encodeURIComponent(project)}/chapters/${chapter}/knowledge/preview`, {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({query: document.getElementById('knowledge-query').value}),
+        });
+        const data = await response.json();
+        if (currentProject?.name !== project || currentChapterNum !== chapter) return;
+        if (!response.ok) throw new Error(data.detail || '检索失败');
+        renderKnowledge(data);
+      } catch (error) { showToast(error.message, false); }
+    }
+
     let currentProject = null;
     let evolutionProposal = null;
     let editorTarget = null;
