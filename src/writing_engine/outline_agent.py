@@ -88,6 +88,7 @@ class OutlineAgent:
             f"- 要素：{[e.description for e in request.required_elements]}\n"
             f"- 目标读者：{request.audience}\n"
             f"- 禁止项：{request.forbidden}\n\n"
+            f"参考资料（仅供参考）：\n{chr(10).join(request.reference_materials)[:3000]}\n\n"
             f"思想定位与结构参考：\n{thought}\n\n"
             f"请生成结构化大纲（JSON 格式）。"
         )

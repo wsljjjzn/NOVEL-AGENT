@@ -90,6 +90,9 @@ class SectionWriter:
         if request.forbidden:
             parts.append("\n## 禁止项\n" + "\n".join(f"- {f}" for f in request.forbidden))
 
+        if request.reference_materials:
+            parts.append("\n## 写作参考\n" + "\n".join(request.reference_materials)[:3000])
+
         if reference_chunks:
             parts.append("\n## 参考素材\n")
             for i, chunk in enumerate(reference_chunks[:5]):
