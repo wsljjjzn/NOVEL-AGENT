@@ -738,7 +738,7 @@
             </label>
             <div class="flex items-center space-x-2">
               <input id="knowledge-query" maxlength="200" placeholder="检索关键词，例如：太空 氧气 生存（留空按本章大纲检索）" class="flex-1 bg-[var(--canvas-soft)] border border-[var(--hairline)] px-3 py-1.5 rounded-lg text-xs text-[var(--ink)] placeholder-[var(--ink-faint)] focus:outline-none focus:border-[#5e6ad2] transition">
-              <button type="button" onclick="previewKnowledge()" class="tactile-interactive px-3 py-1.5 bg-[var(--surface-soft)] hover:bg-[#5e6ad2]/10 text-[#5e6ad2] border border-[#5e6ad2]/30 rounded-lg text-xs font-medium transition cursor-pointer shrink-0">
+              <button type="button" onclick="previewKnowledge(event)" class="tactile-interactive px-3 py-1.5 bg-[var(--surface-soft)] hover:bg-[#5e6ad2]/10 text-[#5e6ad2] border border-[#5e6ad2]/30 rounded-lg text-xs font-medium transition cursor-pointer shrink-0">
                 🔍 预览参考
               </button>
             </div>
@@ -3621,14 +3621,28 @@
     // ==========================================
     const API_BASE = window.location.origin.includes(':8000') ? '/api' : 'http://127.0.0.1:8000/api';
     function renderKnowledge(data) {
-      document.getElementById('knowledge-preview').textContent = data.sources?.length
-        ? data.sources.map(s => `[${s.id}] ${s.source}\n${s.text}`).join('\n\n')
-        : (data.warning || '未启用知识注入');
+      const box = document.getElementById('knowledge-preview');
+      if (!box) return;
+      if (data.sources?.length) {
+        box.textContent = data.sources.map(s => `[来源 ${s.id} | ${s.source.split('/').pop()}]\n${s.text}`).join('\n\n');
+        box.classList.remove('text-[var(--ink-muted)]');
+        box.classList.add('text-[var(--ink)]');
+      } else {
+        const warn = data.warning || '未找到匹配知识';
+        box.textContent = `${warn}。\n\n💡 提示：当前已入库《星际旅行与深空生存硬核科幻知识手册》（涵盖：太空、氧气、辐射、曲率、休眠等设定）；\n您可输入上述关键词进行检索预览，或在终端运行「uv run na kb learn <文件>」导入您自己的设定集文档。`;
+        box.classList.add('text-[var(--ink-muted)]');
+      }
     }
 
-    async function previewKnowledge() {
-      if (!currentProject || chapterLoading) return;
+    async function previewKnowledge(e) {
+      if (!currentProject || chapterLoading) {
+        showToast("请等待章节加载完成", false);
+        return;
+      }
       const project = currentProject.name, chapter = currentChapterNum;
+      const btn = (e && e.currentTarget) || document.querySelector('button[onclick*="previewKnowledge"]');
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) btn.innerHTML = '<span>⏳ 检索中...</span>';
       try {
         const response = await fetch(`${API_BASE}/projects/${encodeURIComponent(project)}/chapters/${chapter}/knowledge/preview`, {
           method: 'POST', headers: {'Content-Type':'application/json'},
@@ -3638,7 +3652,12 @@
         if (currentProject?.name !== project || currentChapterNum !== chapter) return;
         if (!response.ok) throw new Error(data.detail || '检索失败');
         renderKnowledge(data);
-      } catch (error) { showToast(error.message, false); }
+        showToast(data.sources?.length ? `已检索到 ${data.sources.length} 条知识参考` : '未找到匹配知识');
+      } catch (error) { 
+        showToast(error.message, false); 
+      } finally {
+        if (btn) btn.innerHTML = origText;
+      }
     }
 
     let currentProject = null;
