@@ -3,19 +3,157 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Novel Studio · 写作 IDE 原型 v2.0</title>
+  <title>Novel Studio · 智能写作工作台 (Linear Style)</title>
+  <script>
+    (function() {
+      try {
+        const saved = localStorage.getItem('novel_cursor_theme_mode') || 'dark';
+        let isDark = saved === 'dark';
+        if (saved === 'system') {
+          isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
-    /* 滚动条美化：纯正复古翠绿荧光 */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #020503; }
-    ::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.35); border-radius: 2px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.7); }
-    
-    /* 选区与反白终端美学 */
-    ::selection { background-color: #10b981; color: #020503; }
-    ::-moz-selection { background-color: #10b981; color: #020503; }
-    
+    /* ========================================================
+       Linear 现代极简工匠设计系统 (Linear Design System Tokens)
+       ======================================================== */
+    :root {
+      /* Linear Light Theme: 晶亮清爽纯白底色，冷灰发丝边框，标志性薰衣草紫罗兰点缀 */
+      --canvas: #fafbfc;
+      --canvas-soft: #f4f5f8;
+      --surface-card: #ffffff;
+      --surface-soft: #f0f1f4;
+      --surface-elevated: #ffffff;
+      --surface-strong: #e4e6eb;
+
+      --ink: #0e1017;
+      --ink-secondary: #4b5162;
+      --ink-muted: #6c727e;
+      --ink-faint: #8e95a5;
+
+      --hairline: #e2e4e8;
+      --hairline-soft: #edf0f4;
+      --hairline-strong: #d0d4dc;
+
+      /* Signature Linear Lavender-Blue */
+      --primary: #5e6ad2;
+      --primary-hover: #4e5ac0;
+      --primary-subtle: rgba(94, 106, 210, 0.08);
+      --primary-border: rgba(94, 106, 210, 0.3);
+      --on-primary: #ffffff;
+
+      --badge-bg: #f0f1f4;
+      --badge-text: #4b5162;
+      --status-success: #27a644;
+      --status-warning: #d97706;
+      --status-error: #e11d48;
+
+      --editor-paper-bg: #ffffff;
+      --editor-text: #0e1017;
+      --editor-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0,0,0,0.08);
+      --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --modal-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    html.dark, body.dark {
+      /* Linear Dark Theme: 深空曜黑底色 (#08090a)，深炭微浮层 (#121315)，发丝边框 (#23252a)，薰衣草紫罗兰 (#5e6ad2) */
+      --canvas: #08090a;
+      --canvas-soft: #0e1012;
+      --surface-card: #121315;
+      --surface-soft: #17181c;
+      --surface-elevated: #1c1d22;
+      --surface-strong: #24262c;
+
+      --ink: #f7f8f8;
+      --ink-secondary: #d0d6e0;
+      --ink-muted: #8a8f98;
+      --ink-faint: #62666d;
+
+      --hairline: #23252a;
+      --hairline-soft: #1c1d22;
+      --hairline-strong: #34343a;
+
+      /* Signature Linear Lavender-Blue */
+      --primary: #5e6ad2;
+      --primary-hover: #828fff;
+      --primary-subtle: rgba(94, 106, 210, 0.16);
+      --primary-border: rgba(94, 106, 210, 0.38);
+      --on-primary: #ffffff;
+
+      --badge-bg: #17181c;
+      --badge-text: #d0d6e0;
+      --status-success: #27a644;
+      --status-warning: #f59e0b;
+      --status-error: #f43f5e;
+
+      --editor-paper-bg: #0f1012;
+      --editor-text: #f7f8f8;
+      --editor-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255,255,255,0.06);
+      --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.1);
+    }
+
+    /* 统一全局基础画布与文字色 */
+    body {
+      background-color: var(--canvas) !important;
+      color: var(--ink) !important;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      letter-spacing: -0.01em;
+    }
+
+    /* 顶栏与侧栏底色与边框 */
+    header {
+      background-color: var(--surface-card) !important;
+      border-color: var(--hairline) !important;
+      color: var(--ink) !important;
+    }
+    aside {
+      background-color: var(--surface-card) !important;
+      border-color: var(--hairline) !important;
+    }
+
+    /* 沉浸式编辑器正文容器 */
+    #editor-wrapper {
+      background-color: var(--canvas) !important;
+    }
+    #editor-subbar {
+      background-color: var(--surface-card) !important;
+      border-color: var(--hairline) !important;
+    }
+    #editor-container {
+      color: var(--editor-text) !important;
+    }
+    #editor-container h1 {
+      color: var(--ink) !important;
+      border-color: var(--hairline) !important;
+      letter-spacing: -0.02em;
+    }
+
+    /* 企划构思与剧情棋盘主区底色 */
+    #perspective-planning,
+    #perspective-storyboard {
+      background-color: var(--canvas) !important;
+      color: var(--ink) !important;
+    }
+
+    /* 滚动条美化：Linear 极简细线 */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--hairline-strong); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    /* 选区与反白：Linear 柔和紫罗兰微光 */
+    ::selection { background-color: var(--primary-subtle); color: var(--primary); }
+    ::-moz-selection { background-color: var(--primary-subtle); color: var(--primary); }
+
     /* 诊断波浪线 */
     .squiggled-warning {
       text-decoration: underline wavy #f59e0b;
@@ -23,309 +161,430 @@
       cursor: pointer;
     }
     .squiggled-warning:hover {
-      background-color: rgba(245, 158, 11, 0.15);
+      background-color: rgba(245, 158, 11, 0.12);
       border-radius: 2px;
     }
 
-    /* 选区与 Diff (复古绿色终端风格) */
+    /* Diff 样式 (Linear 精致工匠风) */
     .diff-deleted {
-      background-color: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
+      background-color: rgba(244, 63, 94, 0.12);
+      color: #f43f5e;
       text-decoration: line-through;
       padding: 0 4px;
-      border-radius: 2px;
+      border-radius: 3px;
     }
     .diff-added {
-      background-color: rgba(16, 185, 129, 0.25);
-      color: #6ee7b7;
+      background-color: rgba(39, 166, 68, 0.14);
+      color: #27a644;
       padding: 0 4px;
-      border-radius: 2px;
-      border-bottom: 1px solid #10b981;
+      border-radius: 3px;
+      border-bottom: 1px solid #27a644;
     }
     .ghost-text {
-      color: #059669;
+      color: var(--ink-muted);
       font-style: italic;
       user-select: none;
     }
 
-    /* CRT Scanline Overlay */
-    .crt-scanlines {
-      background: linear-gradient(
-        rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.45) 50%
-      );
-      background-size: 100% 4px;
-      pointer-events: none;
+    /* 背景与卡片映射兼容 */
+    .bg-\[\#020503\], .bg-\[\#030604\], .bg-\[\#040805\], .bg-\[\#040905\], .bg-\[\#050c07\], .bg-\[\#060c08\], .bg-\[\#050b06\], .bg-\[\#070502\], .bg-\[\#020507\], .bg-\[\#050505\] {
+      background-color: var(--surface-card) !important;
+    }
+    .bg-\[\#050c07\]\/90, .bg-\[\#050c07\]\/80, .bg-\[\#030604\]\/95, .bg-\[\#020503\]\/70, .bg-\[\#020503\]\/40 {
+      background-color: var(--surface-soft) !important;
+    }
+    .border-emerald-900\/80, .border-emerald-900\/70, .border-emerald-900\/60, .border-emerald-800\/80, .border-emerald-800\/60, .border-emerald-800\/50, .border-emerald-700\/80, .border-emerald-700\/50 {
+      border-color: var(--hairline) !important;
+    }
+    .border-emerald-500, .border-emerald-400, .border-emerald-500\/40, .border-emerald-500\/30, .border-emerald-500\/50 {
+      border-color: var(--primary-border) !important;
     }
 
-    /* CRT Subtle Screen Vignette */
-    .crt-vignette {
-      box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.85);
-      pointer-events: none;
+    /* 文本色映射兼容 */
+    .text-emerald-100, .text-emerald-200, .text-emerald-300 {
+      color: var(--ink) !important;
+    }
+    .text-emerald-400, .text-emerald-400\/90, .text-emerald-400\/80 {
+      color: var(--ink-secondary) !important;
+    }
+    .text-emerald-500, .text-emerald-500\/80, .text-emerald-600, .text-emerald-700 {
+      color: var(--ink-muted) !important;
     }
 
-    /* Phosphor Glow effect */
-    .phosphor-glow-bright {
-      text-shadow: 0 0 6px rgba(52, 211, 153, 0.8),
-                   0 0 14px rgba(16, 185, 129, 0.5);
+    /* Linear 主按钮映射：熏衣草紫罗兰 */
+    button.bg-emerald-500, .bg-emerald-500 {
+      background-color: var(--primary) !important;
+      color: var(--on-primary) !important;
     }
-    .phosphor-glow-subtle {
-      text-shadow: 0 0 4px rgba(52, 211, 153, 0.4);
+    button.bg-emerald-500:hover, .hover\:bg-emerald-400:hover {
+      background-color: var(--primary-hover) !important;
     }
 
-    /* Flash burst for 100% critical lock */
-    @keyframes phosphor-flash {
-      0% {
-        filter: brightness(3.5) contrast(1.6);
-        background-color: rgba(52, 211, 153, 0.35);
-      }
-      100% {
-        filter: brightness(1) contrast(1);
-        background-color: transparent;
-      }
+    /* Linear 次级按钮映射 */
+    .bg-emerald-950, .bg-emerald-950\/80, .bg-emerald-950\/60, .bg-emerald-950\/40, .bg-emerald-900\/60 {
+      background-color: var(--surface-soft) !important;
+      color: var(--ink) !important;
+      border-color: var(--hairline) !important;
     }
-    .animate-flash-burst {
-      animation: phosphor-flash 0.55s ease-out forwards;
+    .hover\:bg-emerald-950\/60:hover, .hover\:bg-emerald-900\/60:hover, .hover\:bg-emerald-950\/40:hover {
+      background-color: var(--surface-strong) !important;
+    }
+
+    /* 渐变卡片转换为现代 Linear 柔和微光 */
+    .from-emerald-950\/40, .from-emerald-950\/30 {
+      --tw-gradient-from: var(--surface-card) !important;
+    }
+    .to-slate-900, .to-slate-900\/90 {
+      --tw-gradient-to: var(--surface-soft) !important;
+    }
+
+    /* 输入框与选择器统一 Linear 风格 */
+    input[type="text"], input[type="password"], input[type="number"], textarea, select {
+      background-color: var(--canvas-soft) !important;
+      border-color: var(--hairline) !important;
+      color: var(--ink) !important;
+      border-radius: 6px !important;
+    }
+    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+      border-color: var(--primary) !important;
+      box-shadow: 0 0 0 2px var(--primary-subtle) !important;
+      outline: none !important;
+    }
+
+    /* 滑块自定义 thumb */
+    input[type="range"] {
+      accent-color: var(--primary) !important;
+    }
+
+    /* 模态框阴影与遮罩 */
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    html.dark .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.75);
     }
 
     .dna-term-canvas {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace;
       font-variant-numeric: tabular-nums;
-      line-height: 1.22;
+      line-height: 1.25;
       letter-spacing: -0.2px;
       user-select: text;
     }
 
-    /* 终端调色板主题滤镜 (维度 4) */
-    body.theme-amber {
-      filter: hue-rotate(95deg) saturate(1.15);
+    /* 响应式移动端/平板端侧栏抽屉样式 */
+    @media (max-width: 1023px) {
+      .responsive-sidebar-left {
+        position: fixed !important;
+        top: 3.5rem;
+        bottom: 0;
+        left: 0;
+        z-index: 40;
+        width: 280px !important;
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: var(--modal-shadow);
+      }
+      .responsive-sidebar-left.open {
+        transform: translateX(0);
+      }
+      .responsive-sidebar-right {
+        position: fixed !important;
+        top: 3.5rem;
+        bottom: 0;
+        right: 0;
+        z-index: 40;
+        width: 320px !important;
+        transform: translateX(100%);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: var(--modal-shadow);
+      }
+      .responsive-sidebar-right.open {
+        transform: translateX(0);
+      }
+      #resizer-left, #resizer-right {
+        display: none !important;
+      }
+      #editor-container {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+      }
     }
-    body.theme-cyan {
-      filter: hue-rotate(295deg) saturate(1.1);
-    }
-    body.theme-monochrome {
-      filter: grayscale(1) contrast(1.1);
-    }
-    body.no-crt .crt-scanlines,
-    body.no-crt .crt-vignette {
+  
+    /* Zen 全屏专注模式 */
+    #perspective-writing.zen-mode-active #sidebar-left,
+    #perspective-writing.zen-mode-active #sidebar-right,
+    #perspective-writing.zen-mode-active #resizer-left,
+    #perspective-writing.zen-mode-active #resizer-right {
       display: none !important;
     }
+    #perspective-writing.zen-mode-active #editor-container {
+      max-width: 860px !important;
+      padding-top: 3.5rem !important;
+      transition: max-width 0.3s ease, padding 0.3s ease;
+    }
+    #perspective-writing.zen-mode-active #editor-subbar {
+      border-bottom: 1px dashed var(--hairline) !important;
+    }
+
+  
+    /* ========================================================
+       Linear 3D Perspective Tilt & Spring Bounce Micro-interactions
+       ======================================================== */
+    .tilt-card {
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.22s ease, border-color 0.2s ease;
+      will-change: transform;
+    }
+    .tilt-card:hover {
+      border-color: var(--primary-border) !important;
+      box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.08), 0 0 1px rgba(94, 106, 210, 0.25) !important;
+    }
+    html.dark .tilt-card:hover {
+      box-shadow: 0 14px 30px -6px rgba(0, 0, 0, 0.5), 0 0 1px rgba(130, 143, 255, 0.3) !important;
+    }
+
+    /* 触觉弹力反馈与微跳跃 (Spring Bounce Feedback) */
+    .tactile-interactive, .bounce-on-hover {
+      transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.15s ease !important;
+    }
+    .tactile-interactive:hover, .bounce-on-hover:hover {
+      transform: translateY(-2px) scale(1.02);
+    }
+    .tactile-interactive:active, .bounce-on-hover:active {
+      transform: translateY(0) scale(0.96);
+    }
+    .bounce-chip:hover {
+      transform: translateY(-1.5px) scale(1.03);
+      border-color: var(--primary) !important;
+    }
+
   </style>
 </head>
-<body class="bg-[#020503] text-emerald-300 font-sans antialiased h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 relative">
+<body class="bg-[var(--canvas)] text-[var(--ink)] font-sans antialiased h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 relative">
+<div id="splash-doctor-screen" class="fixed inset-0 bg-[var(--canvas)] z-50 flex flex-col p-2 sm:p-4 transition-opacity duration-500 select-none overflow-hidden font-sans text-[var(--ink)]">
+  <div class="w-full h-full bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-3 sm:p-5 shadow-2xl flex flex-col justify-between overflow-hidden relative text-[var(--ink)] text-xs">
+    
+    <!-- 顶栏：Linear 极简现代工作室标头 -->
+    <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-3 px-1 shrink-0">
+      <div class="flex items-center space-x-3">
+        <span class="px-2 py-0.5 bg-[#5e6ad2] text-white font-bold text-[11px] tracking-wider rounded shadow-sm">LINEAR</span>
+        <span class="text-xs sm:text-sm font-semibold text-[var(--ink)] tracking-tight">NOVEL STUDIO // HIGH-CRAFT WRITING SUITE</span>
+        <span class="text-[10px] text-[var(--ink-muted)] hidden md:inline ml-2">[DETERMINISTIC V1 // ZERO-LAG CANVAS // DUAL-THEME ENGINE]</span>
+      </div>
+      <div class="flex items-center space-x-3 text-[11px]">
+        <span id="dna-stage-badge" class="px-2.5 py-0.5 bg-[var(--surface-soft)] border border-[var(--hairline)] text-[#5e6ad2] font-semibold tracking-wider text-[10px] rounded-full">
+          STAGE: COLD_START [0.2 Hz]
+        </span>
+        <span class="text-[#5e6ad2] font-semibold text-[10px] flex items-center space-x-1.5" id="splash-status-text">
+          <span class="w-2 h-2 rounded-full bg-[#5e6ad2] animate-ping inline-block"></span>
+          <span>● SYSTEM_BOOTING...</span>
+        </span>
+      </div>
+    </div>
 
-  <!-- ======================================================== -->
-  <!-- 0. 全屏自检载入界面 (Splash Doctor Fullscreen Retro Terminal) -->
-  <!-- ======================================================== -->
-  <!-- ======================================================== -->
-  <!-- 0. 纯正 TUI 终端风格载入界面 (Pure CRT Terminal Loading Matrix) -->
-  <!-- ======================================================== -->
-  <div id="splash-doctor-screen" class="fixed inset-0 bg-black z-50 flex flex-col p-2 sm:p-3 transition-opacity duration-700 select-none overflow-hidden font-mono">
-    <div class="w-full h-full bg-[#020503] border-2 border-emerald-600/80 rounded-none p-2 sm:p-3 shadow-2xl flex flex-col justify-between overflow-hidden relative text-emerald-400 text-xs">
+    <!-- 上半区：双核矩阵协同舱 (左侧 HTML5 高帧率交互双螺旋画布 + 右侧文学基因与遥测监视视窗) -->
+    <div class="w-full flex-1 min-h-[220px] max-h-[380px] flex flex-col lg:flex-row gap-3 my-2 shrink-0 overflow-hidden">
       
-      <!-- 顶栏：纯正 ASCII 终端标头（无任何 Mac 圆点！） -->
-      <div class="flex items-center justify-between border-b border-emerald-800/80 pb-2 px-1 shrink-0">
-        <div class="flex items-center space-x-2">
-          <span class="px-1.5 py-0.5 bg-emerald-500 text-black font-black text-[11px] tracking-wider">TTY1</span>
-          <span class="text-xs sm:text-sm font-bold text-emerald-300 tracking-wider">NOVEL_STUDIO // HORIZONTAL_HELIX_ENGINE</span>
-          <span class="text-[10px] text-emerald-600 hidden md:inline ml-2">[P1-525NM MONOCHROME // 60FPS]</span>
-        </div>
-        <div class="flex items-center space-x-3 text-[11px]">
-          <span id="dna-stage-badge" class="px-2 py-0.5 bg-emerald-950 border border-emerald-600 text-emerald-300 font-bold tracking-wider text-[10px]">
-            STAGE: COLD_START [0.2 Hz]
-          </span>
-          <span class="text-emerald-400 font-bold text-[10px]" id="splash-status-text">
-            ● SYSTEM_BOOTING...
-          </span>
+      <!-- 左侧主舱：宽幅交互双螺旋 (双螺旋叙事基因画布) -->
+      <div id="dna-viewport-box" class="tilt-card relative flex-1 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl overflow-hidden flex flex-col justify-center p-1 shrink-0 shadow-inner group">
+        <canvas id="dna-interactive-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+        <pre id="dna-terminal-canvas" class="hidden"></pre>
+        <div class="absolute bottom-2 right-3 text-[9px] text-[var(--ink-muted)] opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none font-mono">
+          [MOUSE_INTERACT: 移动鼠标扰动波形 / 点击激发脉冲]
         </div>
       </div>
 
-      <!-- 上半区：双核矩阵协同舱 (左侧双螺旋 ASCII 画布 + 右侧文学基因与遥测监视视窗，彻底消除右侧空旷留白) -->
-      <div class="w-full flex-1 min-h-[220px] max-h-[380px] flex flex-col lg:flex-row gap-2 my-1 shrink-0 overflow-hidden">
+      <!-- 右侧辅舱：小说文学基因矩阵与系统级遥测监视窗  -->
+      <div class="tilt-card w-full lg:w-72 xl:w-80 shrink-0 bg-[var(--surface-soft)] border border-[var(--hairline)] p-3.5 rounded-xl flex flex-col justify-between font-mono text-[10px] sm:text-[11px] text-[var(--ink)] overflow-hidden relative select-none shadow-sm">
         
-        <!-- 左侧主舱：宽幅 ASCII 双螺旋自适应视口 (自适应填满可用宽度，边缘精确贴合中隔线) -->
-        <div id="dna-viewport-box" class="relative flex-1 bg-black border border-emerald-900/80 overflow-hidden flex flex-col justify-center px-0.5 shrink-0">
-          <!-- CRT 扫描线与暗角 -->
-          <div class="absolute inset-0 crt-scanlines pointer-events-none z-10 opacity-70"></div>
-          <div class="absolute inset-0 crt-vignette pointer-events-none z-10"></div>
+        <!-- 1. 顶部小标题与联机状态 -->
+        <div class="border-b border-[var(--hairline)] pb-2 flex items-center justify-between">
+          <span class="font-bold text-[var(--ink)] tracking-wider flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#5e6ad2]"></span>
+            <span>GENOME_MATRIX</span>
+          </span>
+          <span class="text-[9px] px-2 py-0.5 bg-[var(--surface-card)] border border-[var(--hairline)] text-[#5e6ad2] font-semibold rounded-full" id="mon-sync-state">ONLINE</span>
+        </div>
 
-          <!-- 字符画布：铺满左侧主舱 -->
-          <div class="w-full h-full overflow-hidden flex items-center justify-start">
-            <pre id="dna-terminal-canvas" class="dna-term-canvas text-[11px] sm:text-[12px] md:text-[13px] text-emerald-400 font-bold block w-full"></pre>
+        <!-- 2. 小说创作四大文学基因状态条  -->
+        <div class="space-y-2.5 py-2">
+          <div class="group/gene cursor-pointer" title="伏笔暗线台账闭环检查">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[var(--ink-secondary)] text-[10px]">01. 伏笔暗线台账</span>
+              <span id="mon-gene-clue" class="font-bold text-[var(--ink-muted)] text-[10px]">[STANDBY]</span>
+            </div>
+            <div class="w-full bg-[var(--surface-strong)] h-1.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+              <div id="mon-bar-clue" class="bg-[#5e6ad2] h-full w-[8%] transition-all duration-300 rounded-full"></div>
+            </div>
+          </div>
+
+          <div class="group/gene cursor-pointer" title="角色动机弧光演变追踪">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[var(--ink-secondary)] text-[10px]">02. 角色动机弧光</span>
+              <span id="mon-gene-arc" class="font-bold text-[var(--ink-muted)] text-[10px]">[STANDBY]</span>
+            </div>
+            <div class="w-full bg-[var(--surface-strong)] h-1.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+              <div id="mon-bar-arc" class="bg-[#5e6ad2] h-full w-[8%] transition-all duration-300 rounded-full"></div>
+            </div>
+          </div>
+
+          <div class="group/gene cursor-pointer" title="对立极性冲突张力分析">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[var(--ink-secondary)] text-[10px]">03. 张力冲突极性</span>
+              <span id="mon-gene-polar" class="font-bold text-[var(--ink-muted)] text-[10px]">[STANDBY]</span>
+            </div>
+            <div class="w-full bg-[var(--surface-strong)] h-1.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+              <div id="mon-bar-polar" class="bg-[#5e6ad2] h-full w-[8%] transition-all duration-300 rounded-full"></div>
+            </div>
+          </div>
+
+          <div class="group/gene cursor-pointer" title="悬念高潮与蓄压释放">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[var(--ink-secondary)] text-[10px]">04. 悬念高潮蓄压</span>
+              <span id="mon-gene-climax" class="font-bold text-[var(--ink-muted)] text-[10px]">[STANDBY]</span>
+            </div>
+            <div class="w-full bg-[var(--surface-strong)] h-1.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+              <div id="mon-bar-climax" class="bg-[#5e6ad2] h-full w-[8%] transition-all duration-300 rounded-full"></div>
+            </div>
           </div>
         </div>
 
-        <!-- 右侧辅舱：小说文学基因矩阵与系统级遥测监视窗 (填满右侧区域，彻底消除空旷感) -->
-        <div class="w-full lg:w-72 xl:w-80 shrink-0 bg-black border border-emerald-900/80 p-2.5 flex flex-col justify-between font-mono text-[10px] sm:text-[11px] text-emerald-500 overflow-hidden relative select-none">
-          <!-- CRT 扫描暗纹背景 -->
-          <div class="absolute inset-0 crt-scanlines pointer-events-none opacity-40"></div>
-
-          <!-- 1. 顶部小标题与联机状态 -->
-          <div class="border-b border-emerald-900/80 pb-1 flex items-center justify-between">
-            <span class="font-bold text-emerald-300 tracking-wider">&gt;&gt; GENOME_MATRIX</span>
-            <span class="text-[9px] px-1 bg-emerald-950 border border-emerald-700/60 text-emerald-400 font-bold" id="mon-sync-state">ONLINE</span>
+        <!-- 3. 系统级确定性领域引擎遥测 -->
+        <div class="border-t border-[var(--hairline)] pt-2 space-y-1.5 text-[10px]">
+          <div class="flex items-center justify-between text-[var(--ink-secondary)]">
+            <span>CORE_ENGINE:</span>
+            <span class="text-[var(--ink)] font-bold">DETERMINISTIC_V1</span>
           </div>
-
-          <!-- 2. 小说创作四大文学基因状态条 (实时跃迁) -->
-          <div class="space-y-1.5 py-1.5">
-            <div>
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-emerald-400/80">01. 伏笔暗线台账</span>
-                <span id="mon-gene-clue" class="font-bold text-emerald-700">[STANDBY]</span>
-              </div>
-              <div class="w-full bg-emerald-950/60 h-1 border border-emerald-900/60 overflow-hidden">
-                <div id="mon-bar-clue" class="bg-emerald-400 h-full w-[8%] transition-all duration-300"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-emerald-400/80">02. 角色动机弧光</span>
-                <span id="mon-gene-arc" class="font-bold text-emerald-700">[STANDBY]</span>
-              </div>
-              <div class="w-full bg-emerald-950/60 h-1 border border-emerald-900/60 overflow-hidden">
-                <div id="mon-bar-arc" class="bg-emerald-400 h-full w-[8%] transition-all duration-300"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-emerald-400/80">03. 张力冲突极性</span>
-                <span id="mon-gene-polar" class="font-bold text-emerald-700">[STANDBY]</span>
-              </div>
-              <div class="w-full bg-emerald-950/60 h-1 border border-emerald-900/60 overflow-hidden">
-                <div id="mon-bar-polar" class="bg-emerald-400 h-full w-[8%] transition-all duration-300"></div>
-              </div>
-            </div>
-
-            <div>
-              <div class="flex items-center justify-between mb-0.5">
-                <span class="text-emerald-400/80">04. 悬念高潮蓄压</span>
-                <span id="mon-gene-climax" class="font-bold text-emerald-700">[STANDBY]</span>
-              </div>
-              <div class="w-full bg-emerald-950/60 h-1 border border-emerald-900/60 overflow-hidden">
-                <div id="mon-bar-climax" class="bg-emerald-400 h-full w-[8%] transition-all duration-300"></div>
-              </div>
-            </div>
+          <div class="flex items-center justify-between text-[var(--ink-secondary)]">
+            <span>ZERO_LLM_LEAK:</span>
+            <span class="text-[#27a644] font-bold">[ENFORCED]</span>
           </div>
-
-          <!-- 3. 系统级确定性领域引擎遥测 -->
-          <div class="border-t border-emerald-900/80 pt-1.5 space-y-1 text-[10px]">
-            <div class="flex items-center justify-between text-slate-400">
-              <span>CORE_ENGINE:</span>
-              <span class="text-emerald-300 font-bold">DETERMINISTIC_V1</span>
-            </div>
-            <div class="flex items-center justify-between text-slate-400">
-              <span>ZERO_LLM_LEAK:</span>
-              <span class="text-emerald-400 font-bold">[ENFORCED]</span>
-            </div>
-            <div class="flex items-center justify-between text-slate-400">
-              <span>MEM_STACK_PTR:</span>
-              <span class="text-emerald-400 font-mono" id="mon-stack-ptr">0x7FFE4B20</span>
-            </div>
-            <div class="flex items-center justify-between text-slate-400">
-              <span>ANGULAR_VEL:</span>
-              <span class="text-emerald-300 font-mono font-bold" id="mon-ang-vel">0.32 RAD/S</span>
-            </div>
+          <div class="flex items-center justify-between text-[var(--ink-secondary)]">
+            <span>MEM_STACK_PTR:</span>
+            <span class="text-[var(--ink-muted)] font-mono" id="mon-stack-ptr">0x7FFE4B20</span>
           </div>
-
+          <div class="flex items-center justify-between text-[var(--ink-secondary)]">
+            <span>ANGULAR_VEL:</span>
+            <span class="text-[#5e6ad2] font-mono font-bold" id="mon-ang-vel">0.32 RAD/S</span>
+          </div>
         </div>
+
       </div>
+    </div>
 
-      <!-- 下部区域：融合在双螺旋正下方的纯终端一体化全宽 Log 流 -->
-      <div class="flex-1 min-h-[140px] flex flex-col bg-black border-t border-emerald-900/80 pt-2 px-1 overflow-hidden my-1">
-        <!-- Log 窗口顶部终端栏：集成文学基因状态指示 -->
-        <div class="flex items-center justify-between border-b border-emerald-900/60 pb-1.5 mb-1.5 text-[10px] text-emerald-600 shrink-0 select-none">
-          <div class="flex items-center space-x-2">
-            <span class="text-emerald-400 font-bold">&gt;&gt; TTY1_DIAGNOSTIC_LOG_STREAM</span>
-            <span class="text-emerald-600">[SPEED: 10-CHAR / 50ms (2X TURBO)]</span>
-            <button id="btn-skip-splash" onclick="skipSplashDiagnostics()" class="text-emerald-400 hover:text-emerald-200 border border-emerald-700/80 hover:border-emerald-400 px-1.5 py-0.5 rounded text-[9px] transition cursor-pointer bg-emerald-950/60 select-none flex items-center space-x-1" title="快速完成自检并解锁工作台">
-              <span>⚡</span>
-              <span>快速跳过 (SPACE)</span>
-            </button>
-          </div>
-          <div class="flex items-center space-x-2 sm:space-x-4 text-slate-400 font-mono text-[9px] sm:text-[10px]">
-            <span>[伏笔·暗线: <b class="text-emerald-400" id="hud-gene-clue">WAITING</b>]</span>
-            <span>[动机·弧光: <b class="text-emerald-400" id="hud-gene-arc">WAITING</b>]</span>
-            <span>[正向·反派: <b class="text-emerald-400" id="hud-gene-polar">WAITING</b>]</span>
-            <span>[悬念·高潮: <b class="text-emerald-400" id="hud-gene-climax">WAITING</b>]</span>
-            <span class="text-emerald-300 font-bold" id="dna-hud-percent">0%</span>
-          </div>
-        </div>
-
-        <!-- 终端逐行跳字打印容器 (自动向下滚屏) -->
-        <div class="flex-1 overflow-y-auto space-y-1 text-emerald-400 text-[11px] font-mono leading-relaxed pr-1" id="doctor-steps-list">
-          <!-- 纯文本终端输出流 -->
-        </div>
-      </div>
-
-      <!-- 底部控制栏：纯终端命令行反显风格按键 -->
-      <div class="border-t border-emerald-900/80 pt-2 shrink-0 flex items-center justify-between text-[11px]">
-        <div class="text-emerald-600 text-[10px] flex items-center space-x-2">
-          <span class="text-emerald-400 font-bold">PROMPT &gt;</span>
-          <span id="splash-footer-note" class="text-emerald-500 font-mono">uv run na-studio // 叙事双螺旋巡航自检中...</span>
-        </div>
-        <div class="flex items-center space-x-3">
-          <span class="text-emerald-600 text-[10px] hidden sm:inline" id="splash-skip-tip">[按 SPACE 跳过 / 按 ENTER 进入]</span>
-          <button id="btn-enter-studio" onclick="dismissSplashScreen()" class="px-5 py-2 font-mono font-bold text-xs uppercase tracking-wider border border-emerald-500 bg-black text-emerald-600 transition flex items-center space-x-2 cursor-pointer opacity-30 pointer-events-none select-none">
-            <span id="btn-enter-text">[ &gt; 正在初始化自检与装载工程... &lt; ]</span>
-            <span id="btn-enter-arrow">&gt;&gt;</span>
+    <!-- 下部区域：自检 Log 流（全方位亮暗双色卡片流） -->
+    <div class="flex-1 min-h-[140px] flex flex-col bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl p-3 overflow-hidden my-1 text-[var(--ink)] shadow-inner">
+      <!-- Log 窗口顶部终端栏 -->
+      <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-2 mb-2 text-[10px] text-[var(--ink-muted)] shrink-0 select-none">
+        <div class="flex items-center space-x-2">
+          <span class="text-[#5e6ad2] font-bold">&gt;&gt; LOG_STREAM</span>
+          <span class="text-[var(--ink-faint)] hidden sm:inline">[HIGH_SPEED: 25-CHAR / 12ms]</span>
+          <button id="btn-skip-splash" onclick="skipSplashDiagnostics()" class="text-[var(--ink)] hover:text-[#5e6ad2] border border-[var(--hairline)] hover:border-[#5e6ad2] px-2.5 py-0.5 rounded text-[10px] transition cursor-pointer bg-[var(--surface-card)] select-none flex items-center space-x-1 shadow-sm" title="快速完成自检并解锁工作台">
+            <span>⚡</span>
+            <span>快速跳过 (SPACE)</span>
           </button>
         </div>
+        <div class="flex items-center space-x-2 sm:space-x-4 text-[var(--ink-muted)] font-mono text-[9px] sm:text-[10px]">
+          <span>[伏笔·暗线: <b class="text-[#5e6ad2]" id="hud-gene-clue">WAITING</b>]</span>
+          <span>[动机·弧光: <b class="text-[#5e6ad2]" id="hud-gene-arc">WAITING</b>]</span>
+          <span>[正向·反派: <b class="text-[#5e6ad2]" id="hud-gene-polar">WAITING</b>]</span>
+          <span>[悬念·高潮: <b class="text-[#5e6ad2]" id="hud-gene-climax">WAITING</b>]</span>
+          <span class="text-[#5e6ad2] font-bold text-xs" id="dna-hud-percent">0%</span>
+        </div>
+      </div>
+
+      <!-- 逐行打印容器 (自动向下滚屏) -->
+      <div class="flex-1 overflow-y-auto space-y-1 text-[var(--ink-secondary)] text-[11px] font-mono leading-relaxed pr-1" id="doctor-steps-list">
+        <!-- 文本流 -->
+      </div>
+    </div>
+
+    <!-- 底部控制栏：Linear 极简风格 -->
+    <div class="border-t border-[var(--hairline)] pt-2.5 shrink-0 flex items-center justify-between text-[11px]">
+      <div class="text-[var(--ink-muted)] text-[10px] flex items-center space-x-2">
+        <span class="text-[#5e6ad2] font-bold">READY &gt;</span>
+        <span id="splash-footer-note" class="text-[var(--ink-secondary)] font-mono">uv run na-studio // 叙事双螺旋巡航自检中...</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span class="text-[var(--ink-muted)] text-[10px] hidden sm:inline" id="splash-skip-tip">[按 SPACE 跳过 / 按 ENTER 进入]</span>
+        <button id="btn-enter-studio" onclick="dismissSplashScreen()" class="px-5 py-2 font-mono font-semibold text-xs uppercase tracking-wider border border-[var(--hairline)] bg-[var(--surface-soft)] text-[var(--ink-muted)] transition flex items-center space-x-2 cursor-pointer opacity-50 pointer-events-none rounded-lg select-none">
+          <span id="btn-enter-text">[ &gt; 正在初始化自检与装载工程... &lt; ]</span>
+          <span id="btn-enter-arrow">&gt;&gt;</span>
+        </button>
       </div>
     </div>
   </div>
-
-  <!-- 1. 顶栏：系统级透视图切换 (Perspectives) & 项目元信息 -->
-  <header class="h-14 border-b border-emerald-900/80 dark:border-emerald-900/80 bg-[#040805] dark:bg-[#040805] px-3 sm:px-5 flex items-center justify-between shrink-0 transition-colors z-20 overflow-hidden">
+</div>
+<!-- 1. 顶栏：系统级透视图切换 (Perspectives) & 项目元信息 -->
+  <header class="h-14 border-b border-[var(--hairline)] bg-[var(--surface-card)] px-3 sm:px-5 flex items-center justify-between shrink-0 transition-colors z-20 overflow-hidden">
     <!-- 左侧：项目名称与新建 -->
     <div class="flex items-center space-x-2 shrink-0 min-w-0">
-      <div class="w-7 h-7 rounded-lg bg-emerald-500 text-black font-bold flex items-center justify-center font-bold text-white shadow-md shadow-emerald-500/30 text-xs shrink-0">
+      <div class="w-7 h-7 rounded-md bg-[#5e6ad2] text-white font-bold flex items-center justify-center shadow-sm text-xs shrink-0 tracking-wider">
         N
       </div>
       <div class="flex items-center space-x-1.5 min-w-0">
-        <select id="project-selector" onchange="onSelectProject(this.value)" class="w-36 sm:w-48 md:w-56 truncate font-semibold text-xs bg-[#050c07] border border-emerald-800/80 rounded-md px-2 py-1 text-emerald-200 focus:outline-none cursor-pointer">
+        <select id="project-selector" onchange="onSelectProject(this.value)" class="w-32 sm:w-44 md:w-52 truncate font-medium text-xs bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-md px-2 py-1 text-[var(--ink)] focus:outline-none cursor-pointer">
           <option value="" disabled selected>正在扫描小说工程...</option>
         </select>
-        <button onclick="showCreateProjectModal()" class="px-2 py-1 rounded text-xs bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center space-x-1 shadow transition shrink-0" title="新建小说工程">
+        <button onclick="showCreateProjectModal()" class="px-2.5 py-1 rounded-md text-xs bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-medium flex items-center space-x-1 shadow-sm transition shrink-0 cursor-pointer" title="新建小说工程">
           <span>+</span>
           <span class="hidden sm:inline">新建</span>
         </button>
-        <button onclick="deleteCurrentProjectPrompt()" class="p-1 rounded text-xs bg-emerald-950/80 hover:bg-rose-950 hover:text-rose-400 text-emerald-600 border border-emerald-800/60 transition shrink-0" title="删除当前小说工程 (不可逆)">
+        <button onclick="deleteCurrentProjectPrompt()" class="p-1 rounded-md text-xs bg-[var(--surface-soft)] hover:bg-rose-500/10 hover:text-rose-500 text-[var(--ink-muted)] border border-[var(--hairline)] transition shrink-0 cursor-pointer" title="删除当前小说工程">
           🗑️
         </button>
-        <span id="header-genre" class="hidden md:inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-950/80 text-emerald-500/80 font-mono shrink-0">都市</span>
+        <span id="header-genre" class="hidden md:inline-block px-2 py-0.5 rounded-full text-[10px] bg-[var(--badge-bg)] text-[var(--badge-text)] font-mono shrink-0">都市</span>
       </div>
     </div>
 
     <!-- 中间：三大透视视角模式切换 (Planning / Storyboard / Studio) -->
-    <div class="flex items-center bg-[#060c08] p-0.5 rounded-lg border border-emerald-900/80 shrink-0 mx-1 sm:mx-2">
-      <button onclick="switchPerspective('planning')" id="btn-persp-planning" class="px-2.5 py-1 text-xs rounded-md font-medium bg-emerald-500 text-black font-bold shadow transition-all">
+    <div class="flex items-center bg-[var(--canvas-soft)] p-0.5 rounded-lg border border-[var(--hairline)] shrink-0 mx-1 sm:mx-2">
+      <button onclick="switchPerspective('planning')" id="btn-persp-planning" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
         企划构思
       </button>
-      <button onclick="switchPerspective('storyboard')" id="btn-persp-storyboard" class="px-2.5 py-1 text-xs rounded-md font-medium text-emerald-500/80 hover:text-emerald-300 transition-all">
+      <button onclick="switchPerspective('storyboard')" id="btn-persp-storyboard" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
         剧情棋盘
       </button>
-      <button onclick="switchPerspective('writing')" id="btn-persp-writing" class="px-2.5 py-1 text-xs rounded-md font-medium text-emerald-500/80 hover:text-emerald-300 transition-all">
+      <button onclick="switchPerspective('writing')" id="btn-persp-writing" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer">
         沉浸写作
       </button>
     </div>
 
-    <!-- 右侧：模型档位切换、设置与主题切换 -->
+    <!-- 右侧：模型档位切换、主题切换、设置与移动端抽屉 -->
     <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+      <!-- 移动端：章节目录抽屉按钮 -->
+      <button onclick="toggleMobileSidebar('left')" class="lg:hidden px-2 py-1 text-xs rounded-md bg-[var(--surface-soft)] border border-[var(--hairline)] text-[var(--ink)] cursor-pointer" title="展开章节目录">
+        📖
+      </button>
+
       <!-- 模型档位下拉切换 -->
-      <div class="flex items-center bg-[#050c07]/90 px-2 py-1 rounded-md border border-emerald-800/80 text-xs space-x-1 shrink-0">
-        <span class="text-emerald-500/80 text-xs hidden sm:inline">档位:</span>
-        <select id="model-tier-selector" onchange="onModelTierChange(this.value)" class="bg-transparent text-emerald-300 font-semibold text-xs focus:outline-none cursor-pointer">
-          <option value="flash" selected>⚡ Flash 档</option>
-          <option value="pro">🧠 Pro 档</option>
+      <div class="flex items-center bg-[var(--canvas-soft)] px-2 py-1 rounded-md border border-[var(--hairline)] text-xs space-x-1 shrink-0">
+        <span class="text-[var(--ink-muted)] text-xs hidden sm:inline">档位:</span>
+        <select id="model-tier-selector" onchange="onModelTierChange(this.value)" class="bg-transparent text-[var(--ink)] font-semibold text-xs focus:outline-none cursor-pointer">
+          <option value="flash" selected>⚡ Flash 伴写</option>
+          <option value="pro">🧠 Pro 推理</option>
         </select>
       </div>
 
+      <!-- 快速切换亮色/暗色主题按钮 (全方位适配双模) -->
+      <button onclick="toggleThemeMode()" id="btn-header-theme-toggle" class="px-2.5 py-1 text-xs rounded-md bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] border border-[var(--hairline)] text-[var(--ink)] flex items-center space-x-1 transition shadow-sm shrink-0 cursor-pointer" title="点击一键切换暗色 / 亮色外观">
+        <span id="theme-icon-slot">🌙</span>
+        <span class="hidden md:inline text-xs font-medium" id="theme-text-slot">暗色</span>
+      </button>
+
       <!-- 系统设置按钮 -->
-      <button onclick="openSettingsModal()" id="btn-open-settings" class="px-2 py-1 text-xs rounded-md bg-[#050c07]/90 hover:bg-emerald-950/60 border border-emerald-800/80 hover:border-emerald-700/80 text-emerald-400/90 hover:text-white flex items-center space-x-1 transition shadow-sm shrink-0" title="系统设置与 API Key 配置 (Cmd+,)">
-        <svg class="w-3.5 h-3.5 text-emerald-500/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      <button onclick="openSettingsModal()" id="btn-open-settings" class="px-2 py-1 text-xs rounded-md bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] border border-[var(--hairline)] text-[var(--ink)] flex items-center space-x-1 transition shadow-sm shrink-0 cursor-pointer" title="系统设置与 API Key 配置 (Cmd+,)">
+        <svg class="w-3.5 h-3.5 text-[var(--ink-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
         <span class="hidden sm:inline">设置</span>
+      </button>
+
+      <!-- 移动端：角色与审稿副驾抽屉按钮 -->
+      <button onclick="toggleMobileSidebar('right')" class="lg:hidden px-2 py-1 text-xs rounded-md bg-[var(--surface-soft)] border border-[var(--hairline)] text-[var(--ink)] cursor-pointer" title="展开副驾面板">
+        👥
       </button>
     </div>
   </header>
@@ -338,8 +597,8 @@
     <!-- ======================================================== -->
     <div id="perspective-writing" class="hidden flex-1 flex w-full h-full">
 
-      <!-- 左栏：章节选择、伏笔台账抽屉、出场角色快速指示 (支持拖拽调整宽度) -->
-      <aside id="sidebar-left" class="border-r border-emerald-900/80 bg-[#030604] flex flex-col shrink-0 transition-colors h-full overflow-y-auto overflow-x-hidden select-none" style="width: 280px; min-width: 180px; max-width: 500px;">
+      <!-- 章节大纲与伏笔导航 -->
+      <aside id="sidebar-left" class="responsive-sidebar-left border-r border-[var(--hairline)] bg-[var(--surface-card)] flex flex-col shrink-0 transition-colors h-full overflow-y-auto overflow-x-hidden select-none" style="width: 280px; min-width: 180px; max-width: 500px;">
         
         <!-- 1. 顶部粘性吸顶控制台：章节直选与加章 (向下滚动依然随手可用) -->
         <div class="sticky top-0 z-20 bg-[#030604]/95 backdrop-blur-md p-3 border-b border-emerald-900/80 space-y-2 shadow-sm">
@@ -440,6 +699,10 @@
 
           <!-- 右侧：高频作家操作（生成正文、保存、重构、审稿） -->
           <div class="flex items-center space-x-2 shrink-0">
+            <button onclick="toggleZenMode()" id="btn-toggle-zen" class="px-2 py-1 rounded bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] text-[var(--ink)] border border-[var(--hairline)] flex items-center space-x-1 transition text-xs shrink-0 cursor-pointer" title="全屏沉浸专注写作模式 (ESC 退出)">
+              <span>🎯</span>
+              <span class="hidden sm:inline">专注模式</span>
+            </button>
             <button onclick="triggerGenerateChapterContent()" class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center space-x-1 shadow transition text-xs shrink-0" title="根据大纲细纲与角色设定自动起草本章正文">
               <span>🪄</span>
               <span>生成正文</span>
@@ -514,8 +777,8 @@
         <div class="h-8 w-0.5 bg-emerald-800/80 group-hover:bg-emerald-400 rounded-full transition-colors"></div>
       </div>
 
-      <!-- 右栏：双模副驾 —— 角色动态演变引擎 (自主控制+AI提示) & 六维审稿面板 (支持拖拽调整宽度) -->
-      <aside id="sidebar-right" class="border-l border-emerald-900/80 bg-[#030604] flex flex-col shrink-0 transition-colors" style="width: 320px; min-width: 220px; max-width: 600px;">
+      <!-- 智能副驾与六维审稿 -->
+      <aside id="sidebar-right" class="responsive-sidebar-right border-l border-[var(--hairline)] bg-[var(--surface-card)] flex flex-col shrink-0 transition-colors" style="width: 320px; min-width: 220px; max-width: 600px;">
         <div class="h-10 border-b border-emerald-900/80 flex items-center bg-[#050b06] p-1 space-x-1">
           <button onclick="switchRightTab('character')" id="tab-btn-character" class="flex-1 py-1 text-xs font-semibold rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 shadow-sm flex items-center justify-center space-x-1 transition" title="角色动态人格演变">
             <span>👥</span>
@@ -557,7 +820,7 @@
               <!-- 切片章号选择下拉菜单 -->
               <div class="flex items-center">
                 <select id="char-slice-chapter-select" onchange="onSelectCharacterSlice(this.value)" class="w-full bg-[#050c07] border border-emerald-800/80 rounded-lg px-2.5 py-1.5 text-emerald-300 text-xs focus:outline-none cursor-pointer">
-                  <option value="latest">📌 当前最新状态 (最新落盘)</option>
+                  <option value="latest">📌 当前最新状态</option>
                 </select>
               </div>
 
@@ -568,7 +831,7 @@
                   <span id="char-slice-event-badge" class="px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-500/80 font-mono text-[9px]">当前常态</span>
                 </div>
                 <div id="char-slice-summary" class="text-emerald-400/90 leading-relaxed text-[11px]">
-                  正在查看角色全局最新基准状态。作者可自由拖动下方滑块调参，或切换切片回溯历史。
+                  正在查看角色全局最新基准状态。可调节下方滑块，或切换切片回溯历史。
                 </div>
                 <div id="char-slice-shifts-list" class="space-y-1 pt-1 hidden border-t border-emerald-900/60">
                   <!-- 动态显示该章发生的 Personality Shifts 与 Key Actions -->
@@ -590,8 +853,12 @@
               <span class="text-[10px] text-emerald-600 font-mono">实时联动</span>
             </div>
             
+            <!-- 动态交互悬浮提示框 -->
+            <div id="radar-live-tooltip" class="h-5 text-center text-[10px] text-[var(--ink-secondary)] font-mono flex items-center justify-center transition-all opacity-0 mb-1">
+              <span class="px-2 py-0.5 rounded-full bg-[var(--surface-soft)] border border-[var(--hairline)]" id="radar-tooltip-text">特质参数</span>
+            </div>
             <div class="flex justify-center py-1">
-              <svg width="200" height="170" viewBox="0 0 200 170" class="overflow-visible select-none">
+              <svg width="200" height="170" id="radar-svg-canvas" class="overflow-visible select-none cursor-pointer" viewBox="0 0 200 170" class="overflow-visible select-none">
                 <!-- 5 条辐射骨架轴线 (从中心向外放射) -->
                 <line x1="100" y1="85" x2="100" y2="25" stroke="#064e3b" stroke-width="1" stroke-dasharray="2,2"/>
                 <line x1="100" y1="85" x2="157.1" y2="66.5" stroke="#064e3b" stroke-width="1" stroke-dasharray="2,2"/>
@@ -605,21 +872,21 @@
                 <polygon points="100.0,55.0 128.5,75.7 117.6,109.3 82.4,109.3 71.5,75.7" fill="none" stroke="#042f24" stroke-width="1" stroke-dasharray="2,2"/>
                 
                 <!-- 动态人格多边形雷达区 (实时联动！) -->
-                <polygon id="radar-polygon" points="100.0,37.0 145.7,70.2 124.7,118.9 75.3,118.9 54.3,70.2" fill="rgba(16, 185, 129, 0.3)" stroke="#10b981" stroke-width="2"/>
+                <polygon id="radar-polygon" points="100.0,37.0 145.7,70.2 124.7,118.9 75.3,118.9 54.3,70.2" fill="rgba(94, 106, 210, 0.22)" stroke="#5e6ad2" stroke-width="2"/>
                 
                 <!-- 5 个顶点高亮指示圆点 -->
-                <circle id="radar-dot-0" cx="100.0" cy="37.0" r="2.5" fill="#34d399"/>
-                <circle id="radar-dot-1" cx="145.7" cy="70.2" r="2.5" fill="#34d399"/>
-                <circle id="radar-dot-2" cx="124.7" cy="118.9" r="2.5" fill="#34d399"/>
-                <circle id="radar-dot-3" cx="75.3" cy="118.9" r="2.5" fill="#34d399"/>
-                <circle id="radar-dot-4" cx="54.3" cy="70.2" r="2.5" fill="#34d399"/>
+                <circle id="radar-dot-0" cx="100.0" cy="37.0" r="2.5" fill="#828fff"/>
+                <circle id="radar-dot-1" cx="145.7" cy="70.2" r="2.5" fill="#5e6ad2"/>
+                <circle id="radar-dot-2" cx="124.7" cy="118.9" r="2.5" fill="#5e6ad2"/>
+                <circle id="radar-dot-3" cx="75.3" cy="118.9" r="2.5" fill="#5e6ad2"/>
+                <circle id="radar-dot-4" cx="54.3" cy="70.2" r="2.5" fill="#5e6ad2"/>
 
                 <!-- 5 个特质维度文本标签 (动态与真实特质名绑定) -->
-                <text id="radar-lbl-0" x="100" y="14" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">警惕心</text>
-                <text id="radar-lbl-1" x="165" y="70" text-anchor="start" fill="#34d399" font-size="10" font-weight="bold">洞察力</text>
-                <text id="radar-lbl-2" x="142" y="148" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">信任度</text>
-                <text id="radar-lbl-3" x="58" y="148" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">果断决绝</text>
-                <text id="radar-lbl-4" x="35" y="70" text-anchor="end" fill="#34d399" font-size="10" font-weight="bold">同理心</text>
+                <text id="radar-lbl-0" x="100" y="14" text-anchor="middle" fill="#5e6ad2" font-size="10" font-weight="bold">警惕心</text>
+                <text id="radar-lbl-1" x="165" y="70" text-anchor="start" fill="#5e6ad2" font-size="10" font-weight="bold">洞察力</text>
+                <text id="radar-lbl-2" x="142" y="148" text-anchor="middle" fill="#5e6ad2" font-size="10" font-weight="bold">信任度</text>
+                <text id="radar-lbl-3" x="58" y="148" text-anchor="middle" fill="#5e6ad2" font-size="10" font-weight="bold">果断决绝</text>
+                <text id="radar-lbl-4" x="35" y="70" text-anchor="end" fill="#5e6ad2" font-size="10" font-weight="bold">同理心</text>
               </svg>
             </div>
           </div>
@@ -627,10 +894,16 @@
           <!-- 核心功能点 1：作者自主可编辑特质与手动滑块 (满足用户自定义需求) -->
           <div class="bg-[#050c07]/90 border border-emerald-900/80 rounded-lg p-3 space-y-3">
             <div class="flex items-center justify-between">
-              <span class="font-semibold text-emerald-400/90">特质参数 (作者可自由拖动)</span>
-              <button onclick="showAddTraitModal()" class="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center space-x-0.5">
-                <span>+ 自定义添加特质</span>
-              </button>
+              <span class="font-semibold text-emerald-400/90">特质参数</span>
+              <div class="flex items-center space-x-2">
+                <button onclick="jitterTraitsRandomly()" class="text-[11px] text-[#5e6ad2] hover:underline flex items-center space-x-1 cursor-pointer" title="基于小说情节随机微调特质波动">
+                  <span>🎲</span>
+                  <span>灵感波动</span>
+                </button>
+                <button onclick="showAddTraitModal()" class="text-[11px] text-[var(--ink-secondary)] hover:text-[var(--ink)] flex items-center space-x-0.5 cursor-pointer">
+                  <span>+ 添加特质</span>
+                </button>
+              </div>
             </div>
 
             <!-- 可手动拖动调节的特质列表 (由 characters.json 真实特质字典动态填充) -->
@@ -666,7 +939,7 @@
 
             <div id="ai-suggestion-actions" class="hidden flex space-x-2 pt-1">
               <button onclick="applyAiSuggestionReal()" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium text-xs shadow transition">
-                ✓ 确认采纳演变 (落盘)
+                ✓ 确认采纳演变
               </button>
               <button onclick="rejectAiSuggestionReal()" class="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900/60 text-emerald-400/90 rounded text-xs border border-emerald-800/80">
                 驳回
@@ -763,9 +1036,9 @@
             </div>
             <p class="text-[11px] text-emerald-500/80 leading-relaxed text-left bg-[#020503] p-3 rounded-lg border border-emerald-900/80 space-y-1">
               <span class="font-semibold text-emerald-400/90 block mb-1">六维检测覆盖范围:</span>
-              <span class="block">• 1. 错别字校对与语病 (自动纠错)</span>
+              <span class="block">• 1. 错别字校对与语病</span>
               <span class="block">• 2. 剧情设定与前文逻辑自洽性</span>
-              <span class="block">• 3. 出场角色性格一致性 (抗OOC)</span>
+              <span class="block">• 3. 出场角色性格一致性</span>
               <span class="block">• 4. 伏笔闭环与暗线回收检查</span>
               <span class="block">• 5. 情节节奏张力与钩子设置</span>
               <span class="block">• 6. 行文风格与感官描写沉浸度</span>
@@ -818,7 +1091,7 @@
               </div>
             </div>
 
-            <!-- 达标放行状态横幅 (动态更新) -->
+            <!-- 审稿放行状态 -->
             <div id="review-pass-banner"></div>
 
             <!-- 分类筛选与重新审稿操作栏 -->
@@ -846,22 +1119,22 @@
     </div>
 
     <!-- 视角 1：企划构思台 (Planning) - 默认首屏透视视图 -->
-    <div id="perspective-planning" class="flex-1 p-8 overflow-y-auto bg-[#020503]">
+    <div id="perspective-planning" class="flex-1 p-8 overflow-y-auto bg-[var(--canvas)] text-[var(--ink)]">
       <div class="max-w-5xl mx-auto space-y-6">
-        <div class="flex items-center justify-between border-b border-emerald-900/80 pb-4">
+        <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-4">
           <div>
-            <h2 class="text-xl font-bold text-emerald-200 flex items-center space-x-2">
+            <h2 class="text-xl font-bold text-[var(--ink)] flex items-center space-x-2">
               <span id="plan-novel-title">小说宏观企划</span>
-              <span id="plan-novel-genre" class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono">都市</span>
+              <span id="plan-novel-genre" class="text-xs px-2.5 py-0.5 rounded-full bg-[var(--badge-bg)] text-[var(--badge-text)] font-mono">都市</span>
             </h2>
-            <p class="text-xs text-emerald-500/80 mt-1">随时在此修改核心大纲与世界观设定；修改后点击保存立即持久化至 project.json。</p>
+            <p class="text-xs text-[var(--ink-muted)] mt-1">随时在此修改核心大纲与世界观设定；修改后点击保存立即持久化至 project.json。</p>
           </div>
           <div class="flex items-center space-x-2">
-            <button onclick="deleteCurrentProjectPrompt()" class="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-lg text-xs font-medium shadow flex items-center space-x-1.5 transition" title="永久删除整本小说工程 (不可逆)">
+            <button onclick="deleteCurrentProjectPrompt()" class="tactile-interactive px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 rounded-lg text-xs font-medium shadow-sm flex items-center space-x-1.5 transition" title="删除整本小说工程">
               <span>🗑️</span>
               <span>删除本小说</span>
             </button>
-            <button onclick="saveCurrentProjectPlan()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs font-medium shadow flex items-center space-x-1.5 transition">
+            <button onclick="saveCurrentProjectPlan()" class="tactile-interactive px-4 py-2 bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-semibold rounded-lg text-xs shadow-sm flex items-center space-x-1.5 transition">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
               <span>💾 保存企划设定</span>
             </button>
@@ -870,19 +1143,19 @@
 
         <div class="grid grid-cols-3 gap-6">
           <div class="col-span-2 space-y-4">
-            <div class="bg-[#050c07] border border-emerald-900/80 rounded-xl p-5 space-y-3">
-              <div class="font-semibold text-sm text-emerald-300 flex items-center justify-between">
-                <span>一句话故事动力与世界观设定 (Core Premise)</span>
-                <span class="text-[11px] text-emerald-600">可自由编辑并保存</span>
+            <div class="tilt-card bg-[var(--surface-card)] border border-[var(--hairline)] rounded-xl p-5 space-y-3 shadow-sm">
+              <div class="font-semibold text-sm text-[var(--ink)] flex items-center justify-between">
+                <span>故事动力与世界观设定</span>
+                <span class="text-[11px] text-[var(--ink-muted)]">可编辑并保存</span>
               </div>
-              <textarea id="plan-description-input" class="w-full h-32 bg-[#020503] border border-emerald-900/80 rounded-lg p-3 text-xs text-emerald-300 leading-relaxed focus:outline-none focus:border-emerald-400 font-sans" placeholder="输入故事核心动力与世界观..."></textarea>
+              <textarea id="plan-description-input" class="w-full h-32 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-lg p-3 text-xs text-[var(--ink)] leading-relaxed focus:outline-none focus:border-[#5e6ad2] font-sans" placeholder="输入故事核心动力与世界观..."></textarea>
             </div>
 
             <!-- 全书大纲一览 -->
-            <div class="bg-[#050c07] border border-emerald-900/80 rounded-xl p-5 space-y-3">
-              <div class="font-semibold text-sm text-emerald-300 flex items-center justify-between">
+            <div class="tilt-card bg-[var(--surface-card)] border border-[var(--hairline)] rounded-xl p-5 space-y-3 shadow-sm">
+              <div class="font-semibold text-sm text-[var(--ink)] flex items-center justify-between">
                 <span>章节大纲细纲总览</span>
-                <span id="plan-outline-count" class="text-xs text-emerald-400 font-mono">共 0 章细纲</span>
+                <span id="plan-outline-count" class="text-xs text-[#5e6ad2] font-mono font-semibold">共 0 章细纲</span>
               </div>
               <div id="plan-outline-list" class="space-y-2 text-xs max-h-80 overflow-y-auto pr-1">
                 <!-- 动态填充 -->
@@ -891,23 +1164,23 @@
           </div>
 
           <div class="space-y-4">
-            <div class="bg-[#050c07] border border-emerald-900/80 rounded-xl p-5 space-y-3">
-              <div class="font-semibold text-sm text-emerald-300">小说基本元信息</div>
+            <div class="tilt-card bg-[var(--surface-card)] border border-[var(--hairline)] rounded-xl p-5 space-y-3 shadow-sm">
+              <div class="font-semibold text-sm text-[var(--ink)]">小说基本元信息</div>
               <div class="space-y-3 text-xs">
                 <div>
-                  <label class="text-emerald-500/80 block mb-1">小说名称</label>
-                  <input type="text" id="plan-name-input" class="w-full bg-[#020503] border border-emerald-900/80 rounded p-2 text-emerald-300 focus:outline-none focus:border-emerald-400">
+                  <label class="text-[var(--ink-muted)] block mb-1">小说名称</label>
+                  <input type="text" id="plan-name-input" class="w-full bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded p-2 text-[var(--ink)] focus:outline-none focus:border-[#5e6ad2]">
                 </div>
                 <div>
-                  <label class="text-emerald-500/80 block mb-1">作品类型 / 流派</label>
-                  <input type="text" id="plan-genre-input" class="w-full bg-[#020503] border border-emerald-900/80 rounded p-2 text-emerald-300 focus:outline-none focus:border-emerald-400">
+                  <label class="text-[var(--ink-muted)] block mb-1">作品类型 / 流派</label>
+                  <input type="text" id="plan-genre-input" class="w-full bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded p-2 text-[var(--ink)] focus:outline-none focus:border-[#5e6ad2]">
                 </div>
               </div>
             </div>
 
-            <div class="bg-[#050c07] border border-emerald-900/80 rounded-xl p-5 space-y-3">
-              <div class="font-semibold text-sm text-emerald-300">创作进度概览</div>
-              <div class="space-y-2 text-xs text-emerald-400/90 font-mono">
+            <div class="tilt-card bg-[var(--surface-card)] border border-[var(--hairline)] rounded-xl p-5 space-y-3 shadow-sm">
+              <div class="font-semibold text-sm text-[var(--ink)]">创作进度概览</div>
+              <div class="space-y-2 text-xs text-[var(--ink-secondary)] font-mono">
                 <div class="flex justify-between border-b border-emerald-900/80 pb-1.5">
                   <span class="text-emerald-500/80">已创作总字数:</span>
                   <span id="plan-total-words" class="text-emerald-400 font-bold">0 字</span>
@@ -980,7 +1253,7 @@
 
           <!-- 脑暴提议卡片网格 -->
           <div id="ai-plot-ideas-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
-            <div class="col-span-full text-emerald-600 text-center py-4 bg-[#020503]/40 rounded-xl border border-dashed border-emerald-900/80">
+            <div class="col-span-full text-[var(--ink-muted)] text-center py-4 bg-[var(--surface-soft)] rounded-xl border border-dashed border-[var(--hairline)]">
               点击右上角「⚡ 开始灵感脑暴」，AI 将为您发散生成 2~3 个富有张力的剧情推进分支供您选择
             </div>
           </div>
@@ -988,12 +1261,12 @@
 
         <!-- 章节大纲节拍矩阵 -->
         <div class="space-y-4">
-          <div class="border-b border-emerald-900/80 pb-3 flex items-center justify-between">
+          <div class="border-b border-[var(--hairline)] pb-3 flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-bold text-emerald-200">分章大纲节拍矩阵 (Chapter Beat Board)</h2>
-              <p class="text-xs text-emerald-500/80 mt-0.5">横向可视化各章核心事件、预期冲突与对应伏笔关联。</p>
+              <h2 class="text-lg font-bold text-[var(--ink)]">分章大纲节拍矩阵</h2>
+              <p class="text-xs text-[var(--ink-muted)] mt-0.5">横向可视化各章核心事件、预期冲突与对应伏笔关联。</p>
             </div>
-            <button onclick="addNewChapterPrompt()" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded text-xs font-medium shadow transition">
+            <button onclick="addNewChapterPrompt()" class="tactile-interactive px-3 py-1.5 bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-medium rounded-lg text-xs shadow-sm transition">
               + 追加新章节细纲
             </button>
           </div>
@@ -1008,20 +1281,20 @@
   </main>
 
   <!-- 3. 底栏：实时 Token 监控、状态监控、快捷键提示 -->
-  <footer class="h-7 border-t border-emerald-900/80 bg-[#020503] px-4 flex items-center justify-between text-[11px] text-emerald-600 shrink-0 font-mono">
+  <footer class="h-7 border-t border-[var(--hairline)] bg-[var(--surface-card)] px-4 flex items-center justify-between text-[11px] text-[var(--ink-muted)] shrink-0 font-mono">
     <div class="flex items-center space-x-4">
       <span>UTF-8</span>
       <span>ProseMirror 虚拟渲染</span>
-      <span class="text-emerald-500/80">光标: 12行 34列</span>
+      <span class="text-[var(--ink-muted)]">光标: 12行 34列</span>
     </div>
     <div class="flex items-center space-x-4">
-      <span class="text-emerald-400 font-semibold flex items-center space-x-1">
+      <span class="text-[#5e6ad2] font-semibold flex items-center space-x-1">
         <span>⚡ 今日已省 Token: 82%</span>
       </span>
       <span>Tab 采纳</span>
       <span>Cmd+K 重构</span>
       <span>v 审稿</span>
-      <span class="text-emerald-400/80">Novel Studio v2.0</span>
+      <span class="text-[var(--ink-faint)]">Novel Studio v2.0</span>
     </div>
   </footer>
 
@@ -1045,7 +1318,7 @@
       <div class="text-[11px] text-emerald-500/80 bg-[#020503]/70 p-3 rounded-lg border border-emerald-900/80 font-mono text-left space-y-1">
         <div class="text-emerald-400 flex items-center space-x-1"><span>✓</span><span>大纲与伏笔拦截检索完成</span></div>
         <div class="text-emerald-400 flex items-center space-x-1"><span>✓</span><span>角色人格参数时间切片就绪</span></div>
-        <div class="text-emerald-400 animate-pulse flex items-center space-x-1"><span>⚡</span><span>正文多段落连贯创作中 (预计 10~25s)...</span></div>
+        <div class="text-emerald-400 animate-pulse flex items-center space-x-1"><span>⚡</span><span>正文多段落连贯创作中...</span></div>
       </div>
       <div class="text-[10px] text-emerald-600 italic">
         提示：正文生成完毕后将直接装填入编辑区，审核功能绝不自动触发，由您随时手动发起。
@@ -1292,95 +1565,68 @@
             </div>
           </div>
 
-          <!-- Tab: 终端视效与主题 (维度 4) -->
+          <!-- Tab: 外观设计与双模主题 -->
           <div id="settings-tab-theme" class="hidden space-y-4">
-            <!-- 1. 终端单色调色板 -->
-            <div class="bg-[#050c07]/80 p-4 rounded-xl border border-emerald-900/80 space-y-3">
-              <div class="flex items-center justify-between border-b border-emerald-900/60 pb-2">
-                <span class="font-bold text-emerald-300 flex items-center space-x-1.5">
+            <!-- 1. Linear 高度工匠主题模式选择 (支持深空曜黑/晶亮纯白/跟随系统) -->
+            <div class="bg-[var(--surface-soft)] p-4 rounded-xl border border-[var(--hairline)] space-y-3">
+              <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-2">
+                <span class="font-bold text-[var(--ink)] flex items-center space-x-1.5">
                   <span>🎨</span>
-                  <span>单色终端调色板 (Monochrome Palette)</span>
+                  <span>工匠主题模式 (Appearance Mode)</span>
                 </span>
-                <span class="text-[10px] text-emerald-500 font-mono" id="current-palette-tag">CURRENT: EMERALD</span>
+                <span class="text-[10px] text-[#5e6ad2] font-mono font-bold" id="current-palette-tag">CURRENT: DARK</span>
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                <button type="button" onclick="setThemePalette('emerald')" id="btn-theme-emerald" class="p-3 rounded-lg border-2 border-emerald-500 bg-[#020503] text-emerald-300 flex flex-col items-center space-y-1 transition text-xs font-bold cursor-pointer">
-                  <span class="w-5 h-5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-                  <span>黑客翠绿</span>
-                  <span class="text-[9px] text-emerald-500 font-normal">Emerald CRT</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <button type="button" onclick="setThemeMode('dark')" id="btn-theme-dark" class="p-3.5 rounded-lg border-2 border-[#5e6ad2] bg-[#121315] text-[#f7f8f8] flex flex-col items-center space-y-1.5 transition text-xs font-bold cursor-pointer shadow-md">
+                  <span class="w-6 h-6 rounded-full bg-[#08090a] border border-[#23252a] flex items-center justify-center text-sm">🌙</span>
+                  <span class="font-bold text-[#828fff]">Linear 曜石暗色</span>
+                  <span class="text-[10px] text-[#8a8f98]">深空曜黑 · 紫罗兰点缀</span>
                 </button>
-                <button type="button" onclick="setThemePalette('amber')" id="btn-theme-amber" class="p-3 rounded-lg border border-amber-800/60 hover:border-amber-500 bg-[#070502] text-amber-300 flex flex-col items-center space-y-1 transition text-xs font-medium cursor-pointer">
-                  <span class="w-5 h-5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]"></span>
-                  <span>琥珀流光</span>
-                  <span class="text-[9px] text-amber-500 font-normal">Amber Phosphor</span>
+                <button type="button" onclick="setThemeMode('light')" id="btn-theme-light" class="p-3.5 rounded-lg border border-[var(--hairline)] bg-white text-[#0e1017] flex flex-col items-center space-y-1.5 transition text-xs font-medium cursor-pointer shadow-sm hover:border-[#5e6ad2]">
+                  <span class="w-6 h-6 rounded-full bg-[#f4f5f8] border border-[#e2e4e8] flex items-center justify-center text-sm">☀️</span>
+                  <span class="font-bold">Linear 晶亮纯白</span>
+                  <span class="text-[10px] text-[#6c727e]">清爽纯白 · 纯净通透</span>
                 </button>
-                <button type="button" onclick="setThemePalette('cyan')" id="btn-theme-cyan" class="p-3 rounded-lg border border-cyan-800/60 hover:border-cyan-500 bg-[#020507] text-cyan-300 flex flex-col items-center space-y-1 transition text-xs font-medium cursor-pointer">
-                  <span class="w-5 h-5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]"></span>
-                  <span>赛博青蓝</span>
-                  <span class="text-[9px] text-cyan-500 font-normal">Cyan Cyberdeck</span>
-                </button>
-                <button type="button" onclick="setThemePalette('monochrome')" id="btn-theme-monochrome" class="p-3 rounded-lg border border-zinc-700 hover:border-white bg-[#050505] text-zinc-200 flex flex-col items-center space-y-1 transition text-xs font-medium cursor-pointer">
-                  <span class="w-5 h-5 rounded-full bg-zinc-200 shadow-[0_0_8px_rgba(255,255,255,0.8)]"></span>
-                  <span>纯黑白极简</span>
-                  <span class="text-[9px] text-zinc-400 font-normal">Pure B&W</span>
+                <button type="button" onclick="setThemeMode('system')" id="btn-theme-system" class="p-3.5 rounded-lg border border-[var(--hairline)] bg-[var(--surface-card)] text-[var(--ink)] flex flex-col items-center space-y-1.5 transition text-xs font-medium cursor-pointer hover:border-[#5e6ad2]">
+                  <span class="w-6 h-6 rounded-full bg-[var(--surface-soft)] border border-[var(--hairline)] flex items-center justify-center text-sm">💻</span>
+                  <span class="font-bold">跟随系统</span>
+                  <span class="text-[10px] text-[var(--ink-muted)]">自适应 OS 偏好</span>
                 </button>
               </div>
             </div>
-
-            <!-- 2. CRT 物理屏幕特效 -->
-            <div class="bg-[#050c07]/80 p-4 rounded-xl border border-emerald-900/80 space-y-3">
-              <div class="flex items-center justify-between border-b border-emerald-900/60 pb-2">
-                <span class="font-bold text-emerald-300 flex items-center space-x-1.5">
-                  <span>📺</span>
-                  <span>CRT 显像管与暗角物理滤镜</span>
-                </span>
-              </div>
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-emerald-300 font-semibold text-xs">启用扫描线纹理与边缘微暗角</div>
-                  <div class="text-[11px] text-emerald-600 mt-0.5">关闭后呈现纯净高清现代显示效果，开启则增强复古工业终端沉浸感。</div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" id="setting-crt-effect" checked onchange="updateNovelSetting('crtEffect', this.checked)" class="sr-only peer">
-                  <div class="w-11 h-6 bg-emerald-950 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-emerald-400 after:border-emerald-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
-            </div>
-
-            <!-- 3. 启动自检行为模式 -->
-            <div class="bg-[#050c07]/80 p-4 rounded-xl border border-emerald-900/80 space-y-3">
-              <div class="flex items-center justify-between border-b border-emerald-900/60 pb-2">
-                <span class="font-bold text-emerald-300 flex items-center space-x-1.5">
+            <!-- 2. 启动双螺旋自检偏好 -->
+            <div class="bg-[var(--surface-soft)] p-4 rounded-xl border border-[var(--hairline)] space-y-3">
+              <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-2">
+                <span class="font-bold text-[var(--ink)] flex items-center space-x-1.5">
                   <span>⚡</span>
                   <span>启动双螺旋自检偏好</span>
                 </span>
               </div>
               <div class="space-y-2">
-                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-emerald-950/40 cursor-pointer text-xs">
-                  <input type="radio" name="splashMode" value="full" checked onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-emerald-500">
+                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-[var(--surface-card)] cursor-pointer text-xs">
+                  <input type="radio" name="splashMode" value="full" checked onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-[#5e6ad2]">
                   <div>
-                    <span class="text-emerald-300 font-semibold">完整仪式感自检 (默认)</span>
-                    <p class="text-[10px] text-emerald-600">展示 ASCII 双螺旋巡航与全维度文学基因诊断流（随时可敲空格跳过）。</p>
+                    <span class="text-[var(--ink)] font-semibold">完整工匠自检巡航 (默认)</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">展示双螺旋巡航与全维度文学基因诊断流（随时可敲空格秒跳）。</p>
                   </div>
                 </label>
-                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-emerald-950/40 cursor-pointer text-xs">
-                  <input type="radio" name="splashMode" value="fast" onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-emerald-500">
+                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-[var(--surface-card)] cursor-pointer text-xs">
+                  <input type="radio" name="splashMode" value="fast" onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-[#5e6ad2]">
                   <div>
-                    <span class="text-emerald-300 font-semibold">闪电快进模式 (0.1秒)</span>
-                    <p class="text-[10px] text-emerald-600">跳过打字等待，瞬间完成环境自检并直接点亮工作台。</p>
+                    <span class="text-[var(--ink)] font-semibold">闪电快进模式 (0.1秒)</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">跳过打字等待，瞬间完成环境自检并直接点亮工作台。</p>
                   </div>
                 </label>
-                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-emerald-950/40 cursor-pointer text-xs">
-                  <input type="radio" name="splashMode" value="skip" onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-emerald-500">
+                <label class="flex items-start space-x-2.5 p-2 rounded-lg hover:bg-[var(--surface-card)] cursor-pointer text-xs">
+                  <input type="radio" name="splashMode" value="skip" onchange="updateNovelSetting('splashMode', this.value)" class="mt-0.5 accent-[#5e6ad2]">
                   <div>
-                    <span class="text-emerald-300 font-semibold">静默秒进企划构思</span>
-                    <p class="text-[10px] text-emerald-600">开屏直接进入企划构思透视台，绝无任何载入等待。</p>
+                    <span class="text-[var(--ink)] font-semibold">静默秒进企划构思</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">开屏直接进入企划构思透视台，绝无任何载入等待。</p>
                   </div>
                 </label>
               </div>
             </div>
           </div>
-
           <!-- Tab: 数据备份与导出 (维度 5) -->
           <div id="settings-tab-backup" class="hidden space-y-4">
             <!-- 1. 全本与章节一键导出 -->
@@ -1576,6 +1822,108 @@
   </div>
 
   <script>
+
+    // ========================================================
+    // Cursor Studio 主题外观与暗色/亮色切换逻辑 (全方位适配)
+    // ========================================================
+    function initThemeMode() {
+      const saved = localStorage.getItem('novel_cursor_theme_mode') || 'dark';
+      setThemeMode(saved, false);
+    }
+
+    function setThemeMode(mode, showNotice = true) {
+      localStorage.setItem('novel_cursor_theme_mode', mode);
+      const htmlEl = document.documentElement;
+      const bodyEl = document.body;
+
+      let effectiveDark = true;
+      if (mode === 'light') {
+        effectiveDark = false;
+      } else if (mode === 'dark') {
+        effectiveDark = true;
+      } else if (mode === 'system') {
+        effectiveDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (effectiveDark) {
+        htmlEl.classList.add('dark');
+        bodyEl.classList.add('dark');
+      } else {
+        htmlEl.classList.remove('dark');
+        bodyEl.classList.remove('dark');
+      }
+
+      updateThemeUiIndicators(mode, effectiveDark);
+
+      if (showNotice && typeof showToast === 'function') {
+        const modeDesc = mode === 'light' ? '☀️ 亮色模式' : (mode === 'dark' ? '🌙 暗色模式' : '💻 跟随系统');
+        showToast(`已切换外观: ${modeDesc}`);
+      }
+    }
+
+    function toggleThemeMode() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const icon = document.getElementById('theme-icon-slot');
+      if (icon) {
+        icon.style.transition = 'transform 0.4s ease';
+        icon.style.transform = 'rotate(360deg)';
+        setTimeout(() => { icon.style.transform = ''; }, 400);
+      }
+      setThemeMode(isDark ? 'light' : 'dark', true);
+    }
+
+    function updateThemeUiIndicators(mode, effectiveDark) {
+      const iconSlot = document.getElementById('theme-icon-slot');
+      const textSlot = document.getElementById('theme-text-slot');
+      if (iconSlot && textSlot) {
+        if (effectiveDark) {
+          iconSlot.innerText = '🌙';
+          textSlot.innerText = '暗色';
+        } else {
+          iconSlot.innerText = '☀️';
+          textSlot.innerText = '亮色';
+        }
+      }
+
+      const tag = document.getElementById('current-palette-tag');
+      if (tag) {
+        tag.innerText = `CURRENT: ${mode.toUpperCase()}`;
+      }
+
+      // Update modal buttons
+      ['light', 'dark', 'system'].forEach(m => {
+        const btn = document.getElementById(`btn-theme-${m}`);
+        if (!btn) return;
+        if (m === mode) {
+          btn.className = "p-3.5 rounded-lg border-2 border-[#5e6ad2] bg-[var(--surface-card)] text-[var(--ink)] flex flex-col items-center space-y-1.5 transition text-xs font-bold cursor-pointer shadow-md";
+        } else {
+          btn.className = "p-3.5 rounded-lg border border-[var(--hairline)] bg-[var(--surface-card)] text-[var(--ink-secondary)] flex flex-col items-center space-y-1.5 transition text-xs font-medium cursor-pointer hover:border-[#5e6ad2]";
+        }
+      });
+    }
+
+    // 移动端响应式侧栏抽屉切换
+    function toggleMobileSidebar(side) {
+      if (side === 'left') {
+        const left = document.getElementById('sidebar-left');
+        const right = document.getElementById('sidebar-right');
+        if (right) right.classList.remove('open');
+        if (left) left.classList.toggle('open');
+      } else if (side === 'right') {
+        const left = document.getElementById('sidebar-left');
+        const right = document.getElementById('sidebar-right');
+        if (left) left.classList.remove('open');
+        if (right) right.classList.toggle('open');
+      }
+    }
+
+    function closeMobileSidebars() {
+      const left = document.getElementById('sidebar-left');
+      const right = document.getElementById('sidebar-right');
+      if (left) left.classList.remove('open');
+      if (right) right.classList.remove('open');
+    }
+
     // ========================================================
     // 0. 系统偏好设置体系 (写作排版 / 终端视效 / 备份导出 / 模型API)
     // ========================================================
@@ -1595,6 +1943,7 @@
     };
 
     function loadNovelSettings() {
+      initThemeMode();
       try {
         const raw = localStorage.getItem('novel_ide_user_settings');
         if (raw) {
@@ -2034,22 +2383,21 @@
 
     // 2. 视角切换 (企划构思 / 剧情棋盘 / 沉浸写作)
     function switchPerspective(mode) {
+      closeMobileSidebars();
       const modes = ['planning', 'storyboard', 'writing'];
       modes.forEach(m => {
         const el = document.getElementById(`perspective-${m}`);
         if (el) el.classList.add('hidden');
         const btn = document.getElementById(`btn-persp-${m}`);
         if (btn) {
-          btn.classList.remove('bg-emerald-500', 'text-black', 'font-bold', 'shadow');
-          btn.classList.add('text-emerald-500/80');
+          btn.className = "px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer";
         }
       });
       const activeEl = document.getElementById(`perspective-${mode}`);
       if (activeEl) activeEl.classList.remove('hidden');
       const activeBtn = document.getElementById(`btn-persp-${mode}`);
       if (activeBtn) {
-        activeBtn.classList.remove('text-emerald-500/80');
-        activeBtn.classList.add('bg-emerald-500', 'text-black', 'font-bold', 'shadow');
+        activeBtn.className = "px-2.5 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer";
       }
 
       // 切换视角时若已有工程数据，实时刷新对应视图
@@ -2069,16 +2417,14 @@
         const btn = document.getElementById(`tab-btn-${t}`);
         if (panel) panel.classList.add('hidden');
         if (btn) {
-          btn.classList.remove('bg-emerald-950/80', 'text-emerald-300', 'border', 'border-emerald-800/80', 'shadow-sm');
-          btn.classList.add('text-emerald-500/80');
+          btn.className = "flex-1 py-1 text-xs font-medium rounded text-[var(--ink-muted)] hover:text-[var(--ink)] flex items-center justify-center space-x-1 transition cursor-pointer";
         }
       });
       const activePanel = document.getElementById(`right-panel-${tab}`);
       const activeBtn = document.getElementById(`tab-btn-${tab}`);
       if (activePanel) activePanel.classList.remove('hidden');
       if (activeBtn) {
-        activeBtn.classList.remove('text-emerald-500/80');
-        activeBtn.classList.add('bg-emerald-950/80', 'text-emerald-300', 'border', 'border-emerald-800/80', 'shadow-sm');
+        activeBtn.className = "flex-1 py-1 text-xs font-semibold rounded bg-[var(--surface-card)] text-[var(--ink)] border border-[var(--hairline)] shadow-sm flex items-center justify-center space-x-1 transition cursor-pointer";
       }
     }
 
@@ -3267,67 +3613,73 @@
     // 0. 小说创作基因双螺旋 ASCII 终端引擎 (NovelDnaEngine)
     // 采用二次方角速度加速模型 + 持续巡航自旋 + 大画幅高振幅纯终端波形
     // ========================================================
+            // 0. 小说创作基因双螺旋原生 Canvas 2D 引擎 (NovelDnaEngine)
+    // 缓速轻灵自旋 + 鼠标物理磁吸/扰动波形 + 径向脉冲光圈 + 3D 深度粒子
+    // ========================================================
     class NovelDnaEngine {
       constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
+        this.canvas = document.getElementById('dna-interactive-canvas') || document.getElementById(canvasId);
+        this.ctx = this.canvas && this.canvas.getContext ? this.canvas.getContext('2d') : null;
         this.angle = 0;
         this.progress = 0.05;
-        this.baseSpeed = 0.035; // ~0.2 Hz
-        this.maxSpeed = 0.52;  // ~5.0 Hz
+        this.baseSpeed = 0.012;   // 缓速旋转，优雅从容
+        this.maxSpeed = 0.038;
         this.isLocked = false;
         this.animFrameId = null;
-        this._cachedCharWidth = null;
 
-        // 小说核心文学基因与密码子
+        // 鼠标物理扰动参数
+        this.pointerX = -9999;
+        this.pointerY = -9999;
+        this.smoothPointerX = -9999;
+        this.smoothPointerY = -9999;
+        this.isHovering = false;
+        this.hoverIntensity = 0;
+        this.ripple = 0;
+        this.rippleCenterX = 0;
+
         this.novelPairs = ['0xPLOT', '0xCHAR', '0xCLUE', '0xFLOW', '0xARC', '0xWORD', 'A-T', 'C-G'];
-        this.coreChars = ['@', '#', '&', '8', '%'];
-        this.dataChars = ['0', '1', 'A', 'X', 'F', 'Z'];
-        this.auraChars = ['.', '·', ':', '~', '\''];
 
-        // 动态自适应屏幕宽度，绝不留左右黑边
-        this.cols = 120;
-        this.rows = 18;
-        this.updateDimensions();
+        if (this.canvas) {
+          this.canvas.addEventListener('mousemove', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.pointerX = e.clientX - rect.left;
+            this.pointerY = e.clientY - rect.top;
+            this.isHovering = true;
+          });
+          this.canvas.addEventListener('mouseleave', () => {
+            this.isHovering = false;
+          });
+          this.canvas.addEventListener('click', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.rippleCenterX = e.clientX - rect.left;
+            this.ripple = 1.0;
+          });
+        }
+
         window.addEventListener('resize', () => {
           this.updateDimensions();
-          this.render();
         });
-      }
-
-      measureCharWidth() {
-        if (this._cachedCharWidth) return this._cachedCharWidth;
-        if (!this.canvas) return 7.5;
-        const testSpan = document.createElement('span');
-        testSpan.className = 'dna-term-canvas text-[11px] sm:text-[12px] md:text-[13px] font-bold';
-        testSpan.style.visibility = 'hidden';
-        testSpan.style.position = 'absolute';
-        testSpan.style.whiteSpace = 'pre';
-        testSpan.innerText = 'XXXXXXXXXX'; // 10 个字符
-        this.canvas.appendChild(testSpan);
-        const rect = testSpan.getBoundingClientRect();
-        const w = rect.width / 10;
-        this.canvas.removeChild(testSpan);
-        this._cachedCharWidth = (w > 0) ? w : 7.5;
-        return this._cachedCharWidth;
+        this.updateDimensions();
       }
 
       updateDimensions() {
         if (!this.canvas) return;
-        this._cachedCharWidth = null; // 重新测量当前响应式字体
-        const charW = this.measureCharWidth();
-        const container = this.canvas.parentElement;
-        const availWidth = container ? container.clientWidth : (window.innerWidth * 0.7);
-        // 计算铺满当前全宽视口的列数（精确贴合左右边缘，绝无黑边）
-        this.cols = Math.max(48, Math.floor((availWidth - 4) / charW));
-        this.rows = 18;
+        const rect = this.canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.width = rect.width || 600;
+        this.height = rect.height || 220;
+        this.canvas.width = Math.floor(this.width * dpr);
+        this.canvas.height = Math.floor(this.height * dpr);
+        if (this.ctx) {
+          if (this.ctx.setTransform) {
+            this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          }
+        }
       }
 
       getAngularVelocity() {
+        if (this.progress >= 1.0) return 0.014; // 巡航稳态：轻柔慢速旋转 (~4-5秒一圈)
         const p = Math.max(0, Math.min(1, this.progress));
-        if (this.progress >= 1.0) {
-          // 达到 100% 后依然保持高速平稳巡航旋转（绝不停死，如用户所要求）
-          return 0.32;
-        }
         return this.baseSpeed + (this.maxSpeed - this.baseSpeed) * Math.pow(p, 2);
       }
 
@@ -3342,21 +3694,14 @@
       lock() {
         this.isLocked = true;
         this.progress = 1.0;
-        // 触发一次 CRT 荧光爆闪
-        const box = document.getElementById('dna-viewport-box');
-        if (box) {
-          box.classList.remove('animate-flash-burst');
-          void box.offsetWidth; // 触发 reflow 重新播动画
-          box.classList.add('animate-flash-burst');
-        }
         const badge = document.getElementById('dna-stage-badge');
         if (badge) {
-          badge.className = "px-2 py-0.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-bold tracking-wider text-[10px] phosphor-glow-bright";
+          badge.className = "px-2.5 py-0.5 bg-[#5e6ad2] text-white font-bold tracking-wider text-[10px] rounded-full shadow-sm";
           badge.innerText = "STAGE: CRUISE_ACTIVE // SYNCHED";
         }
         const monSync = document.getElementById('mon-sync-state');
         if (monSync) {
-          monSync.className = "text-[9px] px-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-bold phosphor-glow-bright";
+          monSync.className = "text-[9px] px-2 py-0.5 bg-[#5e6ad2] text-white font-bold rounded-full shadow-sm";
           monSync.innerText = "CRUISING";
         }
       }
@@ -3370,8 +3715,6 @@
         const polarEl = document.getElementById('hud-gene-polar');
         const climaxEl = document.getElementById('hud-gene-climax');
 
-        // 同步更新右侧辅舱文学基因监视矩阵
-        const monSync = document.getElementById('mon-sync-state');
         const monClue = document.getElementById('mon-gene-clue');
         const monArc = document.getElementById('mon-gene-arc');
         const monPolar = document.getElementById('mon-gene-polar');
@@ -3390,39 +3733,35 @@
 
         if (monAngVel) {
           const curVel = this.getAngularVelocity();
-          monAngVel.innerText = `${(curVel * 1).toFixed(2)} RAD/S`;
+          monAngVel.innerText = `${(curVel * 10).toFixed(1)} RAD/S`;
         }
 
         if (this.progress >= 0.20) {
-          if (clueEl) clueEl.innerHTML = '<span class="text-emerald-300 font-bold">READY</span>';
+          if (clueEl) clueEl.innerHTML = '<span class="text-[#5e6ad2] font-bold">READY</span>';
           if (monClue) {
-            monClue.innerHTML = '<span class="text-emerald-400 font-bold">[SYNCED]</span>';
+            monClue.innerHTML = '<span class="text-[#5e6ad2] font-bold">[SYNCED]</span>';
             if (monBarClue) monBarClue.style.width = '100%';
           }
         }
         if (this.progress >= 0.50) {
-          if (arcEl) arcEl.innerHTML = '<span class="text-emerald-300 font-bold">ACTIVE</span>';
+          if (arcEl) arcEl.innerHTML = '<span class="text-[#5e6ad2] font-bold">ACTIVE</span>';
           if (monArc) {
-            monArc.innerHTML = '<span class="text-emerald-300 font-bold">[ACTIVE]</span>';
+            monArc.innerHTML = '<span class="text-[#5e6ad2] font-bold">[ACTIVE]</span>';
             if (monBarArc) monBarArc.style.width = '100%';
           }
         }
         if (this.progress >= 0.75) {
-          if (polarEl) polarEl.innerHTML = '<span class="text-emerald-300 font-bold">VERIFIED</span>';
+          if (polarEl) polarEl.innerHTML = '<span class="text-[#5e6ad2] font-bold">VERIFIED</span>';
           if (monPolar) {
-            monPolar.innerHTML = '<span class="text-emerald-300 font-bold">[VERIFIED]</span>';
+            monPolar.innerHTML = '<span class="text-[#5e6ad2] font-bold">[VERIFIED]</span>';
             if (monBarPolar) monBarPolar.style.width = '100%';
           }
         }
         if (this.progress >= 1.0) {
-          if (climaxEl) climaxEl.innerHTML = '<span class="text-emerald-300 font-bold phosphor-glow-bright">LOCKED</span>';
+          if (climaxEl) climaxEl.innerHTML = '<span class="text-[#5e6ad2] font-bold">LOCKED</span>';
           if (monClimax) {
-            monClimax.innerHTML = '<span class="text-emerald-300 font-bold phosphor-glow-bright">[LOCKED]</span>';
+            monClimax.innerHTML = '<span class="text-[#5e6ad2] font-bold">[LOCKED]</span>';
             if (monBarClimax) monBarClimax.style.width = '100%';
-          }
-          if (monSync) {
-            monSync.className = "text-[9px] px-1 bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-bold phosphor-glow-bright";
-            monSync.innerText = "CRUISING";
           }
         }
 
@@ -3430,18 +3769,16 @@
         if (badge && !this.isLocked) {
           if (this.progress < 0.25) {
             badge.innerText = "STAGE: COLD_START [0.2 Hz]";
-            badge.className = "px-2 py-0.5 bg-emerald-950 border border-emerald-700 text-emerald-400 font-bold tracking-wider text-[10px]";
           } else if (this.progress < 0.80) {
-            badge.innerText = `STAGE: LOAD_ACCEL [${(this.getAngularVelocity() * 15).toFixed(1)} Hz]`;
-            badge.className = "px-2 py-0.5 bg-emerald-950 border border-emerald-500 text-emerald-300 font-bold tracking-wider text-[10px]";
+            badge.innerText = `STAGE: LOAD_ACCEL [${(this.getAngularVelocity() * 25).toFixed(1)} Hz]`;
           } else {
             badge.innerText = "STAGE: TURBO_BURST [CRITICAL]";
-            badge.className = "px-2 py-0.5 bg-emerald-900 border border-emerald-400 text-emerald-200 font-bold tracking-wider text-[10px]";
           }
         }
       }
 
       start() {
+        this.updateDimensions();
         const loop = () => {
           this.tick();
           this.render();
@@ -3458,261 +3795,174 @@
       }
 
       tick() {
-        // 永远旋转！即使到达 100% 依然保持自旋，如用户所要求！
         const speed = this.getAngularVelocity();
         this.angle = (this.angle + speed) % (Math.PI * 2);
 
-        // 动态遥测微调刷新
-        const monAngVel = document.getElementById('mon-ang-vel');
-        if (monAngVel && Math.random() < 0.15) {
-          monAngVel.innerText = `${(speed * (this.isLocked ? 1.0 : (0.98 + Math.random() * 0.04))).toFixed(2)} RAD/S`;
+        // 鼠标物理平滑追随
+        if (this.isHovering) {
+          this.hoverIntensity = Math.min(1.0, this.hoverIntensity + 0.08);
+          if (this.smoothPointerX === -9999) {
+            this.smoothPointerX = this.pointerX;
+            this.smoothPointerY = this.pointerY;
+          } else {
+            this.smoothPointerX += (this.pointerX - this.smoothPointerX) * 0.18;
+            this.smoothPointerY += (this.pointerY - this.smoothPointerY) * 0.18;
+          }
+        } else {
+          this.hoverIntensity = Math.max(0.0, this.hoverIntensity - 0.04);
+        }
+
+        if (this.ripple > 0) {
+          this.ripple = Math.max(0, this.ripple - 0.025);
         }
       }
 
       render() {
-        if (!this.canvas) return;
+        if (!this.ctx || !this.canvas) return;
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
 
-        // 动态自适应容器宽度，确保右边界永远精准贴合，绝不留白
-        const container = this.canvas.parentElement;
-        if (container && container.clientWidth > 100) {
-          const charW = this.measureCharWidth();
-          const targetCols = Math.max(48, Math.floor((container.clientWidth - 4) / charW));
-          if (Math.abs(targetCols - this.cols) >= 2) {
-            this.cols = targetCols;
-          }
+        ctx.clearRect(0, 0, w, h);
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const lavender = '#5e6ad2';
+        const lavenderLight = isDark ? '#828fff' : '#4e5ac0';
+        const hairlineColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+        const textColor = isDark ? 'rgba(247, 248, 248, 0.9)' : 'rgba(14, 16, 23, 0.9)';
+
+        // 1. 中轴基准微网格
+        ctx.strokeStyle = hairlineColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const centerY = h / 2;
+        ctx.moveTo(15, centerY);
+        ctx.lineTo(w - 15, centerY);
+        ctx.stroke();
+
+        // 2. 双螺旋基础波长与振幅
+        const baseAmp = Math.min(h * 0.35, 64);
+        const waveLen = Math.max(160, w * 0.32);
+        const step = 5;
+        const numPoints = Math.floor((w - 30) / step);
+        const startX = 15;
+        const rungInterval = 26;
+
+        // 计算任意 X 坐标下的鼠标物理扰动参数
+        const getPerturbation = (x) => {
+          if (this.hoverIntensity <= 0.01) return { ampScale: 1, waveOffset: 0, magnetY: 0, influence: 0 };
+          const dx = x - this.smoothPointerX;
+          const dist = Math.abs(dx);
+          // 高斯扰动包络（半径约 95px）
+          const influence = this.hoverIntensity * Math.exp(-Math.pow(dist / 95, 2));
+          // 振幅膨胀（鼠标处振幅隆起高达 70%）
+          const ampScale = 1.0 + influence * 0.70;
+          // 波动相位变形涟漪
+          const waveOffset = influence * Math.sin(dx * 0.06 - this.angle * 2.8) * 16;
+          // 垂直磁吸力（向光标 Y 方向靠拢）
+          const magnetY = (this.smoothPointerY - centerY) * influence * 0.45;
+          return { ampScale, waveOffset, magnetY, influence };
+        };
+
+        // 3. 点击冲击波环 (Shockwave)
+        if (this.ripple > 0) {
+          const rippleRadius = (1.0 - this.ripple) * (w * 0.45);
+          ctx.strokeStyle = `rgba(94, 106, 210, ${this.ripple * 0.4})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(this.rippleCenterX || (w / 2), centerY, rippleRadius, 0, Math.PI * 2);
+          ctx.stroke();
         }
 
-        const cols = this.cols;
-        const rows = this.rows;
-        // 构建二维字符网格: cell = { char, type, glow }
-        const grid = Array.from({ length: rows }, () => 
-          Array.from({ length: cols }, () => ({ char: ' ', type: 'space', glow: false }))
-        );
+        // 4. 梯级 (Rungs / 碱基对键)
+        for (let i = 0; i < numPoints; i++) {
+          const x = startX + i * step;
+          if (Math.floor(x) % rungInterval < step) {
+            const { ampScale, waveOffset, magnetY, influence } = getPerturbation(x);
+            const currentAmp = baseAmp * ampScale;
+            const phase = (x / waveLen) * Math.PI * 2 + this.angle + (influence * 0.6);
 
-        // 1. 顶部框与标题
-        const memOffset = `0x7FFE${Math.floor(0x1000 + this.progress * 0xE000).toString(16).toUpperCase()}`;
-        const headerTitle = " [SYS_GENOME // 创作状态双螺旋] ";
-        const headerOffset = ` [${memOffset}] `;
-
-        for (let c = 0; c < cols; c++) {
-          let ch = '─';
-          if (c === 0) ch = '┌';
-          else if (c === cols - 1) ch = '┐';
-          grid[0][c] = { char: ch, type: 'frame', glow: false };
-        }
-        for (let i = 0; i < headerTitle.length && (2 + i) < cols; i++) {
-          grid[0][2 + i] = { char: headerTitle[i], type: 'frame', glow: true };
-        }
-        const offsetStart = cols - 2 - headerOffset.length;
-        for (let i = 0; i < headerOffset.length && (offsetStart + i) < cols - 1; i++) {
-          grid[0][offsetStart + i] = { char: headerOffset[i], type: 'frame', glow: false };
-        }
-
-        // 2. 左右侧边框
-        for (let r = 1; r < rows - 1; r++) {
-          grid[r][0] = { char: '│', type: 'frame', glow: false };
-          grid[r][cols - 1] = { char: '│', type: 'frame', glow: false };
-        }
-
-        // 3. 底部与 HUD 分割线 (第 14 行)
-        const dividerRow = rows - 4; // 14
-        for (let c = 0; c < cols; c++) {
-          let ch = '─';
-          if (c === 0) ch = '├';
-          else if (c === cols - 1) ch = '┤';
-          grid[dividerRow][c] = { char: ch, type: 'frame', glow: false };
-        }
-        const hudTag = " [TELEMETRY_HUD] ";
-        for (let i = 0; i < hudTag.length && (3 + i) < cols; i++) {
-          grid[dividerRow][3 + i] = { char: hudTag[i], type: 'frame', glow: false };
-        }
-
-        // 4. 底部边界 (第 17 行)
-        const bottomRow = rows - 1; // 17
-        for (let c = 0; c < cols; c++) {
-          let ch = '─';
-          if (c === 0) ch = '└';
-          else if (c === cols - 1) ch = '┘';
-          grid[bottomRow][c] = { char: ch, type: 'frame', glow: false };
-        }
-
-        // 5. HUD 遥测数据行
-        const rawSpeed = this.getAngularVelocity();
-        const scaledRad = (rawSpeed * 60 * (1 + this.progress * 120)).toFixed(1);
-        const clockGhz = (1.20 + Math.pow(this.progress, 1.8) * 4.20).toFixed(2);
-        const pct = Math.round(this.progress * 100);
-        let statusTag = this.isLocked ? '[CRUISE_ROTATING]' : (this.progress < 0.25 ? '[COLD_TEST]' : '[TURBO]');
-        let parityTag = this.isLocked ? 'SYNCHED [NOMINAL]' : `STREAMING (${pct}%)`;
-
-        const line1Left = `  ANGULAR_VEL: ${scaledRad} RAD/S ${statusTag}`;
-        const line1Right = `GENE_BUFFER: ${pct}%  `;
-        this.writePaddedText(grid[rows - 3], cols, line1Left, line1Right, this.isLocked);
-
-        const line2Left = `  CLOCK_BURST: ${clockGhz} GHz [P1-525NM]`;
-        const line2Right = `PARITY: ${parityTag}  `;
-        this.writePaddedText(grid[rows - 2], cols, line2Left, line2Right, false);
-
-        // 6. 双螺旋与梯级波形绘制 (Row 1 到 dividerRow - 1，大幅全屏铺满！)
-        const stageLeft = 2;
-        const stageRight = cols - 3;
-        const centerY = 7.0;  // 居中
-        const amp = 5.2;      // 高振幅
-        const waveLen = Math.max(28, (stageRight - stageLeft) * 0.30);
-        const rungInterval = 6;
-
-        // 6.1 梯级 (Rungs) 绘制
-        for (let col = stageLeft; col <= stageRight; col++) {
-          if ((col - stageLeft) % rungInterval === 0) {
-            const phase = ((col - stageLeft) / waveLen) * Math.PI * 2 + this.angle;
-            const yA = centerY + amp * Math.sin(phase);
-            const yB = centerY - amp * Math.sin(phase);
-            const minY = Math.min(yA, yB);
-            const maxY = Math.max(yA, yB);
-            const dist = maxY - minY;
+            const yA = centerY + currentAmp * Math.sin(phase) + waveOffset + magnetY;
+            const yB = centerY - currentAmp * Math.sin(phase) - waveOffset + magnetY;
             const zMid = Math.cos(phase);
 
-            // 中点嵌入小说基因标签
-            if (dist >= 4.5) {
-              const pairIdx = Math.abs(Math.floor(col / rungInterval)) % this.novelPairs.length;
-              const tag = `[${this.novelPairs[pairIdx]}]`;
-              const startX = col - Math.floor(tag.length / 2);
-              const midRow = Math.round((minY + maxY) / 2);
-              for (let t = 0; t < tag.length; t++) {
-                const px = startX + t;
-                if (px >= stageLeft && px <= stageRight && midRow >= 1 && midRow < dividerRow) {
-                  grid[midRow][px] = { char: tag[t], type: 'label', glow: zMid > 0 };
-                }
-              }
-            }
+            // 梯级颜色受鼠标悬停局部高光提亮
+            const alphaBase = 0.12 + (zMid + 1) * 0.22 + influence * 0.35;
+            ctx.strokeStyle = influence > 0.3
+              ? `rgba(130, 143, 255, ${Math.min(0.9, alphaBase)})`
+              : `rgba(94, 106, 210, ${Math.min(0.7, alphaBase)})`;
+            ctx.lineWidth = 1.2 + influence * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(x, yA);
+            ctx.lineTo(x, yB);
+            ctx.stroke();
 
-            // 梯级垂直连接线
-            for (let r = Math.ceil(minY + 0.6); r <= Math.floor(maxY - 0.6); r++) {
-              if (r >= 1 && r < dividerRow) {
-                if (grid[r][col].type !== 'label') {
-                  const rChar = (r % 2 === 0) ? '|' : '│';
-                  grid[r][col] = { char: rChar, type: 'rung', glow: zMid > 0 };
-                }
-              }
-            }
-          }
-        }
-
-        // 6.2 链 A 与 链 B 绘制
-        for (let col = stageLeft; col <= stageRight; col++) {
-          const phase = ((col - stageLeft) / waveLen) * Math.PI * 2 + this.angle;
-          const sinP = Math.sin(phase);
-          const cosP = Math.cos(phase);
-
-          // 链 A
-          const yA = centerY + amp * sinP;
-          const zA = cosP;
-          this.plotStrandNode(grid, col, yA, zA, dividerRow);
-
-          // 链 B
-          const yB = centerY - amp * sinP;
-          const zB = -cosP;
-          this.plotStrandNode(grid, col, yB, zB, dividerRow);
-        }
-
-        // 7. 转成带荧光配色的 HTML
-        let html = '';
-        for (let r = 0; r < rows; r++) {
-          let lineHtml = '';
-          for (let c = 0; c < cols; c++) {
-            const cell = grid[r][c];
-            const ch = cell.char;
-            const safeCh = ch === ' ' ? '&nbsp;' : (ch === '<' ? '&lt;' : (ch === '>' ? '&gt;' : (ch === '&' ? '&amp;' : ch)));
-
-            if (cell.type === 'frame') {
-              if (cell.glow) {
-                lineHtml += `<span class="text-emerald-300 font-bold phosphor-glow-subtle">${safeCh}</span>`;
-              } else {
-                lineHtml += `<span class="text-emerald-700/80">${safeCh}</span>`;
-              }
-            } else if (cell.type === 'core') {
-              if (cell.glow) {
-                lineHtml += `<span class="text-emerald-200 font-black phosphor-glow-bright">${safeCh}</span>`;
-              } else {
-                lineHtml += `<span class="text-emerald-400 font-bold">${safeCh}</span>`;
-              }
-            } else if (cell.type === 'label') {
-              lineHtml += `<span class="text-amber-300 font-bold phosphor-glow-subtle">${safeCh}</span>`;
-            } else if (cell.type === 'rung') {
-              if (cell.glow) {
-                lineHtml += `<span class="text-emerald-500/90">${safeCh}</span>`;
-              } else {
-                lineHtml += `<span class="text-emerald-800/60">${safeCh}</span>`;
-              }
-            } else if (cell.type === 'aura') {
-              lineHtml += `<span class="text-emerald-700/50">${safeCh}</span>`;
-            } else if (cell.type === 'hud') {
-              if (cell.glow) {
-                lineHtml += `<span class="text-emerald-300 font-bold phosphor-glow-bright">${safeCh}</span>`;
-              } else {
-                lineHtml += `<span class="text-emerald-500/90">${safeCh}</span>`;
-              }
-            } else {
-              lineHtml += safeCh;
+            // 中间节点显示基因标签
+            if (Math.abs(yA - yB) > 38 && zMid > 0.15) {
+              const pairIdx = Math.floor(x / 55) % this.novelPairs.length;
+              const tag = this.novelPairs[pairIdx];
+              ctx.font = '9px "SF Mono", "JetBrains Mono", monospace';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillStyle = isDark ? 'rgba(18, 19, 21, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+              const midY = (yA + yB) / 2;
+              const tw = ctx.measureText(tag).width + 6;
+              ctx.fillRect(x - tw/2, midY - 6, tw, 12);
+              ctx.strokeStyle = influence > 0.3 ? lavenderLight : lavender;
+              ctx.strokeRect(x - tw/2, midY - 6, tw, 12);
+              ctx.fillStyle = textColor;
+              ctx.fillText(tag, x, midY);
             }
           }
-          html += lineHtml + '\n';
         }
 
-        this.canvas.innerHTML = html;
-      }
+        // 5. 绘制两条螺旋链 (Strand 0 & Strand 1)
+        for (const strand of [0, 1]) {
+          ctx.beginPath();
+          for (let i = 0; i <= numPoints; i++) {
+            const x = startX + i * step;
+            const { ampScale, waveOffset, magnetY, influence } = getPerturbation(x);
+            const currentAmp = baseAmp * ampScale;
+            const phase = (x / waveLen) * Math.PI * 2 + this.angle + (strand * Math.PI) + (influence * 0.6);
+            const y = centerY + currentAmp * Math.sin(phase) + (strand === 0 ? waveOffset : -waveOffset) + magnetY;
 
-      writePaddedText(row, cols, leftStr, rightStr, glow) {
-        for (let c = 1; c < cols - 1; c++) {
-          row[c] = { char: ' ', type: 'hud', glow: false };
-        }
-        for (let i = 0; i < leftStr.length && (1 + i) < cols - 1; i++) {
-          row[1 + i] = { char: leftStr[i], type: 'hud', glow: glow };
-        }
-        const startR = cols - 1 - rightStr.length;
-        for (let i = 0; i < rightStr.length && (startR + i) < cols - 1; i++) {
-          if (startR + i > leftStr.length) {
-            row[startR + i] = { char: rightStr[i], type: 'hud', glow: glow };
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
           }
-        }
-      }
+          ctx.strokeStyle = strand === 0 ? lavender : lavenderLight;
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
 
-      plotStrandNode(grid, col, y, z, maxRow) {
-        const iy = Math.round(y);
-        if (iy < 1 || iy >= maxRow) return;
+          // 沿线绘制 3D 深度粒子与鼠标近距发光光晕
+          for (let i = 0; i <= numPoints; i += 2) {
+            const x = startX + i * step;
+            const { ampScale, waveOffset, magnetY, influence } = getPerturbation(x);
+            const currentAmp = baseAmp * ampScale;
+            const phase = (x / waveLen) * Math.PI * 2 + this.angle + (strand * Math.PI) + (influence * 0.6);
+            const y = centerY + currentAmp * Math.sin(phase) + (strand === 0 ? waveOffset : -waveOffset) + magnetY;
+            const z = Math.cos(phase);
+            const r = 2.0 + (z + 1) * 1.4 + influence * 2.5;
 
-        const isForeground = z >= 0;
-        let char;
-        let type;
-        let glow = false;
+            ctx.fillStyle = strand === 0 ? lavender : lavenderLight;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
 
-        if (isForeground) {
-          const idx = (col + Math.floor(z * 4)) % this.coreChars.length;
-          char = this.coreChars[Math.abs(idx)];
-          type = 'core';
-          glow = z > 0.5;
-        } else {
-          const idx = col % this.auraChars.length;
-          char = this.auraChars[Math.abs(idx)];
-          type = 'aura';
-          glow = false;
-        }
-
-        grid[iy][col] = { char, type, glow };
-
-        if (isForeground && z > 0.4) {
-          if (iy - 1 >= 1 && grid[iy - 1][col].type === 'space') {
-            grid[iy - 1][col] = { char: '.', type: 'aura', glow: false };
-          }
-          if (iy + 1 < maxRow && grid[iy + 1][col].type === 'space') {
-            grid[iy + 1][col] = { char: '·', type: 'aura', glow: false };
+            // 悬停区域粒子增加柔和外发光
+            if (influence > 0.4 && z > 0) {
+              ctx.fillStyle = `rgba(130, 143, 255, ${influence * 0.35})`;
+              ctx.beginPath();
+              ctx.arc(x, y, r * 2.2, 0, Math.PI * 2);
+              ctx.fill();
+            }
           }
         }
       }
     }
 
-    let novelDnaEngine = null;
-    let isSplashReady = false;
-    let splashSkipRequested = false;
+let novelDnaEngine = null;
+let isSplashReady = false;
+let splashSkipRequested = false;
 
     // 快速跳过终端诊断，瞬间打满日志并解锁工作台
     function skipSplashDiagnostics() {
@@ -3764,7 +4014,7 @@
     }
 
     // 加快一倍速度：每 10 个字 50ms（即 0.05秒10字，约 200 字/秒），支持语法高亮与即时跳过
-    async function typeLogLine(container, text, chunkSize = 10, delayMs = 50) {
+    async function typeLogLine(container, text, chunkSize = 35, delayMs = 12) {
       if (!container) return;
       const line = document.createElement('div');
       line.className = "flex items-start space-x-1.5 font-mono text-[11px] leading-relaxed";
@@ -3816,6 +4066,7 @@
 
     // 关闭载入自检遮罩并进入企划构思视角
     function dismissSplashScreen() {
+      initThemeMode();
       if (novelDnaEngine) {
         novelDnaEngine.stop();
       }
@@ -3938,12 +4189,103 @@
     }
 
     // 核心初始化：终端同款 Doctor 自检 + 项目探测 + 每5字0.1s打字机日志输出
+    // ========================================================
+    // 小说工程列表动态拉取与智能同步管理器 (loadProjectList)
+    // 解决小说删除后残留选项问题、创建/删除全自动联动
+    // ========================================================
+    async function loadProjectList(selectTargetName = null) {
+      try {
+        const projRes = await fetch(`${API_BASE}/projects`);
+        if (!projRes.ok) return [];
+        const projects = await projRes.json();
+        const selector = document.getElementById('project-selector');
+        if (selector) {
+          selector.innerHTML = '';
+          if (projects && projects.length > 0) {
+            projects.forEach(p => {
+              const opt = document.createElement('option');
+              opt.value = p.name;
+              opt.innerText = `《${p.title || p.name}》(${p.chapters || 0}章 · ${Number(p.words || 0).toLocaleString()}字)`;
+              if (selectTargetName && p.name === selectTargetName) opt.selected = true;
+              selector.appendChild(opt);
+            });
+            const target = (selectTargetName && projects.some(p => p.name === selectTargetName))
+              ? selectTargetName
+              : projects[0].name;
+            selector.value = target;
+            await onSelectProject(target);
+          } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.innerText = '暂无小说工程 (点击 + 新建)';
+            selector.appendChild(opt);
+            currentProject = null;
+            clearStudioWorkspace();
+          }
+        }
+        return projects;
+      } catch (e) {
+        console.error('拉取小说工程列表失败:', e);
+        return [];
+      }
+    }
+
+    function clearStudioWorkspace() {
+      currentProject = null;
+      currentChapterData = null;
+      currentChapterNum = 1;
+      const titleEl = document.getElementById('plan-novel-title');
+      if (titleEl) titleEl.innerText = '暂无小说工程';
+      const descInput = document.getElementById('plan-description-input');
+      if (descInput) descInput.value = '';
+      const chapSelector = document.getElementById('chapter-selector');
+      if (chapSelector) chapSelector.innerHTML = '<option value="">无章节</option>';
+      const editor = document.getElementById('editor-body');
+      if (editor) editor.innerHTML = '<p class="text-stone-400">请先在上方新建或选择一本小说工程……</p>';
+      const charTags = document.getElementById('character-tags-container');
+      if (charTags) charTags.innerHTML = '<span class="text-xs text-stone-500">暂无登场角色</span>';
+      const headerGenre = document.getElementById('header-genre');
+      if (headerGenre) headerGenre.innerText = '未分类';
+    }
+
+    // ========================================================
+    // 3D 卡片悬停朝向鼠标微动效 (3D Perspective Tilt Cards)
+    // 鼠标在卡片上移动时，卡片产生轻盈的面向鼠标 3D 偏转与动态光泽
+    // ========================================================
+    function initTiltCards() {
+      const cards = document.querySelectorAll('.tilt-card');
+      cards.forEach(card => {
+        if (card.dataset.tiltBound) return;
+        card.dataset.tiltBound = 'true';
+
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const centerX = rect.width / 2;
+          const centerY = rect.height / 2;
+
+          // 适度角度：±3.5度，兼顾高级感与稳定性
+          const rotateX = ((centerY - y) / centerY) * 3.5;
+          const rotateY = ((x - centerX) / centerX) * 3.5;
+
+          card.style.transform = `perspective(800px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) translateY(-2px)`;
+        });
+
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateY(0px)';
+        });
+      });
+    }
+
+
     async function initApp() {
       // 0. 加载作者个性化偏好设置 (字号/行距/字体/调色板/自检模式)
       loadNovelSettings();
 
       // 初始化左右工作区分割拖拽手柄
       initWorkspaceResizers();
+      initTiltCards();
 
       // 启动心跳自动保存守护进程 (按作者配置秒数落盘)
       setInterval(() => {
@@ -3985,17 +4327,7 @@
         }
         if (projRes.status === 'fulfilled' && projRes.value.ok) {
           loadedProjects = await projRes.value.json();
-          const selector = document.getElementById('project-selector');
-          if (loadedProjects && loadedProjects.length > 0 && selector) {
-            selector.innerHTML = '';
-            loadedProjects.forEach(p => {
-              const opt = document.createElement('option');
-              opt.value = p.name;
-              opt.innerText = `《${p.title}》(${p.chapters}章 · ${Number(p.words).toLocaleString()}字)`;
-              selector.appendChild(opt);
-            });
-            onSelectProject(loadedProjects[0].name);
-          }
+          await loadProjectList();
         }
       } catch (e) {
         console.log("本地后端检测或装载中...", e);
@@ -4087,17 +4419,17 @@
       const skipTip = document.getElementById('splash-skip-tip');
 
       if (enterBtn && enterText) {
-        enterBtn.className = "px-6 py-2 font-mono font-black text-xs uppercase tracking-wider bg-emerald-400 text-black border border-emerald-300 hover:bg-emerald-300 transition flex items-center space-x-2 cursor-pointer shadow-[0_0_15px_rgba(52,211,153,0.8)] animate-pulse select-none";
-        enterText.innerText = '[ > ENTER NOVEL STUDIO < ]';
+        enterBtn.className = "px-6 py-2 font-mono font-bold text-xs uppercase tracking-wider bg-[#5e6ad2] text-white border border-[#5e6ad2] hover:bg-[#4e5ac0] transition flex items-center space-x-2 cursor-pointer shadow-lg rounded-md select-none";
+        enterText.innerText = '[ > 进入智能创作工作台 < ]';
       }
       if (statusText) {
-        statusText.innerHTML = '<span class="text-emerald-300 font-bold phosphor-glow-bright">● SYSTEM_READY [100%]</span>';
+        statusText.innerHTML = '<span class="text-[#828fff] font-bold">● SYSTEM_READY [100%]</span>';
       }
       if (skipTip) {
         skipTip.innerText = '[按 ENTER 或点击按钮直接进入]';
       }
       if (footerNote) {
-        footerNote.innerText = `已装载《${cardTitle}》(${cardChapters}章 · ${cardWords}字) // 双螺旋巡航自旋中`;
+        footerNote.innerText = `已装载《${cardTitle}》(${cardChapters}章 · ${cardWords}字) // 双螺旋智能工作台就绪`;
       }
     }
 
@@ -4126,18 +4458,7 @@
           closeCreateProjectModal();
           document.getElementById('new-proj-name').value = '';
           // 重新初始化列表并切入新书
-          const projRes = await fetch(`${API_BASE}/projects`);
-          const projects = await projRes.json();
-          const selector = document.getElementById('project-selector');
-          selector.innerHTML = '';
-          projects.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.name;
-            opt.innerText = `《${p.title}》(${p.chapters}章 · ${Number(p.words).toLocaleString()}字)`;
-            if (p.name === name) opt.selected = true;
-            selector.appendChild(opt);
-          });
-          onSelectProject(name);
+          await loadProjectList(name);
         } else {
           const err = await res.json();
           alert(err.detail || "创建失败");
@@ -4485,7 +4806,7 @@
     // 删除单章处理逻辑
     async function deleteChapterPrompt(chNum, title) {
       if (!currentProject) return;
-      const ok = confirm(`确认删除「第 ${chNum} 章 · ${title || '无标题'}」吗？\n\n警告：该操作将永久删除该章正文与大纲（不可逆）！`);
+      const ok = confirm(`确认删除「第 ${chNum} 章 · ${title || '无标题'}」吗？\n\n警告：该操作将永久删除该章正文与大纲！`);
       if (!ok) return;
 
       try {
@@ -4528,7 +4849,7 @@
         return;
       }
       const projName = currentProject.name;
-      const ok = confirm(`确认彻底删除长篇小说工程《${projName}》吗？\n\n警告：该操作将永久删除该作品的所有章节、大纲、角色系统与伏笔台账（不可逆）！`);
+      const ok = confirm(`确认彻底删除长篇小说工程《${projName}》吗？\n\n警告：该操作将永久删除该作品的所有章节、大纲、角色系统与伏笔台账！`);
       if (!ok) return;
 
       try {
@@ -4767,6 +5088,89 @@
     let curActiveChar = null;
     let traitUpdateTimer = null;
 
+    // ========================================================
+    // 动态交互：沉浸专注模式 (Zen Mode)
+    // ========================================================
+    function toggleZenMode() {
+      const persp = document.getElementById('perspective-writing');
+      if (!persp) return;
+      const isZen = persp.classList.toggle('zen-mode-active');
+      const btn = document.getElementById('btn-toggle-zen');
+      if (btn) {
+        btn.innerHTML = isZen 
+          ? `<span>✕</span><span class="hidden sm:inline">退出专注</span>` 
+          : `<span>🎯</span><span class="hidden sm:inline">专注模式</span>`;
+        if (isZen) {
+          btn.classList.add('bg-[#5e6ad2]', 'text-white');
+        } else {
+          btn.classList.remove('bg-[#5e6ad2]', 'text-white');
+        }
+      }
+      if (typeof showToast === 'function') {
+        showToast(isZen ? '已进入沉浸专注写作 (按 ESC 退出)' : '已恢复标准三栏工作台');
+      }
+    }
+
+    // 全局按键：ESC 退出专注模式
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const persp = document.getElementById('perspective-writing');
+        if (persp && persp.classList.contains('zen-mode-active')) {
+          toggleZenMode();
+        }
+      }
+    });
+
+    // ========================================================
+    // 动态交互：雷达图悬停提示与随机波动
+    // ========================================================
+    function setupRadarInteractions() {
+      const svg = document.getElementById('radar-svg-canvas');
+      const tooltip = document.getElementById('radar-live-tooltip');
+      const tipText = document.getElementById('radar-tooltip-text');
+      if (!svg || !tooltip) return;
+
+      for (let i = 0; i < 5; i++) {
+        const dot = document.getElementById(`radar-dot-${i}`);
+        const lbl = document.getElementById(`radar-lbl-${i}`);
+        [dot, lbl].forEach(el => {
+          if (!el) return;
+          el.style.cursor = 'pointer';
+          el.addEventListener('mouseenter', () => {
+            const name = lbl ? lbl.textContent : '特质';
+            let val = '7.5';
+            if (curActiveChar && curActiveChar.personality) {
+              const matched = Object.entries(curActiveChar.personality).find(([k]) => k.includes(name) || name.includes(k));
+              if (matched) val = matched[1];
+            }
+            if (tipText) tipText.innerHTML = `✦ <b>${name}</b>: ${val} / 10 · 实时联动`;
+            tooltip.classList.remove('opacity-0');
+          });
+          el.addEventListener('mouseleave', () => {
+            tooltip.classList.add('opacity-0');
+          });
+        });
+      }
+    }
+
+    function jitterTraitsRandomly() {
+      if (!curActiveChar || !curActiveChar.personality) return;
+      Object.keys(curActiveChar.personality).forEach(trait => {
+        const cur = Number(curActiveChar.personality[trait]);
+        const delta = (Math.random() - 0.5) * 2;
+        const next = Math.max(1, Math.min(10, Math.round(cur + delta)));
+        curActiveChar.personality[trait] = next;
+        const slider = document.querySelector(`input[oninput*="${trait}"]`);
+        if (slider) slider.value = next;
+        const label = document.getElementById(`label-trait-${trait}`);
+        if (label) label.innerText = `${next} / 10`;
+      });
+      updateRadarChartFromPersonality(curActiveChar.personality);
+      if (typeof showToast === 'function') {
+        showToast(`已激发【${curActiveChar.name}】的情境性格波动！`);
+      }
+    }
+
     async function loadRealCharacters(name) {
       try {
         const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(name)}/characters`);
@@ -4820,7 +5224,7 @@
     function renderCharacterSliceSelector(char) {
       const select = document.getElementById('char-slice-chapter-select');
       if (!select) return;
-      select.innerHTML = '<option value="latest">📌 当前最新状态 (最新落盘)</option>';
+      select.innerHTML = '<option value="latest">📌 当前最新状态</option>';
 
       if (currentProject && currentProject.chapters) {
         const eventsMap = new Set((char.chapter_events || []).map(e => Number(e.chapter)));
@@ -4876,7 +5280,7 @@
         }
         if (moodEl) moodEl.innerText = (char.chapter_events && char.chapter_events.length > 0 ? char.chapter_events[char.chapter_events.length - 1].mood || '平静自若' : '平静自若');
         if (badgeEl) badgeEl.innerText = "当前常态";
-        if (summaryEl) summaryEl.innerText = "正在查看角色全局最新基准状态。作者可自由拖动下方滑块调参，或切换切片回溯历史。";
+        if (summaryEl) summaryEl.innerText = "正在查看角色全局最新基准状态。可调节下方滑块，或切换切片回溯历史。";
         if (shiftsList) {
           shiftsList.classList.add('hidden');
           shiftsList.innerHTML = '';
@@ -5081,6 +5485,7 @@
 
       // 实时设置雷达多边形顶点，触发丝滑形变
       radar.setAttribute('points', points.join(' '));
+      setupRadarInteractions();
     }
 
     // 核心滑块拖拽响应：实时联动更新雷达图 + 防抖持久化落盘
