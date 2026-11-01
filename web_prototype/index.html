@@ -137,9 +137,10 @@
       letter-spacing: -0.02em;
     }
 
-    /* 企划构思与剧情棋盘主区底色 */
+    /* 企划构思、剧情棋盘与全自动巡航主区底色 */
     #perspective-planning,
-    #perspective-storyboard {
+    #perspective-storyboard,
+    #perspective-autopilot {
       background-color: var(--canvas) !important;
       color: var(--ink) !important;
     }
@@ -362,6 +363,219 @@
       border-color: var(--primary) !important;
     }
 
+    /* 编辑区智能占位符 (纯 CSS 伪元素呈现，零文字节点侵入) */
+    .content-paragraph[data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      color: rgba(16, 185, 129, 0.45);
+      pointer-events: none;
+      font-style: italic;
+    }
+    html:not(.dark) .content-paragraph[data-placeholder]:empty::before {
+      color: #94a3b8;
+    }
+
+    /* ========================================================
+       AI 2x2 正方形四色（蓝·青·绿·白）同步换序加载器
+       ======================================================== */
+    .ai-square-loader {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(8px);
+    }
+    html:not(.dark) .ai-square-loader {
+      background: #ffffff;
+      border-color: #e2e4e8;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    .ai-sq-dot {
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-radius: 50%;
+      will-change: transform;
+      animation-duration: 1.8s;
+      animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      animation-iteration-count: infinite;
+      animation-delay: var(--dot-delay, 0s);
+    }
+
+    /* 拖影层 1: 紧跟小球 (滞后 45ms, 55% 透明度, 0.85 缩放与微模糊) */
+    .ai-sq-dot::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: inherit;
+      box-shadow: inherit;
+      opacity: 0.55;
+      transform: scale(0.85);
+      filter: blur(0.6px);
+      animation-duration: 1.8s;
+      animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      animation-iteration-count: infinite;
+      animation-delay: calc(var(--dot-delay, 0s) + 0.045s);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* 拖影层 2: 渐隐尾焰 (滞后 90ms, 28% 透明度, 0.68 缩放与扩散模糊) */
+    .ai-sq-dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: inherit;
+      box-shadow: inherit;
+      opacity: 0.28;
+      transform: scale(0.68);
+      filter: blur(1.5px);
+      animation-duration: 1.8s;
+      animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+      animation-iteration-count: infinite;
+      animation-delay: calc(var(--dot-delay, 0s) + 0.09s);
+      pointer-events: none;
+      z-index: -2;
+    }
+
+    /* 四种专属颜色配置：蓝色 (Blue)、青色 (Cyan)、绿色 (Green)、白色 (White) */
+    .ai-dot-blue {
+      --dot-delay: 0s;
+      background: #3b82f6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.3);
+      z-index: 4;
+    }
+    .ai-dot-cyan {
+      --dot-delay: -0.45s;
+      background: #06b6d4;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.3);
+      z-index: 3;
+    }
+    .ai-dot-green {
+      --dot-delay: -0.9s;
+      background: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.3);
+      z-index: 2;
+    }
+    .ai-dot-white {
+      --dot-delay: -1.35s;
+      background: #ffffff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.9), 0 0 24px rgba(255, 255, 255, 0.4);
+      z-index: 5;
+    }
+    html:not(.dark) .ai-dot-white,
+    html:not(.dark) .ai-dot-white::before,
+    html:not(.dark) .ai-dot-white::after {
+      background: #ffffff;
+      box-shadow: 0 0 0 1.5px #cbd5e1, 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 1. 标准中号 (md) - 2x2 正方形 25px x 25px, 间距 16px, 点径 9px */
+    .ai-square-grid {
+      position: relative;
+      width: 25px;
+      height: 25px;
+      flex-shrink: 0;
+    }
+    .ai-square-grid .ai-sq-dot {
+      width: 9px;
+      height: 9px;
+      animation-name: aiSquareOrbitMd;
+    }
+    .ai-square-grid .ai-sq-dot::before,
+    .ai-square-grid .ai-sq-dot::after {
+      animation-name: aiSquareOrbitMd;
+    }
+    @keyframes aiSquareOrbitMd {
+      0% { transform: translate3d(0px, 0px, 0) scale(1); }
+      18% { transform: translate3d(16px, 0px, 0) scale(1.1); }
+      25% { transform: translate3d(16px, 0px, 0) scale(1); }
+
+      26% { transform: translate3d(16px, 0px, 0) scale(1); }
+      43% { transform: translate3d(16px, 16px, 0) scale(1.1); }
+      50% { transform: translate3d(16px, 16px, 0) scale(1); }
+
+      51% { transform: translate3d(16px, 16px, 0) scale(1); }
+      68% { transform: translate3d(0px, 16px, 0) scale(1.1); }
+      75% { transform: translate3d(0px, 16px, 0) scale(1); }
+
+      76% { transform: translate3d(0px, 16px, 0) scale(1); }
+      93% { transform: translate3d(0px, 0px, 0) scale(1.1); }
+      100% { transform: translate3d(0px, 0px, 0) scale(1); }
+    }
+
+    /* 2. 全屏大号 (lg) - 2x2 正方形 36px x 36px, 间距 24px, 点径 12px */
+    .ai-square-grid-lg {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      flex-shrink: 0;
+    }
+    .ai-square-grid-lg .ai-sq-dot {
+      width: 12px;
+      height: 12px;
+      animation-name: aiSquareOrbitLg;
+    }
+    .ai-square-grid-lg .ai-sq-dot::before,
+    .ai-square-grid-lg .ai-sq-dot::after {
+      animation-name: aiSquareOrbitLg;
+    }
+    @keyframes aiSquareOrbitLg {
+      0% { transform: translate3d(0px, 0px, 0) scale(1); }
+      18% { transform: translate3d(24px, 0px, 0) scale(1.14); }
+      25% { transform: translate3d(24px, 0px, 0) scale(1); }
+
+      26% { transform: translate3d(24px, 0px, 0) scale(1); }
+      43% { transform: translate3d(24px, 24px, 0) scale(1.14); }
+      50% { transform: translate3d(24px, 24px, 0) scale(1); }
+
+      51% { transform: translate3d(24px, 24px, 0) scale(1); }
+      68% { transform: translate3d(0px, 24px, 0) scale(1.14); }
+      75% { transform: translate3d(0px, 24px, 0) scale(1); }
+
+      76% { transform: translate3d(0px, 24px, 0) scale(1); }
+      93% { transform: translate3d(0px, 0px, 0) scale(1.14); }
+      100% { transform: translate3d(0px, 0px, 0) scale(1); }
+    }
+
+    /* 3. 紧凑小号 (sm) - 2x2 正方形 18px x 18px, 间距 12px, 点径 6px */
+    .ai-square-grid-sm {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .ai-square-grid-sm .ai-sq-dot {
+      width: 6px;
+      height: 6px;
+      animation-name: aiSquareOrbitSm;
+    }
+    .ai-square-grid-sm .ai-sq-dot::before,
+    .ai-square-grid-sm .ai-sq-dot::after {
+      animation-name: aiSquareOrbitSm;
+    }
+    @keyframes aiSquareOrbitSm {
+      0% { transform: translate3d(0px, 0px, 0) scale(1); }
+      18% { transform: translate3d(12px, 0px, 0) scale(1.12); }
+      25% { transform: translate3d(12px, 0px, 0) scale(1); }
+
+      26% { transform: translate3d(12px, 0px, 0) scale(1); }
+      43% { transform: translate3d(12px, 12px, 0) scale(1.12); }
+      50% { transform: translate3d(12px, 12px, 0) scale(1); }
+
+      51% { transform: translate3d(12px, 12px, 0) scale(1); }
+      68% { transform: translate3d(0px, 12px, 0) scale(1.12); }
+      75% { transform: translate3d(0px, 12px, 0) scale(1); }
+
+      76% { transform: translate3d(0px, 12px, 0) scale(1); }
+      93% { transform: translate3d(0px, 0px, 0) scale(1.12); }
+      100% { transform: translate3d(0px, 0px, 0) scale(1); }
+    }
+
   </style>
 </head>
 <body class="bg-[var(--canvas)] text-[var(--ink)] font-sans antialiased h-screen flex flex-col overflow-hidden select-none transition-colors duration-200 relative">
@@ -393,9 +607,6 @@
       <div id="dna-viewport-box" class="tilt-card relative flex-1 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl overflow-hidden flex flex-col justify-center p-1 shrink-0 shadow-inner group">
         <canvas id="dna-interactive-canvas" class="w-full h-full block cursor-crosshair"></canvas>
         <pre id="dna-terminal-canvas" class="hidden"></pre>
-        <div class="absolute bottom-2 right-3 text-[9px] text-[var(--ink-muted)] opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none font-mono">
-          [MOUSE_INTERACT: 移动鼠标扰动波形 / 点击激发脉冲]
-        </div>
       </div>
 
       <!-- 右侧辅舱：小说文学基因矩阵与系统级遥测监视窗  -->
@@ -541,17 +752,43 @@
       </div>
     </div>
 
-    <!-- 中间：三大透视视角模式切换 (Planning / Storyboard / Studio) -->
-    <div class="flex items-center bg-[var(--canvas-soft)] p-0.5 rounded-lg border border-[var(--hairline)] shrink-0 mx-1 sm:mx-2">
-      <button onclick="switchPerspective('planning')" id="btn-persp-planning" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
-        企划构思
-      </button>
-      <button onclick="switchPerspective('storyboard')" id="btn-persp-storyboard" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
-        剧情棋盘
-      </button>
-      <button onclick="switchPerspective('writing')" id="btn-persp-writing" class="tactile-interactive px-2.5 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer">
-        沉浸写作
-      </button>
+    <!-- 中间：层级化导航中枢 (Level 1: 顶层舱体模式; Level 2: 工匠台专属视角) -->
+    <div class="flex items-center space-x-2 shrink-0 mx-1 sm:mx-2">
+      <!-- Level 1: 顶层模式切换器 (工匠工作台 vs 自动巡航舱) -->
+      <div class="flex items-center bg-[var(--canvas-soft)] p-0.5 rounded-lg border border-[var(--hairline)]">
+        <button onclick="switchTopMode('craft')" id="btn-mode-craft" class="tactile-interactive px-3 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer flex items-center space-x-1.5" title="进入人工主导的深度精修工作台">
+          <span>🛠️</span>
+          <span class="font-medium">工匠工作台</span>
+        </button>
+        <button onclick="switchTopMode('autopilot')" id="btn-mode-autopilot" class="tactile-interactive px-3 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer flex items-center space-x-1.5" title="进入全自动批量连写成书舱">
+          <span class="text-amber-400">⚡</span>
+          <span>自动巡航舱</span>
+        </button>
+      </div>
+
+      <!-- Level 2: 工匠工作台专属子视角 (企划构思 / 剧情棋盘 / 沉浸写作) -->
+      <div id="craft-subnav-container" class="flex items-center space-x-1.5 transition-all">
+        <span class="text-[var(--hairline-strong)] text-xs hidden md:inline">/</span>
+        <div class="flex items-center bg-[var(--canvas-soft)]/80 p-0.5 rounded-lg border border-[var(--hairline)]">
+          <button onclick="switchCraftPerspective('planning')" id="btn-craft-planning" class="tactile-interactive px-2.5 py-0.5 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
+            企划构思
+          </button>
+          <button onclick="switchCraftPerspective('storyboard')" id="btn-craft-storyboard" class="tactile-interactive px-2.5 py-0.5 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer">
+            剧情棋盘
+          </button>
+          <button onclick="switchCraftPerspective('writing')" id="btn-craft-writing" class="tactile-interactive px-2.5 py-0.5 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer">
+            沉浸写作
+          </button>
+        </div>
+      </div>
+
+      <!-- 当处于巡航舱时展示的 Level 2 状态徽章 (与工匠子导航互斥切换) -->
+      <div id="autopilot-subnav-badge" class="hidden items-center space-x-1.5 text-xs font-mono transition-all">
+        <span class="text-[var(--hairline-strong)] text-xs">/</span>
+        <span class="px-2.5 py-0.5 rounded-full text-[11px] bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center space-x-1">
+          <span>⚡ 批量无感连写模式</span>
+        </span>
+      </div>
     </div>
 
     <!-- 右侧：模型档位切换、主题切换、设置与移动端抽屉 -->
@@ -574,6 +811,12 @@
       <button onclick="toggleThemeMode()" id="btn-header-theme-toggle" class="px-2.5 py-1 text-xs rounded-md bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] border border-[var(--hairline)] text-[var(--ink)] flex items-center space-x-1 transition shadow-sm shrink-0 cursor-pointer" title="点击一键切换暗色 / 亮色外观">
         <span id="theme-icon-slot">🌙</span>
         <span class="hidden md:inline text-xs font-medium" id="theme-text-slot">暗色</span>
+      </button>
+
+      <!-- 知识库与文献学习中心按钮 -->
+      <button onclick="openKnowledgeHubModal()" id="btn-open-knowledge-hub" class="tactile-interactive px-2.5 py-1 text-xs rounded-md bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] border border-[var(--hairline)] text-[var(--ink)] flex items-center space-x-1 transition shadow-sm shrink-0 cursor-pointer" title="打开知识库与文献学习中心">
+        <span>📚</span>
+        <span class="hidden md:inline font-medium">知识库</span>
       </button>
 
       <!-- 系统设置按钮 -->
@@ -697,29 +940,61 @@
             </span>
           </div>
 
+          <!-- 中间：创作主线阶段航标 (Stage Pipeline Stepper) -->
+          <div class="hidden xl:flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-[var(--surface-soft)] border border-[var(--hairline)] text-[11px] select-none shadow-sm whitespace-nowrap shrink-0" id="editor-stage-stepper">
+            <button type="button" onclick="switchRightTab('plot')" class="flex items-center space-x-1 px-1.5 py-0.5 rounded transition text-[var(--ink-secondary)] hover:text-[#5e6ad2] cursor-pointer whitespace-nowrap shrink-0" id="step-node-outline" title="第 1 步：本章剧情细纲">
+              <span class="w-2 h-2 rounded-full bg-slate-500 transition-colors shrink-0" id="step-dot-outline"></span>
+              <span class="font-medium">1.细纲</span>
+            </button>
+            <span class="text-[var(--ink-faint)] text-[10px] shrink-0">→</span>
+            <button type="button" onclick="switchRightTab('character')" class="flex items-center space-x-1 px-1.5 py-0.5 rounded transition text-[var(--ink-secondary)] hover:text-[#5e6ad2] cursor-pointer whitespace-nowrap shrink-0" id="step-node-char" title="第 2 步：登场角色设定">
+              <span class="w-2 h-2 rounded-full bg-slate-500 transition-colors shrink-0" id="step-dot-char"></span>
+              <span class="font-medium">2.角色</span>
+            </button>
+            <span class="text-[var(--ink-faint)] text-[10px] shrink-0">→</span>
+            <button type="button" onclick="focusEditorBody()" class="flex items-center space-x-1 px-1.5 py-0.5 rounded transition text-[var(--ink-secondary)] hover:text-[#5e6ad2] cursor-pointer whitespace-nowrap shrink-0" id="step-node-body" title="第 3 步：本章正文起草">
+              <span class="w-2 h-2 rounded-full bg-slate-500 transition-colors shrink-0" id="step-dot-body"></span>
+              <span class="font-medium">3.正文</span>
+            </button>
+            <span class="text-[var(--ink-faint)] text-[10px] shrink-0">→</span>
+            <button type="button" onclick="switchRightTab('review')" class="flex items-center space-x-1 px-1.5 py-0.5 rounded transition text-[var(--ink-secondary)] hover:text-[#5e6ad2] cursor-pointer whitespace-nowrap shrink-0" id="step-node-review" title="第 4 步：六维质检审稿">
+              <span class="w-2 h-2 rounded-full bg-slate-500 transition-colors shrink-0" id="step-dot-review"></span>
+              <span class="font-medium">4.审稿</span>
+            </button>
+          </div>
+
           <!-- 右侧：高频作家操作（生成正文、保存、重构、审稿） -->
           <div class="flex items-center space-x-2 shrink-0">
             <button onclick="toggleZenMode()" id="btn-toggle-zen" class="px-2 py-1 rounded bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] text-[var(--ink)] border border-[var(--hairline)] flex items-center space-x-1 transition text-xs shrink-0 cursor-pointer" title="全屏沉浸专注写作模式 (ESC 退出)">
               <span>🎯</span>
               <span class="hidden sm:inline">专注模式</span>
             </button>
-            <button onclick="triggerGenerateChapterContent()" class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center space-x-1 shadow transition text-xs shrink-0" title="根据大纲细纲与角色设定自动起草本章正文">
+            <button onclick="triggerGenerateChapterContent()" class="px-2.5 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center space-x-1 shadow transition text-xs shrink-0 cursor-pointer" title="根据大纲细纲与角色设定自动起草本章正文">
               <span>🪄</span>
               <span>生成正文</span>
             </button>
-            <button onclick="saveCurrentChapterToBackend()" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center space-x-1 shadow transition text-xs shrink-0" title="保存本章正文 (Cmd+S)">
+            <button onclick="saveCurrentChapterToBackend()" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center space-x-1 shadow transition text-xs shrink-0 cursor-pointer" title="保存本章正文 (Cmd+S)">
               <span>💾</span>
               <span>保存</span>
             </button>
-            <button onclick="triggerInlineRewriteDemo()" class="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-500/30 flex items-center space-x-1 transition text-xs shrink-0" title="AI 选区划词重构 (Cmd+K)">
+            <button onclick="triggerInlineRewriteDemo()" class="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-500/30 flex items-center space-x-1 transition text-xs shrink-0 cursor-pointer" title="AI 选区划词重构 (需在正文中划选文字，Cmd+K)">
               <span>✨</span>
               <span>重构</span>
             </button>
-            <button onclick="runQuickReviewDemo()" class="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-800/80 flex items-center space-x-1 transition text-xs shrink-0" title="启动六维全章深度审稿">
+            <button onclick="runQuickReviewDemo()" class="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 hover:bg-emerald-900/60 border border-emerald-800/80 flex items-center space-x-1 transition text-xs shrink-0 cursor-pointer" title="启动六维全章深度审稿">
               <span>🔍</span>
               <span>审稿</span>
             </button>
           </div>
+        </div>
+
+        <!-- 叙事连贯性前序断层提示条 (动态控制) -->
+        <div id="continuity-warning-banner" class="hidden mx-6 mt-2 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between select-none">
+          <div class="flex items-center space-x-2">
+            <span>⚡</span>
+            <span id="continuity-warning-text">检测到前序章节正文尚未完成，AI 生成将基于粗纲推演上下文。</span>
+          </div>
+          <button type="button" onclick="document.getElementById('continuity-warning-banner').classList.add('hidden')" class="text-amber-400/80 hover:text-amber-200 text-xs ml-2 cursor-pointer">✕</button>
         </div>
 
         <!-- Linear 风格 知识注入 · 写作参考与来源面板 -->
@@ -732,10 +1007,15 @@
             <span class="text-[10px] text-[var(--ink-muted)] group-open:rotate-180 transition-transform">▼</span>
           </summary>
           <div class="mt-3 pt-3 border-t border-[var(--hairline)] space-y-2.5">
-            <label class="flex items-center space-x-2 text-[var(--ink-secondary)] cursor-pointer select-none">
-              <input id="knowledge-enabled" type="checkbox" class="w-3.5 h-3.5 rounded text-[#5e6ad2] focus:ring-[#5e6ad2] accent-[#5e6ad2] cursor-pointer">
-              <span>生成正文时检索并注入知识库资料</span>
-            </label>
+            <div class="flex items-center justify-between">
+              <label class="flex items-center space-x-2 text-[var(--ink-secondary)] cursor-pointer select-none">
+                <input id="knowledge-enabled" type="checkbox" class="w-3.5 h-3.5 rounded text-[#5e6ad2] focus:ring-[#5e6ad2] accent-[#5e6ad2] cursor-pointer">
+                <span>生成正文时检索并注入知识库资料</span>
+              </label>
+              <button type="button" onclick="openKnowledgeHubModal()" class="text-[11px] text-[#5e6ad2] hover:underline font-medium cursor-pointer flex items-center space-x-1">
+                <span>⚙️ 知识库管理与导入 →</span>
+              </button>
+            </div>
             <div class="flex items-center space-x-2">
               <input id="knowledge-query" maxlength="200" placeholder="检索关键词，例如：太空 氧气 生存（留空按本章大纲检索）" class="flex-1 bg-[var(--canvas-soft)] border border-[var(--hairline)] px-3 py-1.5 rounded-lg text-xs text-[var(--ink)] placeholder-[var(--ink-faint)] focus:outline-none focus:border-[#5e6ad2] transition">
               <button type="button" onclick="previewKnowledge(event)" class="tactile-interactive px-3 py-1.5 bg-[var(--surface-soft)] hover:bg-[#5e6ad2]/10 text-[#5e6ad2] border border-[#5e6ad2]/30 rounded-lg text-xs font-medium transition cursor-pointer shrink-0">
@@ -803,17 +1083,20 @@
       <!-- 智能副驾与六维审稿 -->
       <aside id="sidebar-right" class="responsive-sidebar-right border-l border-[var(--hairline)] bg-[var(--surface-card)] flex flex-col shrink-0 transition-colors" style="width: 320px; min-width: 220px; max-width: 600px;">
         <div class="h-10 border-b border-emerald-900/80 flex items-center bg-[#050b06] p-1 space-x-1">
-          <button onclick="switchRightTab('character')" id="tab-btn-character" class="flex-1 py-1 text-xs font-semibold rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 shadow-sm flex items-center justify-center space-x-1 transition" title="角色动态人格演变">
+          <button onclick="switchRightTab('character')" id="tab-btn-character" class="flex-1 py-1 text-xs font-semibold rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80 shadow-sm flex items-center justify-center space-x-1.5 transition cursor-pointer" title="角色动态人格演变">
             <span>👥</span>
             <span>角色</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500 transition-colors" id="tab-dot-character" title="角色档案状态"></span>
           </button>
-          <button onclick="switchRightTab('plot')" id="tab-btn-plot" class="flex-1 py-1 text-xs font-medium rounded text-emerald-500/80 hover:text-emerald-300 flex items-center justify-center space-x-1 transition" title="剧情大纲与灵感推演">
+          <button onclick="switchRightTab('plot')" id="tab-btn-plot" class="flex-1 py-1 text-xs font-medium rounded text-emerald-500/80 hover:text-emerald-300 flex items-center justify-center space-x-1.5 transition cursor-pointer" title="剧情大纲与灵感推演">
             <span>💡</span>
             <span>剧情</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500 transition-colors" id="tab-dot-plot" title="细纲就绪状态"></span>
           </button>
-          <button onclick="switchRightTab('review')" id="tab-btn-review" class="flex-1 py-1 text-xs font-medium rounded text-emerald-500/80 hover:text-emerald-300 flex items-center justify-center space-x-1 transition" title="六维智能审稿质检">
+          <button onclick="switchRightTab('review')" id="tab-btn-review" class="flex-1 py-1 text-xs font-medium rounded text-emerald-500/80 hover:text-emerald-300 flex items-center justify-center space-x-1.5 transition cursor-pointer" title="六维智能审稿质检">
             <span>🔍</span>
             <span>审稿</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-slate-500 transition-colors" id="tab-dot-review" title="审稿质检就绪状态"></span>
           </button>
         </div>
 
@@ -1012,9 +1295,17 @@
               </button>
             </div>
             <!-- 加载状态 -->
-            <div id="right-ai-plot-loading" class="hidden text-center py-3 space-y-1.5">
-              <div class="w-5 h-5 mx-auto border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-              <div class="text-[11px] text-emerald-300 font-medium">剧情架构师正在推演剧情分支...</div>
+            <div id="right-ai-plot-loading" class="hidden text-center py-4 space-y-2.5">
+              <div class="ai-square-loader py-2 px-4 shadow-sm">
+                <div class="ai-square-grid">
+                  <span class="ai-sq-dot ai-dot-blue"></span>
+                  <span class="ai-sq-dot ai-dot-cyan"></span>
+                  <span class="ai-sq-dot ai-dot-green"></span>
+                  <span class="ai-sq-dot ai-dot-white"></span>
+                </div>
+                <span class="ml-2.5 text-xs text-[#60a5fa] font-semibold tracking-wider font-mono">THINKING</span>
+              </div>
+              <div class="text-[11px] text-[var(--ink-secondary)] font-medium">剧情架构师正在推演剧情分支...</div>
             </div>
           </div>
 
@@ -1054,10 +1345,32 @@
               🔍
             </div>
             <div>
-              <div class="text-xs font-bold text-emerald-300">当前章节尚未运行六维审稿</div>
+              <div class="text-xs font-bold text-emerald-300" id="review-initial-status-title">当前章节尚未运行六维审稿</div>
               <div class="text-[11px] text-emerald-600 mt-0.5" id="review-target-chapter-label">待审章节: 第 1 章</div>
             </div>
-            <p class="text-[11px] text-emerald-500/80 leading-relaxed text-left bg-[#020503] p-3 rounded-lg border border-emerald-900/80 space-y-1">
+
+            <!-- 空态引导卡片（正文未就绪时显现） -->
+            <div id="review-empty-guidance" class="hidden p-3 rounded-lg bg-amber-950/30 border border-amber-500/30 text-left space-y-2 text-[11px]">
+              <div class="text-amber-300 font-semibold flex items-center space-x-1.5">
+                <span>✍️</span>
+                <span>本章正文尚在酝酿中 (当前 0 字)</span>
+              </div>
+              <p class="text-amber-200/80 leading-relaxed">
+                六维智能审稿引擎需基于具体章节文本开展检测。请先起草或生成正文，字数达标后即可一键质检。
+              </p>
+              <div class="pt-1 flex items-center space-x-2">
+                <button type="button" onclick="triggerGenerateChapterContent()" class="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs shadow flex items-center space-x-1 transition cursor-pointer">
+                  <span>🪄</span>
+                  <span>起草正文</span>
+                </button>
+                <button type="button" onclick="focusEditorBody()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs transition cursor-pointer">
+                  <span>✍️</span>
+                  <span>手动写作</span>
+                </button>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-emerald-500/80 leading-relaxed text-left bg-[#020503] p-3 rounded-lg border border-emerald-900/80 space-y-1" id="review-scope-desc">
               <span class="font-semibold text-emerald-400/90 block mb-1">六维检测覆盖范围:</span>
               <span class="block">• 1. 错别字校对与语病</span>
               <span class="block">• 2. 剧情设定与前文逻辑自洽性</span>
@@ -1066,17 +1379,25 @@
               <span class="block">• 5. 情节节奏张力与钩子设置</span>
               <span class="block">• 6. 行文风格与感官描写沉浸度</span>
             </p>
-            <button onclick="startRealChapterReview()" id="btn-start-review" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs font-semibold shadow-lg shadow-emerald-500/30 flex items-center justify-center space-x-1.5 transition">
+            <button onclick="startRealChapterReview()" id="btn-start-review" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs font-semibold shadow-lg shadow-emerald-500/30 flex items-center justify-center space-x-1.5 transition cursor-pointer">
               <span>🚀</span>
-              <span>开始本章六维智能审稿</span>
+              <span id="btn-start-review-text">开始本章六维智能审稿</span>
             </button>
           </div>
 
           <!-- 审稿加载中状态 -->
-          <div id="review-loading-box" class="hidden bg-[#050c07]/90 border border-emerald-500/30 rounded-xl p-5 text-center space-y-3">
-            <div class="w-9 h-9 mx-auto border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <div class="text-xs font-semibold text-emerald-300">正在进行六维深度审稿分析...</div>
-            <div class="text-[10px] text-emerald-500/80 leading-relaxed">
+          <div id="review-loading-box" class="hidden bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-xl p-6 text-center space-y-3 shadow-sm">
+            <div class="ai-square-loader py-2.5 px-5 shadow-sm">
+              <div class="ai-square-grid">
+                <span class="ai-sq-dot ai-dot-blue"></span>
+                <span class="ai-sq-dot ai-dot-cyan"></span>
+                <span class="ai-sq-dot ai-dot-green"></span>
+                <span class="ai-sq-dot ai-dot-white"></span>
+              </div>
+              <span class="ml-3 text-xs text-[#60a5fa] font-semibold tracking-wider font-mono">ANALYZING</span>
+            </div>
+            <div class="text-xs font-semibold text-[var(--ink)]">正在进行六维深度审稿分析...</div>
+            <div class="text-[11px] text-[var(--ink-muted)] leading-relaxed max-w-xs mx-auto">
               正在调用四大领域引擎，比对前文大纲、伏笔台账与角色人格演变契约...
             </div>
           </div>
@@ -1269,9 +1590,17 @@
           </div>
 
           <!-- 脑暴加载状态 -->
-          <div id="ai-plot-loading" class="hidden text-center py-6 space-y-2">
-            <div class="w-7 h-7 mx-auto border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <div class="text-xs text-emerald-300 font-medium">剧情架构师正在根据伏笔与大纲推演分支提议...</div>
+          <div id="ai-plot-loading" class="hidden text-center py-6 space-y-3">
+            <div class="ai-square-loader py-2.5 px-5 shadow-sm">
+              <div class="ai-square-grid">
+                <span class="ai-sq-dot ai-dot-blue"></span>
+                <span class="ai-sq-dot ai-dot-cyan"></span>
+                <span class="ai-sq-dot ai-dot-green"></span>
+                <span class="ai-sq-dot ai-dot-white"></span>
+              </div>
+              <span class="ml-3 text-xs text-[#60a5fa] font-semibold tracking-wider font-mono">BRAINSTORMING</span>
+            </div>
+            <div class="text-xs text-[var(--ink-secondary)] font-medium">剧情架构师正在根据伏笔与大纲推演分支提议...</div>
           </div>
 
           <!-- 脑暴提议卡片网格 -->
@@ -1301,6 +1630,294 @@
       </div>
     </div>
 
+    <!-- ======================================================== -->
+    <!-- 视角 4：全自动巡航舱 (Autopilot Stream) - 批量一键成书 -->
+    <!-- ======================================================== -->
+    <div id="perspective-autopilot" class="hidden flex-1 p-6 md:p-8 overflow-y-auto bg-[var(--canvas)] text-[var(--ink)]">
+      <div class="max-w-6xl mx-auto space-y-6">
+
+        <!-- 1. 顶部控制与任务横幅 (Mission Control Bar) -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-[var(--hairline)] pb-5 gap-4">
+          <div>
+            <div class="flex items-center space-x-2.5">
+              <span class="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">⚡</span>
+              <h2 class="text-xl font-bold text-[var(--ink)] tracking-tight">全自动巡航舱</h2>
+              <span id="autopilot-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                ● 待机就绪
+              </span>
+            </div>
+            <p class="text-xs text-[var(--ink-muted)] mt-1.5 flex items-center space-x-2">
+              <span>面向批量连写与通篇出稿，闭环驱动「细纲构思 ➔ 正文起草 ➔ 静默自检 ➔ 状态沉淀」</span>
+              <span class="text-[var(--hairline)]">•</span>
+              <span class="text-[var(--ink-secondary)]">不影响原有精修流程，随时一键接管</span>
+            </p>
+          </div>
+
+          <!-- 顶部快捷操作 -->
+          <div class="flex items-center space-x-2.5">
+            <button onclick="switchPerspective('writing')" class="tactile-interactive px-3 py-1.5 rounded-md text-xs bg-[var(--surface-soft)] hover:bg-[var(--surface-card)] text-[var(--ink)] border border-[var(--hairline)] font-medium transition flex items-center space-x-1.5 shadow-sm cursor-pointer" title="切回沉浸精修单章编辑器">
+              <span>✍️</span>
+              <span>切回工匠精修台</span>
+            </button>
+            <button id="btn-autopilot-run" onclick="toggleAutopilotRun()" class="tactile-interactive px-4 py-1.5 rounded-md text-xs bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-semibold flex items-center space-x-1.5 shadow-sm transition cursor-pointer">
+              <span id="autopilot-run-icon">▶</span>
+              <span id="autopilot-run-text">启动全自动巡航</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. 四大核心指标卡片 (Metrics Grid) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 font-mono">
+          <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] shadow-sm flex flex-col justify-between">
+            <div>
+              <div class="text-[11px] text-[var(--ink-muted)] flex items-center justify-between">
+                <span>巡航批次进度</span>
+                <span id="metric-autopilot-percent-text" class="text-xs font-bold text-indigo-400">0%</span>
+              </div>
+              <div class="mt-2 text-xl font-bold text-[var(--ink)] flex items-baseline justify-between">
+                <span id="metric-autopilot-progress">0 / 5 章</span>
+              </div>
+            </div>
+            <div class="mt-2 space-y-1.5">
+              <!-- 指标卡微型进度条 -->
+              <div class="w-full bg-[var(--canvas-soft)] h-1.5 rounded-full overflow-hidden border border-[var(--hairline)]">
+                <div id="metric-autopilot-progress-bar" class="h-full bg-gradient-to-r from-[#5e6ad2] to-emerald-400 rounded-full transition-all duration-500 ease-out" style="width: 0%;"></div>
+              </div>
+              <div class="text-[10px] text-[var(--ink-muted)] flex items-center space-x-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span id="metric-autopilot-progress-sub">准备起步</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] shadow-sm">
+            <div class="text-[11px] text-[var(--ink-muted)] flex items-center justify-between">
+              <span>预计/累计产出</span>
+              <span>📝</span>
+            </div>
+            <div class="mt-2 text-xl font-bold text-[var(--ink)]" id="metric-autopilot-words">0 字</div>
+            <div class="mt-1 text-[10px] text-[var(--ink-muted)]" id="metric-autopilot-words-sub">单章基准 ~2500 字</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] shadow-sm">
+            <div class="text-[11px] text-[var(--ink-muted)] flex items-center justify-between">
+              <span>静默质检状态</span>
+              <span>🛡️</span>
+            </div>
+            <div class="mt-2 text-xl font-bold text-emerald-400" id="metric-autopilot-qa">全自动守卫</div>
+            <div class="mt-1 text-[10px] text-[var(--ink-muted)]">六维雷达无感修复</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] shadow-sm">
+            <div class="text-[11px] text-[var(--ink-muted)] flex items-center justify-between">
+              <span>资源与耗时</span>
+              <span>⚡</span>
+            </div>
+            <div class="mt-2 text-xl font-bold text-indigo-400" id="metric-autopilot-cost">￥0.00</div>
+            <div class="mt-1 text-[10px] text-[var(--ink-muted)]">阶梯成本监控</div>
+          </div>
+        </div>
+
+        <!-- 3. 主体分栏：左栏流水线瀑布 + 右栏巡航策略中枢 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- 左侧：章节生产流水线卡片列表 (8 栏) -->
+          <div class="lg:col-span-8 space-y-4">
+            <!-- 全局百分比进度看板 (Visual Master Progress Bar) -->
+            <div class="p-3.5 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] space-y-2 shadow-sm">
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400" id="autopilot-dot-indicator"></span>
+                  <span class="font-semibold text-[var(--ink)]">巡航总体完成度</span>
+                  <span id="global-autopilot-status-text" class="text-[11px] text-[var(--ink-muted)] font-mono">就绪待命 (0%)</span>
+                </div>
+                <div class="flex items-center space-x-2 font-mono">
+                  <span class="text-xs text-[var(--ink-muted)]" id="global-autopilot-fraction">0 / 5 章</span>
+                  <span class="text-[var(--hairline-strong)]">|</span>
+                  <span id="global-autopilot-percentage" class="font-bold text-sm text-[#5e6ad2]">0%</span>
+                </div>
+              </div>
+              <div class="w-full bg-[var(--canvas-soft)] h-2 rounded-full overflow-hidden border border-[var(--hairline)] p-[1px]">
+                <div id="global-autopilot-bar" class="h-full bg-gradient-to-r from-[#5e6ad2] via-indigo-500 to-emerald-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(94,106,210,0.4)]" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-[var(--ink)] flex items-center space-x-2">
+                <span>章节自动化流水线</span>
+                <span class="text-xs font-normal text-[var(--ink-muted)] font-mono" id="pipeline-queue-summary">(等待启动)</span>
+              </h3>
+              <div class="flex items-center space-x-3 text-xs text-[var(--ink-muted)] font-mono">
+                <span class="flex items-center space-x-1">
+                  <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span> <span>已完成</span>
+                </span>
+                <span class="flex items-center space-x-1">
+                  <span class="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span> <span>起草中</span>
+                </span>
+                <span class="flex items-center space-x-1">
+                  <span class="inline-block w-2 h-2 rounded-full bg-[var(--hairline)]"></span> <span>队列中</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- 动态卡片容器 -->
+            <div id="autopilot-chapters-stream" class="space-y-3">
+              <!-- 动态填充章节卡片 -->
+            </div>
+
+            <!-- 批量交付报告卡片 (任务结束时展现或常驻提示) -->
+            <div id="autopilot-delivery-box" class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] flex items-center justify-between text-xs">
+              <div class="space-y-1">
+                <div class="font-semibold text-[var(--ink)] flex items-center space-x-1.5">
+                  <span>📦 成果交付与转入精修</span>
+                </div>
+                <div class="text-[var(--ink-muted)]">
+                  所有自动生成的章节均已写入小说工程，可一键批量导出或直接在左侧目录中挑选任意章节精修。
+                </div>
+              </div>
+              <div class="flex items-center space-x-2 shrink-0">
+                <button onclick="exportCurrentProjectText()" class="px-3 py-1.5 rounded-md bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] text-[var(--ink)] border border-[var(--hairline)] transition cursor-pointer">
+                  📥 导出合集 TXT
+                </button>
+                <button onclick="switchPerspective('writing')" class="px-3 py-1.5 rounded-md bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-medium transition cursor-pointer">
+                  ✍️ 转入工匠台逐章审阅
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：巡航策略与防线控制台 (4 栏) -->
+          <div class="lg:col-span-4 space-y-4">
+            
+            <!-- 策略配置卡片 -->
+            <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] space-y-4 shadow-sm">
+              <h4 class="text-xs font-bold text-[var(--ink)] tracking-wider uppercase flex items-center justify-between">
+                <span>巡航生成参数</span>
+                <span class="text-[10px] text-indigo-400 font-mono">MISSION CONFIG</span>
+              </h4>
+
+              <!-- 章节区间 -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-medium text-[var(--ink-secondary)]">写作目标区间</label>
+                <div class="flex items-center space-x-2 text-xs">
+                  <div class="flex items-center bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-md px-2 py-1 flex-1">
+                    <span class="text-[var(--ink-muted)] text-[11px] mr-1.5">第</span>
+                    <input type="number" id="autopilot-start-ch" min="1" value="1" onchange="onAutopilotRangeChange()" class="w-full bg-transparent text-[var(--ink)] font-mono font-semibold focus:outline-none text-xs">
+                    <span class="text-[var(--ink-muted)] text-[11px] ml-1">章</span>
+                  </div>
+                  <span class="text-[var(--ink-muted)]">至</span>
+                  <div class="flex items-center bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-md px-2 py-1 flex-1">
+                    <span class="text-[var(--ink-muted)] text-[11px] mr-1.5">第</span>
+                    <input type="number" id="autopilot-end-ch" min="1" value="5" onchange="onAutopilotRangeChange()" class="w-full bg-transparent text-[var(--ink)] font-mono font-semibold focus:outline-none text-xs">
+                    <span class="text-[var(--ink-muted)] text-[11px] ml-1">章</span>
+                  </div>
+                </div>
+                <div class="text-[10px] text-[var(--ink-muted)] flex justify-between">
+                  <span id="autopilot-unwritten-tip">从首个未写章节起步</span>
+                  <button type="button" onclick="setAutopilotNextBatch(5)" class="text-indigo-400 hover:underline cursor-pointer">连写下5章</button>
+                </div>
+              </div>
+
+              <!-- 期望单章字数（纯手动数字输入，强制数字校验） -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label for="autopilot-target-words-input" class="text-xs font-medium text-[var(--ink-secondary)]">期望单章字数 (仅限纯数字)</label>
+                  <span class="text-[10px] text-[var(--ink-muted)] font-mono">正整数</span>
+                </div>
+                <div class="relative flex items-center bg-[var(--canvas-soft)] border border-[var(--hairline)] focus-within:border-[#5e6ad2] focus-within:ring-1 focus-within:ring-[#5e6ad2]/30 rounded-lg px-3 py-1.5 transition">
+                  <span class="text-xs text-[var(--ink-muted)] font-mono mr-2">📝</span>
+                  <input 
+                    type="text" 
+                    id="autopilot-target-words-input" 
+                    inputmode="numeric" 
+                    pattern="[0-9]*" 
+                    value="2500" 
+                    placeholder="请输入数字，如: 2500"
+                    onkeydown="return allowOnlyDigits(event)"
+                    oninput="sanitizeAutopilotTargetWords(this)"
+                    class="w-full bg-transparent text-[var(--ink)] font-mono font-bold text-sm focus:outline-none tracking-wide"
+                  >
+                  <span class="text-xs text-[var(--ink-muted)] font-medium shrink-0 ml-2">字 / 章</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-[var(--ink-muted)] pt-0.5">
+                  <span>快速微调填入：</span>
+                  <div class="flex items-center space-x-1 font-mono">
+                    <button type="button" onclick="quickFillTargetWords(2000)" class="px-1.5 py-0.5 rounded bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] border border-[var(--hairline)] transition cursor-pointer" title="点击填入 2000 字">2000</button>
+                    <button type="button" onclick="quickFillTargetWords(2500)" class="px-1.5 py-0.5 rounded bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] border border-[var(--hairline)] transition cursor-pointer" title="点击填入 2500 字">2500</button>
+                    <button type="button" onclick="quickFillTargetWords(3000)" class="px-1.5 py-0.5 rounded bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] border border-[var(--hairline)] transition cursor-pointer" title="点击填入 3000 字">3000</button>
+                    <button type="button" onclick="quickFillTargetWords(4000)" class="px-1.5 py-0.5 rounded bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] hover:text-[var(--ink)] border border-[var(--hairline)] transition cursor-pointer" title="点击填入 4000 字">4000</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 模型档位 -->
+              <div class="space-y-1.5">
+                <label class="text-xs font-medium text-[var(--ink-secondary)]">推理档位</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center space-x-2 p-2 rounded-lg bg-[var(--canvas-soft)] border border-[var(--hairline)] cursor-pointer hover:border-indigo-500/50 transition">
+                    <input type="radio" name="autopilot-tier" value="flash" class="text-indigo-600 focus:ring-0">
+                    <div>
+                      <div class="font-medium text-[var(--ink)]">⚡ Flash 伴写</div>
+                      <div class="text-[10px] text-[var(--ink-muted)]">极速/经济</div>
+                    </div>
+                  </label>
+                  <label class="flex items-center space-x-2 p-2 rounded-lg bg-[var(--canvas-soft)] border border-[var(--hairline)] cursor-pointer hover:border-indigo-500/50 transition">
+                    <input type="radio" name="autopilot-tier" value="pro" checked class="text-indigo-600 focus:ring-0">
+                    <div>
+                      <div class="font-medium text-[var(--ink)]">🧠 Pro 推理</div>
+                      <div class="text-[10px] text-[var(--ink-muted)]">严密逻辑/深度文笔</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 策略自动化开关 -->
+              <div class="pt-2 border-t border-[var(--hairline)] space-y-2.5 text-xs">
+                <label class="flex items-start space-x-2 cursor-pointer">
+                  <input type="checkbox" id="policy-auto-outline" checked class="mt-0.5 rounded text-indigo-600 focus:ring-0">
+                  <div>
+                    <span class="font-medium text-[var(--ink)]">细纲缺失时自动前瞻脑暴</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">若未做单章大纲，AI 承接前文自动推演剧情节拍</p>
+                  </div>
+                </label>
+
+                <label class="flex items-start space-x-2 cursor-pointer">
+                  <input type="checkbox" id="policy-silent-qa" checked class="mt-0.5 rounded text-indigo-600 focus:ring-0">
+                  <div>
+                    <span class="font-medium text-[var(--ink)]">静默六维质检与自修复</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">跳过人工审阅，由审稿引擎自动打磨错漏并沉淀状态</p>
+                  </div>
+                </label>
+
+                <label class="flex items-start space-x-2 cursor-pointer">
+                  <input type="checkbox" id="policy-auto-evolve" checked class="mt-0.5 rounded text-indigo-600 focus:ring-0">
+                  <div>
+                    <span class="font-medium text-[var(--ink)]">自动推进人物演化与伏笔台账</span>
+                    <p class="text-[10px] text-[var(--ink-muted)]">每章完稿自动更新角色档案与伏笔，保持世界观一致</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 安全守卫卡片 -->
+            <div class="p-4 rounded-xl bg-[var(--surface-card)] border border-[var(--hairline)] space-y-2.5 text-xs shadow-sm">
+              <h4 class="text-xs font-bold text-amber-400 tracking-wider uppercase flex items-center space-x-1.5">
+                <span>🛡️ 安全熔断与撤销防线</span>
+              </h4>
+              <ul class="text-[11px] text-[var(--ink-secondary)] space-y-1.5 list-disc list-inside">
+                <li><span class="text-[var(--ink)]">连续异常保护</span>：连续空文本或异常即刻自动挂起，绝不浪费额度</li>
+                <li><span class="text-[var(--ink)]">字数偏差守卫</span>：若实际字数与目标相差 $\gt 40\%$ 则发出黄色警示</li>
+                <li><span class="text-[var(--ink)]">无损快照撤销</span>：批量执行前自动创建备份快照，可一键复原</li>
+              </ul>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
   </main>
 
   <!-- 3. 底栏：实时 Token 监控、状态监控、快捷键提示 -->
@@ -1321,31 +1938,267 @@
     </div>
   </footer>
 
+  <!-- 正文起草前置准备自检模态框 (Pre-flight Inspector) -->
+  <div id="chapter-preflight-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
+    <div class="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl text-[var(--ink)]">
+      <!-- 模态顶栏 -->
+      <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-lg">🛫</span>
+          <div>
+            <h3 class="text-sm font-bold text-[var(--ink)]">正文起草 · 前置准备度自检</h3>
+            <span class="text-[11px] text-[var(--ink-secondary)]" id="preflight-chapter-label">第 1 章 · 待起草</span>
+          </div>
+        </div>
+        <button type="button" onclick="closeChapterPreflightModal()" class="text-[var(--ink-muted)] hover:text-[var(--ink)] text-lg px-2 py-0.5 rounded transition cursor-pointer">✕</button>
+      </div>
+
+      <!-- 核心自检清单 (Checklist) -->
+      <div class="space-y-2.5 text-xs">
+        <!-- 1. 剧情细纲检查 -->
+        <div class="p-3 rounded-xl bg-[var(--canvas-soft)] border border-[var(--hairline)] space-y-1.5" id="preflight-card-outline">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold flex items-center space-x-1.5" id="preflight-outline-status-line">
+              <span class="w-2 h-2 rounded-full bg-emerald-400" id="preflight-outline-dot"></span>
+              <span id="preflight-outline-title">本章剧情走向</span>
+            </span>
+            <button type="button" id="btn-preflight-brainstorm" onclick="quickBrainstormForPreflight()" class="hidden px-2 py-0.5 rounded bg-[#5e6ad2]/10 text-[#5e6ad2] hover:bg-[#5e6ad2]/20 border border-[#5e6ad2]/30 text-[11px] font-medium transition cursor-pointer flex items-center space-x-1">
+              <span>✨</span>
+              <span>AI 快速脑暴细纲</span>
+            </button>
+          </div>
+          <p class="text-[11px] text-[var(--ink-secondary)] leading-relaxed" id="preflight-outline-snippet">
+            已就绪大纲细纲。
+          </p>
+        </div>
+
+        <!-- 2. 出场角色检查 -->
+        <div class="p-3 rounded-xl bg-[var(--canvas-soft)] border border-[var(--hairline)] space-y-1" id="preflight-card-chars">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold flex items-center space-x-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400" id="preflight-chars-dot"></span>
+              <span id="preflight-chars-title">出场角色档案</span>
+            </span>
+            <button type="button" onclick="closeChapterPreflightModal(); switchRightTab('character');" class="text-[11px] text-[#5e6ad2] hover:underline cursor-pointer">管理角色 →</button>
+          </div>
+          <p class="text-[11px] text-[var(--ink-secondary)] leading-relaxed" id="preflight-chars-snippet">
+            已加载 3 名登场角色。
+          </p>
+        </div>
+
+        <!-- 3. 前后章节叙事连贯度 -->
+        <div class="p-3 rounded-xl bg-[var(--canvas-soft)] border border-[var(--hairline)] space-y-1" id="preflight-card-continuity">
+          <div class="flex items-center space-x-1.5 font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-400" id="preflight-continuity-dot"></span>
+            <span id="preflight-continuity-title">前文梗概衔接</span>
+          </div>
+          <p class="text-[11px] text-[var(--ink-secondary)] leading-relaxed" id="preflight-continuity-snippet">
+            前序章节连贯完整。
+          </p>
+        </div>
+
+        <!-- 4. 覆盖重写提醒 (仅已有正文时显现) -->
+        <div id="preflight-card-overwrite" class="hidden p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-[11px] space-y-1">
+          <div class="font-bold flex items-center space-x-1.5 text-amber-300">
+            <span>⚠️</span>
+            <span>注意：本章已有正文 (<span id="preflight-overwrite-words">0</span> 字)</span>
+          </div>
+          <p class="text-amber-200/80 leading-relaxed">
+            重新生成将结合本章大纲与角色状态重新撰写并覆盖当前编辑区正文（历史正文已在后台自动备份，无需担心丢失）。
+          </p>
+        </div>
+      </div>
+
+      <!-- 参数调节 -->
+      <div class="p-3 rounded-xl bg-[var(--canvas-soft)] border border-[var(--hairline)] space-y-2 text-xs">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-[var(--ink-secondary)]">目标字数期望:</span>
+          <select id="preflight-target-words" class="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-lg px-2.5 py-1 text-xs text-[var(--ink)] cursor-pointer focus:outline-none">
+            <option value="1500">1,500 字 · 短小精悍</option>
+            <option value="2500" selected>2,500 字 · 标准网文章节</option>
+            <option value="3500">3,500 字 · 详实长章</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-between text-xs pt-1 border-t border-[var(--hairline)]">
+          <span class="text-[var(--ink-secondary)]">执行模型档位:</span>
+          <span class="font-mono font-semibold text-[#5e6ad2]" id="preflight-tier-label">PRO 档</span>
+        </div>
+      </div>
+
+      <!-- 底部操作按钮 -->
+      <div class="flex items-center justify-end space-x-3 pt-2 border-t border-[var(--hairline)]">
+        <button type="button" onclick="closeChapterPreflightModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-[var(--ink-secondary)] hover:bg-[var(--surface-soft)] transition cursor-pointer">
+          取消
+        </button>
+        <button type="button" onclick="confirmExecuteGeneration()" class="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black shadow-md flex items-center space-x-1.5 transition cursor-pointer">
+          <span>🪄</span>
+          <span>确认开始起草正文</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- 正文生成进行中全屏动效遮罩 (生成中状态反馈) -->
-  <div id="chapter-generate-loading-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-[#030604] border border-emerald-500/50 rounded-2xl p-7 max-w-md w-full text-center space-y-4 shadow-2xl">
-      <div class="relative w-14 h-14 mx-auto">
-        <div class="absolute inset-0 border-4 border-emerald-500/20 rounded-full"></div>
-        <div class="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-        <div class="absolute inset-0 flex items-center justify-center text-xl">🪄</div>
+  <div id="chapter-generate-loading-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-7 max-w-md w-full text-center space-y-4 shadow-2xl">
+      <!-- AI 2x2 正方形四色（蓝·青·绿·白）同步换序加载器 -->
+      <div class="flex justify-center my-1">
+        <div class="ai-square-loader py-3 px-6 shadow-md">
+          <div class="ai-square-grid-lg">
+            <span class="ai-sq-dot ai-dot-blue"></span>
+            <span class="ai-sq-dot ai-dot-cyan"></span>
+            <span class="ai-sq-dot ai-dot-green"></span>
+            <span class="ai-sq-dot ai-dot-white"></span>
+          </div>
+          <span class="ml-4 text-xs font-mono font-semibold text-[#60a5fa] tracking-wider animate-pulse">GENERATING</span>
+        </div>
       </div>
       <div class="space-y-1.5">
-        <h3 class="text-base font-bold text-emerald-200 flex items-center justify-center space-x-2">
+        <h3 class="text-base font-bold text-[var(--ink)] flex items-center justify-center space-x-2">
           <span>AI 深度撰写正文中</span>
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono border border-emerald-800" id="gen-modal-tier-badge">FLASH 档</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-[#5e6ad2]/10 text-[#5e6ad2] font-mono border border-[#5e6ad2]/30" id="gen-modal-tier-badge">FLASH 档</span>
         </h3>
-        <p class="text-xs text-emerald-500/80 leading-relaxed" id="gen-modal-status-text">
+        <p class="text-xs text-[var(--ink-secondary)] leading-relaxed" id="gen-modal-status-text">
           正在提取本章大纲细纲、角色状态机切片与伏笔线索，组装确定性上下文并调用模型创作正文...
         </p>
       </div>
-      <div class="text-[11px] text-emerald-500/80 bg-[#020503]/70 p-3 rounded-lg border border-emerald-900/80 font-mono text-left space-y-1">
-        <div class="text-emerald-400 flex items-center space-x-1"><span>✓</span><span>大纲与伏笔拦截检索完成</span></div>
-        <div class="text-emerald-400 flex items-center space-x-1"><span>✓</span><span>角色人格参数时间切片就绪</span></div>
-        <div class="text-emerald-400 animate-pulse flex items-center space-x-1"><span>⚡</span><span>正文多段落连贯创作中...</span></div>
+      <div class="text-[11px] text-[var(--ink-muted)] bg-[var(--canvas-soft)] p-3 rounded-lg border border-[var(--hairline)] font-mono text-left space-y-1">
+        <div class="text-[#5e6ad2] flex items-center space-x-1.5"><span>✓</span><span>大纲与伏笔拦截检索完成</span></div>
+        <div class="text-[#5e6ad2] flex items-center space-x-1.5"><span>✓</span><span>角色人格参数时间切片就绪</span></div>
+        <div class="text-[#5e6ad2] animate-pulse flex items-center space-x-1.5 font-bold"><span>⚡</span><span>正文多段落连贯创作中...</span></div>
       </div>
-      <div class="text-[10px] text-emerald-600 italic">
+      <div class="text-[10px] text-[var(--ink-muted)] italic">
         提示：正文生成完毕后将直接装填入编辑区，审核功能绝不自动触发，由您随时手动发起。
       </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- ⚡ 全自动巡航独立控制舱模态框 (圆环进度 + 独占操作锁) -->
+  <!-- ======================================================== -->
+  <div id="autopilot-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
+    <div class="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-6 sm:p-7 max-w-md w-full text-center space-y-5 shadow-2xl relative overflow-hidden">
+      
+      <!-- 顶部任务标识 -->
+      <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-3">
+        <div class="flex items-center space-x-2">
+          <span class="p-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">⚡</span>
+          <span class="font-bold text-sm text-[var(--ink)] tracking-tight">全自动巡航成书舱</span>
+        </div>
+        <span id="autopilot-modal-mode-badge" class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          PRO 推理 · 熔断守卫
+        </span>
+      </div>
+
+      <!-- 圆环形状百分比进度条 (SVG Ring) -->
+      <div class="relative flex items-center justify-center my-2">
+        <svg class="w-48 h-48 -rotate-90 transform" viewBox="0 0 120 120">
+          <!-- 背景圆环轨道 -->
+          <circle cx="60" cy="60" r="52" stroke="currentColor" stroke-width="8" class="text-[var(--canvas-soft)]" fill="transparent" />
+          <!-- 动态进度圆环 -->
+          <circle 
+            id="autopilot-modal-circle-progress" 
+            cx="60" cy="60" r="52" 
+            stroke="url(#autopilot-ring-gradient)" 
+            stroke-width="8" 
+            stroke-linecap="round" 
+            fill="transparent" 
+            stroke-dasharray="326.726" 
+            stroke-dashoffset="326.726" 
+            class="transition-all duration-700 ease-out" 
+          />
+          <defs>
+            <linearGradient id="autopilot-ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#5e6ad2" />
+              <stop offset="100%" stop-color="#34d399" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <!-- 圆环内部文字看板 -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+          <div class="text-3xl font-extrabold font-mono text-[var(--ink)] tracking-tight" id="autopilot-modal-percent-text">
+            0%
+          </div>
+          <div class="text-xs font-mono font-semibold text-indigo-400 mt-0.5" id="autopilot-modal-fraction-text">
+            0 / 5 章
+          </div>
+          <div class="mt-1 flex items-center space-x-1.5 text-[10px] text-[var(--ink-muted)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span id="autopilot-modal-status-sub">正文持续生成中...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 当前正在进行的动作与微阶段提示卡片 -->
+      <div class="space-y-2">
+        <div class="text-xs text-[var(--ink)] font-medium truncate px-2" id="autopilot-modal-current-task">
+          正在为第 1 章自动起草正文并沉淀角色...
+        </div>
+        <!-- 四步微阶段灯 -->
+        <div class="grid grid-cols-4 gap-1.5 text-[10px] font-mono">
+          <div class="p-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center space-x-1" id="modal-step-outline">
+            <span>✓</span><span>细纲</span>
+          </div>
+          <div class="p-1.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center space-x-1" id="modal-step-kb">
+            <span>✓</span><span>知识</span>
+          </div>
+          <div class="p-1.5 rounded bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-bold flex items-center justify-center space-x-1 animate-pulse" id="modal-step-draft">
+            <span>⚡</span><span>正文</span>
+          </div>
+          <div class="p-1.5 rounded bg-[var(--canvas-soft)] border border-[var(--hairline)] text-[var(--ink-muted)] flex items-center justify-center space-x-1" id="modal-step-qa">
+            <span>○</span><span>质检</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 实时遥测指标条 -->
+      <div class="bg-[var(--canvas-soft)] p-2.5 rounded-xl border border-[var(--hairline)] flex items-center justify-around text-xs font-mono">
+        <div>
+          <div class="text-[10px] text-[var(--ink-muted)]">累计已写字数</div>
+          <div class="text-xs font-bold text-[var(--ink)]" id="autopilot-modal-words">0 字</div>
+        </div>
+        <div class="w-[1px] h-6 bg-[var(--hairline)]"></div>
+        <div>
+          <div class="text-[10px] text-[var(--ink-muted)]">当前推理耗时</div>
+          <div class="text-xs font-bold text-indigo-400" id="autopilot-modal-time">00:15</div>
+        </div>
+        <div class="w-[1px] h-6 bg-[var(--hairline)]"></div>
+        <div>
+          <div class="text-[10px] text-[var(--ink-muted)]">质检护航</div>
+          <div class="text-xs font-bold text-emerald-400">自修复启用</div>
+        </div>
+      </div>
+
+      <p class="text-[10px] text-[var(--ink-muted)] italic">
+        🔒 巡航进行中，底层系统已被安全锁定。取消将放弃并丢弃本批次生成内容，暂停可保留进度返回主页。
+      </p>
+
+      <!-- 底部控制按钮：左边取消，右边暂停 -->
+      <div class="flex items-center space-x-3 w-full pt-1">
+        <!-- 左边：取消按钮 (不保存) -->
+        <button 
+          type="button" 
+          onclick="cancelAutopilotModal()" 
+          class="w-1/2 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-medium text-xs transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-sm"
+          title="终止全自动巡航，丢弃本批次生成的内容并恢复原状"
+        >
+          <span>✕</span>
+          <span>取消巡航 (不保存)</span>
+        </button>
+
+        <!-- 右边：暂停按钮 -->
+        <button 
+          type="button" 
+          onclick="pauseAutopilotModal()" 
+          class="w-1/2 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-semibold text-xs transition cursor-pointer flex items-center justify-center space-x-1.5 shadow-sm"
+          title="暂停当前巡航并退回主页面，主页面将提供【继续】按钮随时恢复"
+        >
+          <span>⏸</span>
+          <span>暂停巡航</span>
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -1444,6 +2297,249 @@
   </div>
 
   <!-- 4. 系统全局设置模态框 (Settings Modal) -->
+    <!-- ======================================================== -->
+  <!-- 5. 知识库与文献学习中心专属窗口 (Knowledge Hub Modal) -->
+  <!-- 涵盖：文献资产看板、书籍导入与分块学习、实时检索测试、正文注入设置 -->
+  <!-- ======================================================== -->
+  <div id="knowledge-hub-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 select-none font-sans">
+    <div class="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl text-[var(--ink)] overflow-hidden transition-all">
+      
+      <!-- 顶栏：标题与关闭 -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[var(--hairline)] bg-[var(--canvas-soft)] shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-[#5e6ad2] text-white flex items-center justify-center font-bold text-sm shadow-sm">
+            📚
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-[var(--ink)] flex items-center space-x-2">
+              <span>知识库与文献学习中心</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-[var(--badge-bg)] text-[#5e6ad2] font-mono font-semibold">Knowledge Hub</span>
+            </h2>
+            <p class="text-[11px] text-[var(--ink-muted)]">本地书籍文献导入 · 纯确定性分块学习 · 零Token轻量检索 · 小说正文背景注入</p>
+          </div>
+        </div>
+        <button onclick="closeKnowledgeHubModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-soft)] transition cursor-pointer text-base">
+          ✕
+        </button>
+      </div>
+
+      <!-- 标签导航栏 (Tabs) -->
+      <div class="flex items-center px-6 border-b border-[var(--hairline)] bg-[var(--surface-card)] shrink-0 overflow-x-auto space-x-2 pt-2 text-xs">
+        <button onclick="switchKbTab('library')" id="kb-tab-btn-library" class="px-3.5 py-2 border-b-2 border-[#5e6ad2] font-semibold text-[#5e6ad2] transition flex items-center space-x-1.5 cursor-pointer">
+          <span>📚</span>
+          <span>知识资产总览</span>
+        </button>
+        <button onclick="switchKbTab('learn')" id="kb-tab-btn-learn" class="px-3.5 py-2 border-b-2 border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] font-medium transition flex items-center space-x-1.5 cursor-pointer">
+          <span>📥</span>
+          <span>导入书籍与学习</span>
+        </button>
+        <button onclick="switchKbTab('search')" id="kb-tab-btn-search" class="px-3.5 py-2 border-b-2 border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] font-medium transition flex items-center space-x-1.5 cursor-pointer">
+          <span>🔍</span>
+          <span>交互检索试查</span>
+        </button>
+        <button onclick="switchKbTab('settings')" id="kb-tab-btn-settings" class="px-3.5 py-2 border-b-2 border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] font-medium transition flex items-center space-x-1.5 cursor-pointer">
+          <span>⚙️</span>
+          <span>写作注入配置</span>
+        </button>
+      </div>
+
+      <!-- 内容区 (滚动容器) -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-[var(--ink)]">
+        
+        <!-- Tab 1: 知识资产总览 -->
+        <div id="kb-tab-content-library" class="space-y-5">
+          <!-- 4 块统计指标卡片 (3D tilt) -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="tilt-card p-3.5 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-1 shadow-sm">
+              <span class="text-[10px] text-[var(--ink-muted)] font-mono">LIBRARY_FILES</span>
+              <div class="text-xl font-bold font-mono text-[var(--ink)]" id="kb-stat-files">0</div>
+              <span class="text-[10px] text-[var(--ink-faint)]">收录文献与书籍</span>
+            </div>
+            <div class="tilt-card p-3.5 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-1 shadow-sm">
+              <span class="text-[10px] text-[var(--ink-muted)] font-mono">CHUNKS_INDEXED</span>
+              <div class="text-xl font-bold font-mono text-[#5e6ad2]" id="kb-stat-chunks">0</div>
+              <span class="text-[10px] text-[var(--ink-faint)]">段落分块 (Chunks)</span>
+            </div>
+            <div class="tilt-card p-3.5 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-1 shadow-sm">
+              <span class="text-[10px] text-[var(--ink-muted)] font-mono">KNOWLEDGE_UNITS</span>
+              <div class="text-xl font-bold font-mono text-emerald-500" id="kb-stat-units">0</div>
+              <span class="text-[10px] text-[var(--ink-faint)]">深度结构化单元</span>
+            </div>
+            <div class="tilt-card p-3.5 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-1 shadow-sm">
+              <span class="text-[10px] text-[var(--ink-muted)] font-mono">TOTAL_CHARACTERS</span>
+              <div class="text-xl font-bold font-mono text-[var(--ink)]" id="kb-stat-chars">0</div>
+              <span class="text-[10px] text-[var(--ink-faint)]">收录文字总量</span>
+            </div>
+          </div>
+
+          <!-- 文献列表工具栏 -->
+          <div class="flex items-center justify-between pt-2">
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-sm text-[var(--ink)]">已入库书籍与资料列表</span>
+              <span class="text-[10px] text-[var(--ink-muted)] font-mono" id="kb-files-count-badge">(共 0 本)</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="refreshKbHubData()" class="tactile-interactive px-2.5 py-1 bg-[var(--canvas-soft)] hover:bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg text-xs text-[var(--ink-secondary)] flex items-center space-x-1 cursor-pointer">
+                <span>🔄</span>
+                <span>刷新</span>
+              </button>
+              <button onclick="switchKbTab('learn')" class="tactile-interactive px-3 py-1 bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white rounded-lg text-xs font-medium flex items-center space-x-1 shadow-sm cursor-pointer">
+                <span>+</span>
+                <span>导入新书籍</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 文件列表展示容器 -->
+          <div class="border border-[var(--hairline)] rounded-xl overflow-hidden bg-[var(--surface-card)] shadow-sm">
+            <div class="max-h-80 overflow-y-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="bg-[var(--canvas-soft)] border-b border-[var(--hairline)] text-[var(--ink-muted)] text-[11px] font-mono sticky top-0 z-10">
+                  <tr>
+                    <th class="p-3">文献名 / 书籍文件</th>
+                    <th class="p-3 w-24">来源属性</th>
+                    <th class="p-3 w-24">段落分块</th>
+                    <th class="p-3 w-28">字符数</th>
+                    <th class="p-3 w-20 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="kb-files-tbody" class="divide-y divide-[var(--hairline)] text-[var(--ink)]">
+                  <tr>
+                    <td colspan="5" class="p-6 text-center text-[var(--ink-muted)]">正在读取知识库文献资产...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: 导入书籍与学习 -->
+        <div id="kb-tab-content-learn" class="hidden space-y-5">
+          <!-- 拖拽上传与选择区域 -->
+          <div id="kb-drop-zone" class="tilt-card border-2 border-dashed border-[var(--hairline-strong)] hover:border-[#5e6ad2] bg-[var(--canvas-soft)] rounded-2xl p-8 text-center space-y-3 cursor-pointer transition-colors group">
+            <div class="w-12 h-12 mx-auto rounded-full bg-[var(--surface-card)] border border-[var(--hairline)] flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
+              📥
+            </div>
+            <div>
+              <p class="font-semibold text-sm text-[var(--ink)]">点击选择或将书籍/资料文件拖拽到此处</p>
+              <p class="text-[11px] text-[var(--ink-muted)] mt-1">支持 UTF-8 编码的 <span class="font-mono text-[#5e6ad2]">.txt</span> 或 <span class="font-mono text-[#5e6ad2]">.md</span> 长篇小说、资料集、世界观文档</p>
+            </div>
+            <input type="file" id="kb-file-input" accept=".txt,.md" class="hidden" onchange="handleKbFileSelected(this.files[0])">
+          </div>
+
+          <!-- 已选中文件信息卡片 (默认隐藏，选择文件后显式展示) -->
+          <div id="kb-selected-file-info" class="hidden bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-2.5">
+              <div class="flex items-center space-x-2.5">
+                <span class="text-xl">📄</span>
+                <div>
+                  <div class="font-bold text-xs text-[var(--ink)]" id="kb-file-name-label">filename.txt</div>
+                  <div class="text-[10px] text-[var(--ink-muted)] font-mono" id="kb-file-meta-label">0 KB · 约 0 字</div>
+                </div>
+              </div>
+              <button onclick="clearKbSelectedFile()" class="text-xs text-rose-500 hover:underline cursor-pointer">
+                重新选择
+              </button>
+            </div>
+
+            <!-- 学习入库模式选择 -->
+            <div class="space-y-2">
+              <span class="font-semibold text-[11px] text-[var(--ink-secondary)]">选择学习与入库模式：</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <label class="p-3 bg-[var(--surface-card)] border border-[#5e6ad2] rounded-xl flex items-start space-x-2.5 cursor-pointer shadow-sm relative">
+                  <input type="radio" name="kbLearnMode" value="preprocess" checked class="mt-0.5 accent-[#5e6ad2]">
+                  <div>
+                    <span class="font-bold text-xs text-[var(--ink)] block">⚡ 零Token极速入库</span>
+                    <span class="text-[10px] text-[var(--ink-muted)] block mt-0.5 leading-relaxed">纯确定性分块，零调用模型，零费用，毫秒级立即可查</span>
+                  </div>
+                </label>
+                <label class="p-3 bg-[var(--surface-card)] border border-[var(--hairline)] hover:border-[#5e6ad2] rounded-xl flex items-start space-x-2.5 cursor-pointer shadow-sm">
+                  <input type="radio" name="kbLearnMode" value="lightweight" class="mt-0.5 accent-[#5e6ad2]">
+                  <div>
+                    <span class="font-bold text-xs text-[var(--ink)] block">💡 轻量语义分析</span>
+                    <span class="text-[10px] text-[var(--ink-muted)] block mt-0.5 leading-relaxed">调用 Flash 档快速提取流派标签、关键词与题材概念</span>
+                  </div>
+                </label>
+                <label class="p-3 bg-[var(--surface-card)] border border-[var(--hairline)] hover:border-[#5e6ad2] rounded-xl flex items-start space-x-2.5 cursor-pointer shadow-sm">
+                  <input type="radio" name="kbLearnMode" value="deep" class="mt-0.5 accent-[#5e6ad2]">
+                  <div>
+                    <span class="font-bold text-xs text-[var(--ink)] block">🧠 深度结构化提炼</span>
+                    <span class="text-[10px] text-[var(--ink-muted)] block mt-0.5 leading-relaxed">调用 Pro 档多维度剖析写作技巧、角色演化与叙事因果法则</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- 执行入库按钮 -->
+            <button id="btn-start-kb-learn" onclick="executeBookLearning()" class="tactile-interactive w-full py-2.5 bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-md cursor-pointer transition">
+              <span>🚀</span>
+              <span>开始处理并学习入库</span>
+            </button>
+          </div>
+
+          <!-- 处理中与结果反馈窗口 -->
+          <div id="kb-learn-status-box" class="hidden p-4 rounded-xl border border-[var(--hairline)] bg-[var(--canvas-soft)] font-mono text-[11px] space-y-2">
+            <!-- 动态填充 -->
+          </div>
+        </div>
+
+        <!-- Tab 3: 交互检索试查 -->
+        <div id="kb-tab-content-search" class="hidden space-y-4">
+          <div class="flex items-center space-x-2">
+            <input id="kb-standalone-query" maxlength="200" placeholder="输入关键词，例如：太空 氧气 / 曲率 推进 / 境界 突破 / 潜水夫病..." class="flex-1 bg-[var(--canvas-soft)] border border-[var(--hairline)] px-3.5 py-2 rounded-xl text-xs text-[var(--ink)] placeholder-[var(--ink-faint)] focus:outline-none focus:border-[#5e6ad2] transition font-sans" onkeydown="if(event.key==='Enter')executeStandaloneSearch()">
+            <button onclick="executeStandaloneSearch()" id="btn-kb-search-action" class="tactile-interactive px-4 py-2 bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-medium rounded-xl text-xs flex items-center space-x-1 shadow-sm cursor-pointer shrink-0">
+              <span>🔍</span>
+              <span>检索匹配</span>
+            </button>
+          </div>
+
+          <div class="text-[11px] text-[var(--ink-muted)] flex items-center justify-between">
+            <span>支持多词并列（空格分隔），系统自动进行局部高亮与分词检索</span>
+            <span id="kb-search-status-tag" class="font-mono text-[#5e6ad2]">READY</span>
+          </div>
+
+          <!-- 检索结果卡片列表 -->
+          <div id="kb-search-cards-container" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+            <div class="p-6 text-center text-[var(--ink-muted)] bg-[var(--canvas-soft)] rounded-xl border border-dashed border-[var(--hairline)]">
+              请输入关键词并点击「检索匹配」测试知识库命中的段落与参考素材
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: 写作注入配置 -->
+        <div id="kb-tab-content-settings" class="hidden space-y-4">
+          <div class="p-4 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-bold text-xs text-[var(--ink)] block">正文生成时自动检索并注入知识库资料</span>
+                <span class="text-[11px] text-[var(--ink-muted)] block mt-0.5">开启后，在章节编辑器点击「⚡ 生成正文」时将自动拉取最相关的 4 条知识片段注入 Prompt</span>
+              </div>
+              <input id="kb-global-injection-toggle" type="checkbox" onchange="syncKbInjectionToggle(this.checked)" class="w-4 h-4 rounded text-[#5e6ad2] accent-[#5e6ad2] cursor-pointer">
+            </div>
+          </div>
+
+          <div class="p-4 bg-[var(--surface-card)] border border-[var(--hairline)] rounded-xl space-y-2">
+            <span class="font-bold text-xs text-[var(--ink)]">Prompt 注入规范说明</span>
+            <p class="text-[11px] text-[var(--ink-secondary)] leading-relaxed">
+              注入资料会被严格限制在 <code class="font-mono text-[#5e6ad2] bg-[var(--canvas-soft)] px-1 rounded">## 知识库参考资料</code> 插槽中，系统内置硬性免疫指令：要求模型仅提取背景常识与逻辑，严禁照抄范文或服从资料内指令，确保作者对小说主线与剧情风格的绝对掌控权。
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 底栏 -->
+      <div class="px-6 py-3 border-t border-[var(--hairline)] bg-[var(--canvas-soft)] flex items-center justify-between shrink-0 text-xs">
+        <span class="text-[11px] text-[var(--ink-muted)] font-mono">SQLite 只读原子查询 · 纯确定性本地引擎</span>
+        <button onclick="closeKnowledgeHubModal()" class="px-4 py-1.5 rounded-lg bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] border border-[var(--hairline)] text-[var(--ink)] font-medium transition cursor-pointer">
+          关闭窗口
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
   <div id="settings-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-[#030604] border border-emerald-800/80 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-150">
       <!-- 模态框顶栏 -->
@@ -1845,6 +2941,32 @@
   </div>
 
   <script>
+    // 全局统一 API 基地址：在 HTTP 托管下使用相对路径 /api，在本地静态 file:// 下回退到 8000 端口
+    const API_BASE = (window.location.protocol && window.location.protocol.startsWith('http'))
+      ? '/api'
+      : 'http://127.0.0.1:8000/api';
+
+    // ========================================================
+    // AI 2x2 正方形四色（蓝·青·绿·白）同步换序加载器组件渲染函数
+    // ========================================================
+    function renderAiDotsLoader(size = 'md', label = '') {
+      const isLg = size === 'lg';
+      const isSm = size === 'sm';
+      const gridClass = isLg ? 'ai-square-grid-lg' : (isSm ? 'ai-square-grid-sm' : 'ai-square-grid');
+      const padClass = isLg ? 'py-3 px-6' : (isSm ? 'py-1.5 px-3' : 'py-2 px-4');
+      const textClass = isLg ? 'text-sm font-semibold text-[#60a5fa]' : (isSm ? 'text-[11px] text-[var(--ink-secondary)]' : 'text-xs text-[var(--ink)] font-medium');
+      return `
+        <div class="ai-square-loader ${padClass}">
+          <div class="${gridClass}">
+            <span class="ai-sq-dot ai-dot-blue"></span>
+            <span class="ai-sq-dot ai-dot-cyan"></span>
+            <span class="ai-sq-dot ai-dot-green"></span>
+            <span class="ai-sq-dot ai-dot-white"></span>
+          </div>
+          ${label ? `<span class="ml-3 ${textClass}">${label}</span>` : ''}
+        </div>
+      `;
+    }
 
     // ========================================================
     // Cursor Studio 主题外观与暗色/亮色切换逻辑 (全方位适配)
@@ -2187,6 +3309,318 @@
       if (typeof showToast === 'function') showToast(`已成功导出工程备份《${title}_backup.json》`);
     }
 
+        // ========================================================
+    // 知识库与文献学习中心专属控制器 (Knowledge Hub Controller)
+    // 支持看板总览、书籍导入与分块学习、删除管理、交互检索与注入联动
+    // ========================================================
+    let currentKbFilesList = [];
+    let selectedKbFileBlob = null;
+    let selectedKbFileName = '';
+
+    function openKnowledgeHubModal() {
+      const modal = document.getElementById('knowledge-hub-modal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      switchKbTab('library');
+      refreshKbHubData();
+      
+      // 同步勾选状态
+      const localToggle = document.getElementById('knowledge-enabled');
+      const hubToggle = document.getElementById('kb-global-injection-toggle');
+      if (localToggle && hubToggle) {
+        hubToggle.checked = localToggle.checked;
+      }
+      setTimeout(initKbDropZone, 100);
+      setTimeout(initTiltCards, 100);
+    }
+
+    function closeKnowledgeHubModal() {
+      const modal = document.getElementById('knowledge-hub-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function syncKbInjectionToggle(checked) {
+      const localToggle = document.getElementById('knowledge-enabled');
+      if (localToggle) localToggle.checked = checked;
+    }
+
+    function switchKbTab(tabName) {
+      const tabs = ['library', 'learn', 'search', 'settings'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`kb-tab-btn-${t}`);
+        const content = document.getElementById(`kb-tab-content-${t}`);
+        if (t === tabName) {
+          if (btn) {
+            btn.className = 'px-3.5 py-2 border-b-2 border-[#5e6ad2] font-semibold text-[#5e6ad2] transition flex items-center space-x-1.5 cursor-pointer';
+          }
+          if (content) content.classList.remove('hidden');
+        } else {
+          if (btn) {
+            btn.className = 'px-3.5 py-2 border-b-2 border-transparent text-[var(--ink-muted)] hover:text-[var(--ink)] font-medium transition flex items-center space-x-1.5 cursor-pointer';
+          }
+          if (content) content.classList.add('hidden');
+        }
+      });
+      if (tabName === 'library') {
+        refreshKbHubData();
+      }
+      setTimeout(initTiltCards, 100);
+    }
+
+    async function refreshKbHubData() {
+      try {
+        const [statsRes, filesRes] = await Promise.all([
+          fetch(`${API_BASE}/knowledge/stats`),
+          fetch(`${API_BASE}/knowledge/files`),
+        ]);
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          const fEl = document.getElementById('kb-stat-files');
+          const cEl = document.getElementById('kb-stat-chunks');
+          const uEl = document.getElementById('kb-stat-units');
+          const chEl = document.getElementById('kb-stat-chars');
+          if (fEl) fEl.innerText = Number(stats.file_count || 0).toLocaleString();
+          if (cEl) cEl.innerText = Number(stats.chunk_count || 0).toLocaleString();
+          if (uEl) uEl.innerText = Number(stats.knowledge_unit_count || 0).toLocaleString();
+          if (chEl) chEl.innerText = Number(stats.total_chars || 0).toLocaleString();
+        }
+        if (filesRes.ok) {
+          const data = await filesRes.json();
+          currentKbFilesList = data.files || [];
+          renderKbFilesTable(currentKbFilesList);
+        }
+      } catch (e) {
+        console.error('加载知识库数据失败:', e);
+      }
+    }
+
+    function renderKbFilesTable(files) {
+      const tbody = document.getElementById('kb-files-tbody');
+      const badge = document.getElementById('kb-files-count-badge');
+      if (badge) badge.innerText = `(共 ${files.length} 份)`;
+      if (!tbody) return;
+
+      if (!files || files.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-[var(--ink-muted)]">暂无入库文献，请点击上方「导入新书籍」添加素材</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      files.slice(0, 50).forEach(f => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-[var(--canvas-soft)] transition-colors';
+        const isUser = f.type === 'user';
+        tr.innerHTML = `
+          <td class="p-3 font-medium text-[var(--ink)] truncate max-w-xs flex items-center space-x-2" title="${f.full_path}">
+            <span>${isUser ? '📘' : '🏛️'}</span>
+            <span class="truncate">${f.name}</span>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${isUser ? 'bg-[#5e6ad2]/10 text-[#5e6ad2] border border-[#5e6ad2]/30' : 'bg-[var(--badge-bg)] text-[var(--badge-text)]'}">${isUser ? '用户导入' : '系统典籍'}</span>
+          </td>
+          <td class="p-3 font-mono text-[var(--ink-secondary)]">${Number(f.chunks).toLocaleString()} 块</td>
+          <td class="p-3 font-mono text-[var(--ink-muted)]">${Number(f.chars).toLocaleString()} 字</td>
+          <td class="p-3 text-right">
+            ${isUser ? `<button onclick="deleteKbBookConfirm('${encodeURIComponent(f.name)}')" class="text-rose-500 hover:text-rose-600 font-medium px-2 py-0.5 rounded hover:bg-rose-500/10 transition cursor-pointer">删除</button>` : `<span class="text-[var(--ink-faint)] text-[10px]">内置只读</span>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      if (files.length > 50) {
+        const moreRow = document.createElement('tr');
+        moreRow.innerHTML = `<td colspan="5" class="p-2 text-center text-[10px] text-[var(--ink-muted)] font-mono">... 以及其他 ${files.length - 50} 份文献索引</td>`;
+        tbody.appendChild(moreRow);
+      }
+    }
+
+    function initKbDropZone() {
+      const dropZone = document.getElementById('kb-drop-zone');
+      const fileInput = document.getElementById('kb-file-input');
+      if (!dropZone || !fileInput || dropZone.dataset.bound) return;
+      dropZone.dataset.bound = 'true';
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-[#5e6ad2]', 'bg-[#5e6ad2]/5');
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-[#5e6ad2]', 'bg-[#5e6ad2]/5');
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-[#5e6ad2]', 'bg-[#5e6ad2]/5');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleKbFileSelected(e.dataTransfer.files[0]);
+        }
+      });
+    }
+
+    function handleKbFileSelected(file) {
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.txt') && !file.name.toLowerCase().endsWith('.md')) {
+        alert('仅支持上传 .txt 或 .md 格式的书籍与文本资料');
+        return;
+      }
+      selectedKbFileBlob = file;
+      selectedKbFileName = file.name;
+
+      const infoCard = document.getElementById('kb-selected-file-info');
+      const nameLabel = document.getElementById('kb-file-name-label');
+      const metaLabel = document.getElementById('kb-file-meta-label');
+
+      if (nameLabel) nameLabel.innerText = file.name;
+      if (metaLabel) {
+        const sizeKb = (file.size / 1024).toFixed(1);
+        metaLabel.innerText = `${sizeKb} KB · 预计切分约 ${Math.ceil(file.size / 800)} 个段落块`;
+      }
+      if (infoCard) infoCard.classList.remove('hidden');
+    }
+
+    function clearKbSelectedFile() {
+      selectedKbFileBlob = null;
+      selectedKbFileName = '';
+      const input = document.getElementById('kb-file-input');
+      if (input) input.value = '';
+      const infoCard = document.getElementById('kb-selected-file-info');
+      if (infoCard) infoCard.classList.add('hidden');
+      const statusBox = document.getElementById('kb-learn-status-box');
+      if (statusBox) statusBox.classList.add('hidden');
+    }
+
+    async function executeBookLearning() {
+      if (!selectedKbFileBlob) return alert('请先选择要学习的书籍或文档');
+      const mode = document.querySelector('input[name="kbLearnMode"]:checked')?.value || 'preprocess';
+
+      const btn = document.getElementById('btn-start-kb-learn');
+      const statusBox = document.getElementById('kb-learn-status-box');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ 正在解析并学习入库中...</span>';
+      }
+      if (statusBox) {
+        statusBox.classList.remove('hidden');
+        statusBox.innerHTML = `<div>[1/2] 正在读取本地书籍《${selectedKbFileName}》...</div>`;
+      }
+
+      try {
+        const textContent = await selectedKbFileBlob.text();
+        if (statusBox) {
+          statusBox.innerHTML += `<div>[2/2] 发送入库管道，执行纯确定性分块处理 (${(textContent.length).toLocaleString()} 字符)...</div>`;
+        }
+
+        const res = await fetch(`${API_BASE}/knowledge/upload_and_learn`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: selectedKbFileName,
+            content: textContent,
+            mode: mode,
+            tier: currentModelTier,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '学习入库失败');
+
+        if (statusBox) {
+          statusBox.innerHTML += `
+            <div class="text-[#5e6ad2] font-bold mt-2">✓ 入库完成: ${data.summary}</div>
+            <div class="text-[var(--ink-secondary)]">• 生成 Chunks: ${data.chunks} 个</div>
+            <div class="text-[var(--ink-secondary)]">• 录入字符: ${Number(data.chars).toLocaleString()} 字</div>
+          `;
+        }
+        showToast(`已成功学习入库《${selectedKbFileName}》！`);
+        refreshKbHubData();
+      } catch (e) {
+        console.error('学习书籍失败:', e);
+        if (statusBox) {
+          statusBox.innerHTML += `<div class="text-rose-500 font-bold mt-1">✕ 学习失败: ${e.message}</div>`;
+        }
+        showToast(e.message, false);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🚀 开始处理并学习入库</span>';
+        }
+      }
+    }
+
+    async function deleteKbBookConfirm(encodedName) {
+      const filename = decodeURIComponent(encodedName);
+      if (!confirm(`确定要从知识库中彻底移除《${filename}》吗？移除后相关段落将不再作为写作参考素材。`)) return;
+      try {
+        const res = await fetch(`${API_BASE}/knowledge/files/${encodeURIComponent(filename)}`, {
+          method: 'DELETE',
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '删除失败');
+        showToast(data.summary || `已删除《${filename}》`);
+        refreshKbHubData();
+      } catch (e) {
+        console.error('删除文献失败:', e);
+        showToast(e.message, false);
+      }
+    }
+
+    async function executeStandaloneSearch() {
+      const input = document.getElementById('kb-standalone-query');
+      const query = input ? input.value.trim() : '';
+      if (!query) return alert('请输入检索关键词');
+
+      const btn = document.getElementById('btn-kb-search-action');
+      const statusTag = document.getElementById('kb-search-status-tag');
+      const container = document.getElementById('kb-search-cards-container');
+
+      if (btn) btn.innerHTML = '<span>⏳ 检索中...</span>';
+      if (statusTag) statusTag.innerText = 'SEARCHING...';
+
+      try {
+        const res = await fetch(`${API_BASE}/knowledge/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '检索失败');
+
+        if (statusTag) statusTag.innerText = `FOUND: ${data.sources?.length || 0} ITEMS`;
+
+        if (!data.sources || data.sources.length === 0) {
+          container.innerHTML = `
+            <div class="p-6 text-center text-[var(--ink-muted)] bg-[var(--canvas-soft)] rounded-xl border border-dashed border-[var(--hairline)]">
+              ${data.warning || '未找到匹配知识'}。建议更换关键词，或在「导入书籍与学习」中添加相关素材。
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = '';
+        data.sources.forEach(s => {
+          const card = document.createElement('div');
+          card.className = 'tilt-card p-4 bg-[var(--canvas-soft)] border border-[var(--hairline)] rounded-xl space-y-2 shadow-sm';
+          card.innerHTML = `
+            <div class="flex items-center justify-between border-b border-[var(--hairline)] pb-2 text-[11px]">
+              <span class="font-bold text-[#5e6ad2] flex items-center space-x-1.5">
+                <span>📑</span>
+                <span>[${s.id}] ${s.source.split('/').pop()}</span>
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#5e6ad2]/10 text-[#5e6ad2] font-mono">${s.kind || 'excerpt'}</span>
+            </div>
+            <p class="text-xs text-[var(--ink)] leading-relaxed whitespace-pre-wrap">${s.text}</p>
+          `;
+          container.appendChild(card);
+        });
+        setTimeout(initTiltCards, 100);
+      } catch (e) {
+        console.error('检索失败:', e);
+        showToast(e.message, false);
+      } finally {
+        if (btn) btn.innerHTML = '<span>🔍 检索匹配</span>';
+      }
+    }
+
+
     function openSettingsModal(defaultTab = 'editor') {
       const modal = document.getElementById('settings-modal');
       modal.classList.remove('hidden');
@@ -2404,50 +3838,254 @@
 
 
 
-    // 2. 视角切换 (企划构思 / 剧情棋盘 / 沉浸写作)
-    function switchPerspective(mode) {
+    // 2. 双层级架构导航系统
+    // Level 1: 顶层舱体切换 (工匠工作台 vs 自动巡航舱)
+    // Level 2: 工匠工作台专属子视角 (企划构思 / 剧情棋盘 / 沉浸写作)
+    let currentTopMode = 'craft'; // 'craft' | 'autopilot'
+    let currentCraftPerspective = 'writing'; // 'planning' | 'storyboard' | 'writing'
+
+    function switchTopMode(mode) {
+      currentTopMode = mode;
       closeMobileSidebars();
-      const modes = ['planning', 'storyboard', 'writing'];
-      modes.forEach(m => {
+
+      const btnCraft = document.getElementById('btn-mode-craft');
+      const btnAuto = document.getElementById('btn-mode-autopilot');
+      const craftSubnav = document.getElementById('craft-subnav-container');
+      const autoBadge = document.getElementById('autopilot-subnav-badge');
+      const autoView = document.getElementById('perspective-autopilot');
+
+      if (mode === 'craft') {
+        // 激活工匠工作台
+        if (btnCraft) btnCraft.className = "tactile-interactive px-3 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer flex items-center space-x-1.5";
+        if (btnAuto) btnAuto.className = "tactile-interactive px-3 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer flex items-center space-x-1.5";
+        if (craftSubnav) craftSubnav.classList.remove('hidden');
+        if (autoBadge) {
+          autoBadge.classList.add('hidden');
+          autoBadge.classList.remove('flex');
+        }
+        if (autoView) autoView.classList.add('hidden');
+
+        // 恢复工匠台当前激活的子视角
+        switchCraftPerspective(currentCraftPerspective);
+      } else {
+        // 激活自动巡航舱
+        if (btnCraft) btnCraft.className = "tactile-interactive px-3 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer flex items-center space-x-1.5";
+        if (btnAuto) btnAuto.className = "tactile-interactive px-3 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer flex items-center space-x-1.5";
+        if (craftSubnav) craftSubnav.classList.add('hidden');
+        if (autoBadge) {
+          autoBadge.classList.remove('hidden');
+          autoBadge.classList.add('flex');
+        }
+
+        // 隐藏工匠台下所有子视角
+        ['planning', 'storyboard', 'writing'].forEach(p => {
+          const el = document.getElementById(`perspective-${p}`);
+          if (el) el.classList.add('hidden');
+        });
+
+        // 激活巡航舱主容器
+        if (autoView) autoView.classList.remove('hidden');
+        if (currentProject && typeof refreshAutopilotView === 'function') {
+          refreshAutopilotView(currentProject);
+        }
+      }
+    }
+
+    function switchCraftPerspective(p) {
+      currentCraftPerspective = p;
+      ['planning', 'storyboard', 'writing'].forEach(m => {
         const el = document.getElementById(`perspective-${m}`);
         if (el) el.classList.add('hidden');
-        const btn = document.getElementById(`btn-persp-${m}`);
+        const btn = document.getElementById(`btn-craft-${m}`);
         if (btn) {
-          btn.className = "px-2.5 py-1 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer";
+          btn.className = "tactile-interactive px-2.5 py-0.5 text-xs rounded-md font-medium text-[var(--ink-muted)] hover:text-[var(--ink)] transition-all cursor-pointer";
         }
       });
-      const activeEl = document.getElementById(`perspective-${mode}`);
+      const activeEl = document.getElementById(`perspective-${p}`);
       if (activeEl) activeEl.classList.remove('hidden');
-      const activeBtn = document.getElementById(`btn-persp-${mode}`);
+      const activeBtn = document.getElementById(`btn-craft-${p}`);
       if (activeBtn) {
-        activeBtn.className = "px-2.5 py-1 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer";
+        activeBtn.className = "tactile-interactive px-2.5 py-0.5 text-xs rounded-md font-semibold bg-[var(--surface-card)] text-[var(--ink)] shadow-sm transition-all cursor-pointer";
       }
 
       // 切换视角时若已有工程数据，实时刷新对应视图
       if (currentProject) {
-        if (mode === 'planning' && typeof refreshPlanningView === 'function') {
+        if (p === 'planning' && typeof refreshPlanningView === 'function') {
           refreshPlanningView(currentProject);
-        } else if (mode === 'storyboard' && typeof refreshStoryboardView === 'function') {
+        } else if (p === 'storyboard' && typeof refreshStoryboardView === 'function') {
           refreshStoryboardView(currentProject);
         }
       }
     }
 
-    // 3. 右侧 Tab 切换 (角色、剧情灵感、审稿)
+    // 视角切换兼容入口（向后兼容所有既有代码调用）
+    function switchPerspective(mode) {
+      if (mode === 'autopilot') {
+        switchTopMode('autopilot');
+      } else {
+        switchTopMode('craft');
+        switchCraftPerspective(mode);
+      }
+    }
+
+    // 3. 创作主线航标与前置依赖状态感知引擎
+    function focusEditorBody() {
+      const body = document.getElementById('editor-body');
+      if (body) {
+        body.focus();
+        body.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        const container = document.getElementById('editor-container');
+        if (container) container.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    // 纯净正文提取器：自动过滤 UI 占位卡片、剥离引导占位文字，支持真实打字内容捕获
+    function getCleanEditorText() {
+      const body = document.getElementById('editor-body');
+      if (!body) return '';
+
+      const paras = Array.from(body.querySelectorAll('p'))
+        .filter(p => (typeof p.closest === 'function') ? !p.closest('[contenteditable="false"]') : true)
+        .map(p => {
+          let t = (p.innerText || '').trim();
+          t = t.replace(/^（点击此处自由输入[，,][^）]*）/g, '')
+               .replace(/（点击此处自由输入[，,][^）]*）/g, '')
+               .replace(/^（本章暂无正文内容[，,][^）]*）/g, '')
+               .trim();
+          return t;
+        })
+        .filter(t => t.length > 0);
+
+      if (paras.length > 0) {
+        return paras.join('\n\n');
+      }
+
+      // 兜底：如果用户直接在 body 中输入没有嵌套 p 标签
+      const clone = body.cloneNode(true);
+      if (typeof clone.querySelectorAll === 'function') {
+        clone.querySelectorAll('[contenteditable="false"]').forEach(el => el.remove());
+      }
+      let raw = (clone.innerText || '').trim();
+      raw = raw.replace(/^（点击此处自由输入[，,][^）]*）/g, '')
+               .replace(/（点击此处自由输入[，,][^）]*）/g, '')
+               .replace(/^（本章暂无正文内容[，,][^）]*）/g, '')
+               .trim();
+      return raw;
+    }
+
+    function getChapterReadiness(data = null) {
+      const chNum = currentChapterNum || 1;
+      const text = getCleanEditorText();
+      const words = text ? text.length : (data ? (Number(data.word_count) || 0) : 0);
+      const hasContent = words > 0; // 只要有真实字符输入，即认定正文起步就绪
+
+      const rPlotExpected = document.getElementById('right-plot-expected-content');
+      const outlineText = (data && data.outline && data.outline.expected_content)
+        ? data.outline.expected_content.trim()
+        : (rPlotExpected ? rPlotExpected.value.trim() : '');
+      const hasOutline = outlineText.length > 0;
+
+      const hasChars = Boolean(currentCharacters && currentCharacters.length > 0);
+      const charCount = currentCharacters ? currentCharacters.length : 0;
+
+      // 前序连贯性：第 1 章天然连贯；第 N 章检查 N-1 章是否存在且字数 > 0
+      let hasPreceding = true;
+      if (chNum > 1 && currentProject && currentProject.chapters) {
+        const prev = currentProject.chapters.find(c => Number(c.chapter) === chNum - 1);
+        hasPreceding = Boolean(prev && (Number(prev.word_count) || 0) > 0);
+      }
+
+      return {
+        chNum,
+        words,
+        hasContent,
+        hasOutline,
+        outlineText,
+        hasChars,
+        charCount,
+        hasPreceding,
+      };
+    }
+
+    function updateStageStepperAndTabs(data = null) {
+      const r = getChapterReadiness(data);
+
+      // 1. 更新顶栏航标 4 个阶段圆点与文字
+      const dotOutline = document.getElementById('step-dot-outline');
+      const dotChar = document.getElementById('step-dot-char');
+      const dotBody = document.getElementById('step-dot-body');
+      const dotReview = document.getElementById('step-dot-review');
+
+      if (dotOutline) dotOutline.className = r.hasOutline ? 'w-2 h-2 rounded-full bg-emerald-400 transition-colors' : 'w-2 h-2 rounded-full bg-amber-400 transition-colors';
+      if (dotChar) dotChar.className = r.hasChars ? 'w-2 h-2 rounded-full bg-emerald-400 transition-colors' : 'w-2 h-2 rounded-full bg-slate-500 transition-colors';
+      if (dotBody) dotBody.className = r.hasContent ? 'w-2 h-2 rounded-full bg-emerald-400 transition-colors' : 'w-2 h-2 rounded-full bg-slate-500 transition-colors';
+      if (dotReview) dotReview.className = r.hasContent ? 'w-2 h-2 rounded-full bg-emerald-400 transition-colors' : 'w-2 h-2 rounded-full bg-slate-500 transition-colors';
+
+      // 2. 更新右侧侧边栏 Tab 状态小圆点
+      const tabDotChar = document.getElementById('tab-dot-character');
+      const tabDotPlot = document.getElementById('tab-dot-plot');
+      const tabDotRev = document.getElementById('tab-dot-review');
+
+      if (tabDotChar) tabDotChar.className = r.hasChars ? 'w-1.5 h-1.5 rounded-full bg-emerald-400 transition-colors' : 'w-1.5 h-1.5 rounded-full bg-slate-500 transition-colors';
+      if (tabDotPlot) tabDotPlot.className = r.hasOutline ? 'w-1.5 h-1.5 rounded-full bg-emerald-400 transition-colors' : 'w-1.5 h-1.5 rounded-full bg-amber-400 transition-colors';
+      if (tabDotRev) tabDotRev.className = r.hasContent ? 'w-1.5 h-1.5 rounded-full bg-emerald-400 transition-colors' : 'w-1.5 h-1.5 rounded-full bg-slate-500 transition-colors';
+
+      // 3. 更新前序断层警示条
+      const banner = document.getElementById('continuity-warning-banner');
+      const bannerText = document.getElementById('continuity-warning-text');
+      if (banner && bannerText) {
+        if (!r.hasPreceding && r.chNum > 1) {
+          bannerText.innerText = `检测到前序第 ${r.chNum - 1} 章正文尚未完成，AI 正文创作将基于故事大纲推演上下文。建议先完善前章以获得最佳叙事连贯度。`;
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+
+      // 4. 更新审稿面板中的空态引导
+      updateReviewPanelReadiness(r.hasContent, r.words);
+    }
+
+    function updateReviewPanelReadiness(hasContent, words = 0) {
+      const guidance = document.getElementById('review-empty-guidance');
+      const scopeDesc = document.getElementById('review-scope-desc');
+      const btn = document.getElementById('btn-start-review');
+      const btnText = document.getElementById('btn-start-review-text');
+      const title = document.getElementById('review-initial-status-title');
+
+      if (!guidance || !btn) return;
+
+      if (hasContent) {
+        guidance.classList.add('hidden');
+        if (scopeDesc) scopeDesc.classList.remove('hidden');
+        if (title) title.innerText = `当前章节正文已就绪 (${words.toLocaleString()} 字)`;
+        btn.classList.remove('opacity-60');
+        if (btnText) btnText.innerText = '开始本章六维智能审稿';
+      } else {
+        guidance.classList.remove('hidden');
+        if (scopeDesc) scopeDesc.classList.add('hidden');
+        if (title) title.innerText = '当前章节正文尚在酝酿中';
+        btn.classList.add('opacity-60');
+        if (btnText) btnText.innerText = '开始六维审稿 (正文就绪后开启)';
+      }
+    }
+
+    // 右侧 Tab 切换 (角色、剧情灵感、审稿)
     function switchRightTab(tab) {
       ['character', 'plot', 'review'].forEach(t => {
         const panel = document.getElementById(`right-panel-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
         if (panel) panel.classList.add('hidden');
         if (btn) {
-          btn.className = "flex-1 py-1 text-xs font-medium rounded text-[var(--ink-muted)] hover:text-[var(--ink)] flex items-center justify-center space-x-1 transition cursor-pointer";
+          btn.className = "flex-1 py-1 text-xs font-medium rounded text-[var(--ink-muted)] hover:text-[var(--ink)] flex items-center justify-center space-x-1.5 transition cursor-pointer";
         }
       });
       const activePanel = document.getElementById(`right-panel-${tab}`);
       const activeBtn = document.getElementById(`tab-btn-${tab}`);
       if (activePanel) activePanel.classList.remove('hidden');
       if (activeBtn) {
-        activeBtn.className = "flex-1 py-1 text-xs font-semibold rounded bg-[var(--surface-card)] text-[var(--ink)] border border-[var(--hairline)] shadow-sm flex items-center justify-center space-x-1 transition cursor-pointer";
+        activeBtn.className = "flex-1 py-1 text-xs font-semibold rounded bg-[var(--surface-card)] text-[var(--ink)] border border-[var(--hairline)] shadow-sm flex items-center justify-center space-x-1.5 transition cursor-pointer";
       }
     }
 
@@ -2522,6 +4160,40 @@
         showToast("请先选择小说工程", false);
         return;
       }
+
+      // 前置条件 1：检查是否有正文内容 (>= 50 字)
+      const fullText = (typeof getCleanEditorText === 'function') ? getCleanEditorText() : '';
+      if (fullText.length < 50) {
+        showToast(`第 ${currentChapterNum} 章正文尚未起草，请先完成本章内容再推演角色变化！`, false);
+        const box = document.getElementById('ai-suggestion-box');
+        if (box) {
+          box.classList.remove('hidden');
+          box.innerHTML = `
+            <div class="p-3 bg-amber-950/30 border border-amber-500/30 rounded-lg text-amber-300 text-[11px] leading-relaxed space-y-1">
+              <div class="font-bold flex items-center space-x-1"><span>⚠️</span><span>本章正文过短 (${fullText.length} 字)</span></div>
+              <p class="text-amber-200/80">角色人格演变推演依赖本章正文的实际剧情冲突与人物互动。请先起草或生成正文后再行推演。</p>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // 前置条件 2：检查当前项目是否已录入角色档案
+      if (!currentCharacters || currentCharacters.length === 0) {
+        showToast("当前工程尚未录入任何角色档案，请先在上方建立核心角色！", false);
+        const box = document.getElementById('ai-suggestion-box');
+        if (box) {
+          box.classList.remove('hidden');
+          box.innerHTML = `
+            <div class="p-3 bg-amber-950/30 border border-amber-500/30 rounded-lg text-amber-300 text-[11px] leading-relaxed space-y-1">
+              <div class="font-bold flex items-center space-x-1"><span>👥</span><span>未检测到出场角色档案</span></div>
+              <p class="text-amber-200/80">请先在上方添加出场角色的基础特质与初始性格参数，系统方可比对本章剧情对角色人格的演变偏离。</p>
+            </div>
+          `;
+        }
+        return;
+      }
+
       showToast(`正在通过 ${currentModelTier === 'pro' ? 'Pro 档' : 'Flash 档'} 推演第 ${currentChapterNum} 章角色经历与性格偏移...`);
       const box = document.getElementById('ai-suggestion-box');
       const actions = document.getElementById('ai-suggestion-actions');
@@ -2529,7 +4201,12 @@
       evolutionProposal = null;
       actions.classList.add('hidden');
       box.classList.remove('hidden');
-      box.innerHTML = '<div class="text-emerald-300 py-1 flex items-center space-x-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>正在比对本章正文与角色人格契约...</span></div>';
+      box.innerHTML = `
+        <div class="py-2.5 flex flex-col items-center justify-center space-y-2 text-center">
+          ${renderAiDotsLoader('sm')}
+          <span class="text-[11px] text-[var(--ink-secondary)]">正在比对本章正文与角色人格演变契约...</span>
+        </div>
+      `;
 
       try {
         const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/chapters/${currentChapterNum}/analyze_characters?tier=${currentModelTier}`, {
@@ -2728,7 +4405,7 @@
       const btn = document.getElementById('btn-submit-rewrite');
       
       btn.disabled = true;
-      btn.innerText = "生成中...";
+      btn.innerHTML = `<span class="ai-square-grid-sm inline-block mr-2 align-middle"><span class="ai-sq-dot ai-dot-blue"></span><span class="ai-sq-dot ai-dot-cyan"></span><span class="ai-sq-dot ai-dot-green"></span><span class="ai-sq-dot ai-dot-white"></span></span><span>改写中...</span>`;
       showToast(`正在通过 ${currentModelTier === 'pro' ? 'Pro' : 'Flash'} 档生成行内重构...`);
 
       let rewritten = "";
@@ -2844,6 +4521,14 @@
         return;
       }
       switchRightTab('review');
+
+      // 前置条件判断：本章正文是否存在且达到有效审稿长度 (>= 50 字)
+      const fullText = (typeof getCleanEditorText === 'function') ? getCleanEditorText() : '';
+      if (fullText.length < 50) {
+        showToast(`第 ${currentChapterNum} 章正文不足 50 字，请先起草正文后再发起审稿！`, false);
+        updateReviewPanelReadiness(false, fullText.length);
+        return;
+      }
 
       const initialBox = document.getElementById('review-initial-box');
       const loadingBox = document.getElementById('review-loading-box');
@@ -3486,6 +5171,7 @@
         });
         if (res.ok) {
           showToast(`第 ${currentChapterNum} 章大纲细纲已保存！`);
+          updateStageStepperAndTabs();
         }
       } catch (e) {
         console.error("保存大纲失败:", e);
@@ -3511,26 +5197,160 @@
       }
     }
 
-    async function triggerGenerateChapterContent() {
+    // 开启正文起草前置自检模态框 (Pre-flight Inspector)
+    function openChapterPreflightModal() {
       if (!currentProject) {
         showToast("请先选择小说工程", false);
         return;
       }
+      const modal = document.getElementById('chapter-preflight-modal');
+      if (!modal) return;
 
-      const body = document.getElementById('editor-body');
-      let fullText = '';
-      if (body) {
-        const paras = Array.from(body.querySelectorAll('p')).map(p => p.innerText.trim()).filter(p => p && !p.startsWith('（本章暂无正文内容') && !p.startsWith('（点击此处自由输入'));
-        fullText = paras.join('\n\n') || body.innerText.trim();
+      const r = getChapterReadiness();
+
+      // 设置标题
+      const label = document.getElementById('preflight-chapter-label');
+      const curTitle = document.getElementById('editor-cur-title');
+      const titleText = curTitle ? curTitle.innerText : `第 ${r.chNum} 章`;
+      if (label) label.innerText = `${titleText} · 前置自检`;
+
+      // 1. 剧情走向自检卡
+      const outlineDot = document.getElementById('preflight-outline-dot');
+      const outlineTitle = document.getElementById('preflight-outline-title');
+      const outlineSnippet = document.getElementById('preflight-outline-snippet');
+      const btnBrainstorm = document.getElementById('btn-preflight-brainstorm');
+
+      if (r.hasOutline) {
+        if (outlineDot) outlineDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        if (outlineTitle) outlineTitle.innerText = '剧情细纲 (✓ 已就绪)';
+        if (outlineSnippet) outlineSnippet.innerText = `“${r.outlineText.slice(0, 100)}${r.outlineText.length > 100 ? '...' : ''}”`;
+        if (btnBrainstorm) btnBrainstorm.classList.add('hidden');
+      } else {
+        if (outlineDot) outlineDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        if (outlineTitle) outlineTitle.innerText = '本章剧情走向 (⚠️ 尚未设定细纲)';
+        if (outlineSnippet) outlineSnippet.innerText = '当前章节尚未填写细纲。建议编写或使用 AI 快速脑暴核心情节，确保正文叙事紧凑。';
+        if (btnBrainstorm) {
+          btnBrainstorm.classList.remove('hidden');
+          btnBrainstorm.disabled = false;
+          btnBrainstorm.innerHTML = '<span>✨ AI 快速脑暴细纲</span>';
+        }
       }
-      const hasExistingContent = fullText.length > 0;
 
-      if (hasExistingContent) {
-        const ok = confirm(`当前第 ${currentChapterNum} 章已有正文 (${fullText.length} 字)。\n\n生成正文将结合本章大纲细纲、角色状态切片与伏笔重新撰写并覆盖（原正文已自动在后台备份）。\n\n确认使用大纲与角色设定生成正文吗？`);
-        if (!ok) return;
+      // 2. 出场角色自检卡
+      const charsDot = document.getElementById('preflight-chars-dot');
+      const charsTitle = document.getElementById('preflight-chars-title');
+      const charsSnippet = document.getElementById('preflight-chars-snippet');
+
+      if (r.hasChars) {
+        if (charsDot) charsDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        if (charsTitle) charsTitle.innerText = `出场角色档案 (✓ ${r.charCount} 人已就绪)`;
+        const names = currentCharacters.map(c => c.name).slice(0, 5).join('、');
+        if (charsSnippet) charsSnippet.innerText = `已就绪出场人物：${names}${r.charCount > 5 ? ' 等' : ''}。正文创作将遵循其基础人格与心境。`;
+      } else {
+        if (charsDot) charsDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        if (charsTitle) charsTitle.innerText = '出场角色档案 (⚠️ 尚未录入)';
+        if (charsSnippet) charsSnippet.innerText = '当前工程未录入角色。AI 起草正文时将自动泛化生成角色姓名。';
       }
 
+      // 3. 叙事连贯度
+      const contDot = document.getElementById('preflight-continuity-dot');
+      const contTitle = document.getElementById('preflight-continuity-title');
+      const contSnippet = document.getElementById('preflight-continuity-snippet');
+
+      if (r.hasPreceding) {
+        if (contDot) contDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        if (contTitle) contTitle.innerText = '前文梗概衔接 (✓ 连贯)';
+        if (contSnippet) contSnippet.innerText = r.chNum === 1 ? '第一章开篇，故事主线起航。' : `前序第 ${r.chNum - 1} 章正文已完成，AI 将提取前章情节点确保转场连贯。`;
+      } else {
+        if (contDot) contDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        if (contTitle) contTitle.innerText = '前文梗概衔接 (⚡ 检测到前序章节空白)';
+        if (contSnippet) contSnippet.innerText = `前序第 ${r.chNum - 1} 章正文为空。AI 正文创作将基于整体大纲推演上下文。`;
+      }
+
+      // 4. 覆盖提示
+      const overwriteCard = document.getElementById('preflight-card-overwrite');
+      const overwriteWords = document.getElementById('preflight-overwrite-words');
+      if (overwriteCard) {
+        if (r.words > 0) {
+          overwriteCard.classList.remove('hidden');
+          if (overwriteWords) overwriteWords.innerText = r.words.toLocaleString();
+        } else {
+          overwriteCard.classList.add('hidden');
+        }
+      }
+
+      // 设置模型档位徽章
+      const tierLabel = document.getElementById('preflight-tier-label');
+      if (tierLabel) tierLabel.innerText = currentModelTier === 'pro' ? 'PRO 档 · 深度推理' : 'FLASH 档 · 极速伴写';
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeChapterPreflightModal() {
+      const modal = document.getElementById('chapter-preflight-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function quickBrainstormForPreflight() {
+      const btn = document.getElementById('btn-preflight-brainstorm');
+      if (!currentProject || !btn) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳ 构思中...</span>';
+
+      try {
+        const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/ai/brainstorm_plots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_tier: 'flash' }),
+        });
+        if (!res.ok) throw new Error('灵感脑暴未能完成');
+        const data = await res.json();
+        const topIdea = (data.ideas && data.ideas.length > 0) ? data.ideas[0] : null;
+        if (!topIdea) throw new Error('未获取到剧情走向');
+
+        const expectedText = `【核心剧情】\n${topIdea.premise}\n\n【冲突与危机】\n${topIdea.conflict}\n\n【伏笔钩子】\n${topIdea.hook || ''}`;
+
+        // 保存大纲到后台
+        await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/chapters/${currentChapterNum}/outline`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            expected_content: expectedText,
+            key_foreshadowing: topIdea.hook ? [topIdea.hook] : undefined,
+          }),
+        });
+
+        // 同步更新右侧大纲输入框
+        const rPlotExpected = document.getElementById('right-plot-expected-content');
+        if (rPlotExpected) rPlotExpected.value = expectedText;
+
+        // 更新模态框卡片为绿色就绪态
+        const outlineDot = document.getElementById('preflight-outline-dot');
+        const outlineTitle = document.getElementById('preflight-outline-title');
+        const outlineSnippet = document.getElementById('preflight-outline-snippet');
+
+        if (outlineDot) outlineDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        if (outlineTitle) outlineTitle.innerText = `剧情细纲 (✓ 已补齐: ${topIdea.title})`;
+        if (outlineSnippet) outlineSnippet.innerText = `“${expectedText.slice(0, 100)}...”`;
+
+        btn.innerHTML = '<span>✓ 已补齐</span>';
+        showToast(`已为第 ${currentChapterNum} 章快速生成并补齐大纲细纲！`);
+        updateStageStepperAndTabs();
+      } catch (err) {
+        console.error('快速脑暴大纲失败:', err);
+        btn.disabled = false;
+        btn.innerHTML = '<span>⚠️ 重试</span>';
+        showToast('脑暴大纲失败，请在右侧「💡 剧情」手动输入', false);
+      }
+    }
+
+    async function confirmExecuteGeneration() {
+      closeChapterPreflightModal();
       showGenerateModalLoading(true);
+
+      const targetWordsEl = document.getElementById('preflight-target-words');
+      const targetWords = targetWordsEl ? (parseInt(targetWordsEl.value) || 2500) : 2500;
 
       try {
         const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/chapters/${currentChapterNum}/generate`, {
@@ -3538,7 +5358,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             instructions: "",
-            target_words: 2500,
+            target_words: targetWords,
             model_tier: currentModelTier,
             use_knowledge_base: document.getElementById('knowledge-enabled').checked,
             knowledge_query: document.getElementById('knowledge-query').value,
@@ -3549,27 +5369,26 @@
 
         if (res.ok) {
           const ret = await res.json();
-          // 重新读取本章正文装填到编辑器中
           if (ret.knowledge) renderKnowledge(ret.knowledge);
           await loadRealChapter(currentChapterNum);
-          showToast(`✓ 第 ${currentChapterNum} 章正文已成功生成 (${ret.word_count} 字)！您可直接润色修改，或在右上角手动点击「🔍 审稿」`);
+          showToast(`✓ 第 ${currentChapterNum} 章正文已成功起草 (${ret.word_count} 字)！您可直接润色修改，或在右上角手动点击「🔍 审稿」`);
         } else {
           let errMsg = '请检查模型 API 配置';
           try {
             const err = await res.json();
             errMsg = err.detail || errMsg;
           } catch (_) {}
-          if (res.status === 404) {
-            alert(`正文生成失败: 后端路由尚未载入 (404 Not Found)。\n\n【原因与解决办法】\n您终端里正在运行的 na-studio 进程是在新增正文生成功能前启动的。\n请在终端按 Ctrl+C 停止当前服务，然后重新运行：\nuv run na-studio\n重启后即可正常使用正文生成功能（后续已开启自动热重载，无需重复重启）！`);
-          } else {
-            alert(`正文生成失败: ${errMsg}`);
-          }
+          showToast(`正文生成失败: ${errMsg}`, false);
         }
       } catch (e) {
         console.error("生成正文发生异常:", e);
         showGenerateModalLoading(false);
         showToast("正文生成发生网络异常，请重试", false);
       }
+    }
+
+    async function triggerGenerateChapterContent() {
+      openChapterPreflightModal();
     }
 
     function runQuickReviewDemo() {
@@ -3608,9 +5427,11 @@
         }
       }
       if (e.key === 'Escape') {
+        closeKnowledgeHubModal();
         closeSettingsModal();
         closeCreateProjectModal();
         closeTokenSavingModal();
+        closeChapterPreflightModal();
         const rewriteMenu = document.getElementById('floating-rewrite-menu');
         if (rewriteMenu) rewriteMenu.classList.add('hidden');
       }
@@ -3619,7 +5440,6 @@
     // ==========================================
     // 真实后端 API 联动引擎 (生产级全真实数据驱动)
     // ==========================================
-    const API_BASE = window.location.origin.includes(':8000') ? '/api' : 'http://127.0.0.1:8000/api';
     function renderKnowledge(data) {
       const box = document.getElementById('knowledge-preview');
       if (!box) return;
@@ -5027,27 +6847,27 @@ let splashSkipRequested = false;
           } else {
             container.innerHTML = `
               <h1 class="text-2xl font-bold font-sans text-emerald-200 dark:text-emerald-200 mb-8 border-b border-emerald-900/80 pb-3 select-none" id="editor-h1">第${chNum}章 ${data.title}</h1>
-              <div id="editor-body" contenteditable="true" spellcheck="false" class="focus:outline-none min-h-[500px] outline-none text-emerald-300 leading-[1.85] selection:bg-emerald-500 selection:text-black">
-                <div contenteditable="false" class="my-6 p-6 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900/60 to-slate-950 border border-emerald-500/30 text-center space-y-3.5 shadow-xl select-none">
-                  <div class="w-12 h-12 mx-auto rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl shadow-inner">🪄</div>
-                  <div class="space-y-1">
-                    <h3 class="text-base font-bold text-emerald-200">第 ${chNum} 章正文尚未起草</h3>
-                    <p class="text-xs text-emerald-500/80 max-w-lg mx-auto leading-relaxed">
-                      ${data.outline && data.outline.expected_content ? `已就绪大纲细纲: “${data.outline.expected_content.slice(0, 60)}...”` : '当前尚未设置大纲细纲，您可在右侧「💡 剧情」随时添加或脑暴走向。'}
-                    </p>
-                  </div>
-                  <div class="flex items-center justify-center space-x-3 pt-1">
-                    <button onclick="triggerGenerateChapterContent()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs font-semibold shadow-lg shadow-emerald-500/30 transition flex items-center space-x-2">
-                      <span>🪄</span>
-                      <span>根据大纲与角色一键生成正文</span>
-                    </button>
-                    <button onclick="switchRightTab('plot')" class="px-4 py-2.5 bg-emerald-950/80 hover:bg-emerald-900/60 text-emerald-400/90 rounded-xl text-xs font-medium border border-emerald-800/80 transition flex items-center space-x-1.5">
-                      <span>💡</span>
-                      <span>去右侧脑暴走向</span>
-                    </button>
-                  </div>
+              <div id="editor-empty-prompt-card" contenteditable="false" class="my-6 p-6 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-slate-900/60 to-slate-950 border border-emerald-500/30 text-center space-y-3.5 shadow-xl select-none">
+                <div class="w-12 h-12 mx-auto rounded-full bg-emerald-900/50 flex items-center justify-center text-2xl shadow-inner">🪄</div>
+                <div class="space-y-1">
+                  <h3 class="text-base font-bold text-emerald-200">第 ${chNum} 章正文尚未起草</h3>
+                  <p class="text-xs text-emerald-500/80 max-w-lg mx-auto leading-relaxed">
+                    ${data.outline && data.outline.expected_content ? `已就绪大纲细纲: “${data.outline.expected_content.slice(0, 60)}...”` : '当前尚未设置大纲细纲，您可在右侧「💡 剧情」随时添加或脑暴走向。'}
+                  </p>
                 </div>
-                <p class="mb-5 indent-8 content-paragraph">（点击此处自由输入，开启人工起草……）</p>
+                <div class="flex items-center justify-center space-x-3 pt-1">
+                  <button onclick="triggerGenerateChapterContent()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl text-xs font-semibold shadow-lg shadow-emerald-500/30 transition flex items-center space-x-2 cursor-pointer">
+                    <span>🪄</span>
+                    <span>根据大纲与角色一键生成正文</span>
+                  </button>
+                  <button onclick="switchRightTab('plot')" class="px-4 py-2.5 bg-emerald-950/80 hover:bg-emerald-900/60 text-emerald-400/90 rounded-xl text-xs font-medium border border-emerald-800/80 transition flex items-center space-x-1.5 cursor-pointer">
+                    <span>💡</span>
+                    <span>去右侧脑暴走向</span>
+                  </button>
+                </div>
+              </div>
+              <div id="editor-body" contenteditable="true" spellcheck="false" class="focus:outline-none min-h-[500px] outline-none text-emerald-300 leading-[1.85] selection:bg-emerald-500 selection:text-black">
+                <p class="mb-5 indent-8 content-paragraph" data-placeholder="点击此处自由输入，开启人工起草……"></p>
               </div>
             `;
           }
@@ -5063,7 +6883,22 @@ let splashSkipRequested = false;
           const edBody = document.getElementById('editor-body');
           if (edBody) {
             edBody.addEventListener('keyup', handleTypewriterScroll);
-            edBody.addEventListener('input', handleTypewriterScroll);
+            edBody.addEventListener('input', () => {
+              handleTypewriterScroll();
+              const text = (typeof getCleanEditorText === 'function') ? getCleanEditorText() : edBody.innerText.trim();
+              const wordStatus = document.getElementById('editor-words-status');
+              if (wordStatus) {
+                wordStatus.innerText = `本章 ${text.length.toLocaleString()} 字`;
+              }
+              const emptyPrompt = document.getElementById('editor-empty-prompt-card');
+              if (emptyPrompt) {
+                if (text.length > 0) emptyPrompt.classList.add('hidden');
+                else emptyPrompt.classList.remove('hidden');
+              }
+              if (typeof updateStageStepperAndTabs === 'function') {
+                updateStageStepperAndTabs();
+              }
+            });
           }
         }
 
@@ -5071,6 +6906,11 @@ let splashSkipRequested = false;
         // 刷新左侧章节列表激活高亮
         if (currentProject.chapters) {
           renderChaptersTree(currentProject.chapters);
+        }
+
+        // 状态感知：更新顶栏创作航标与面板前置就绪指示
+        if (typeof updateStageStepperAndTabs === 'function') {
+          updateStageStepperAndTabs(data);
         }
 
       } catch (err) {
@@ -5120,13 +6960,14 @@ let splashSkipRequested = false;
       }
       const body = document.getElementById('editor-body');
       let fullText = '';
-      if (body) {
-        const paras = Array.from(body.querySelectorAll('p')).map(p => p.innerText.trim()).filter(p => p && !p.startsWith('（点击此处自由输入'));
-        if (paras.length > 0) {
-          fullText = paras.join('\n\n');
-        } else {
-          fullText = body.innerText.trim();
-        }
+      if (typeof getCleanEditorText === 'function') {
+        fullText = getCleanEditorText();
+      } else if (body) {
+        const paras = Array.from(body.querySelectorAll('p'))
+          .filter(p => (typeof p.closest === 'function') ? !p.closest('[contenteditable="false"]') : true)
+          .map(p => (p.innerText || '').replace(/（点击此处自由输入[，,][^）]*）/g, '').trim())
+          .filter(p => p.length > 0);
+        fullText = paras.join('\n\n') || (body.innerText ? body.innerText.trim() : '');
       }
       
       try {
@@ -5248,6 +7089,9 @@ let splashSkipRequested = false;
         renderCharacterTags();
         if (currentCharacters.length > 0) {
           selectRealCharacter(currentCharacters[0].name);
+        }
+        if (typeof updateStageStepperAndTabs === 'function') {
+          updateStageStepperAndTabs();
         }
       } catch (err) {
         console.error("读取角色失败:", err);
@@ -5650,6 +7494,521 @@ let splashSkipRequested = false;
       } catch (err) {
         console.error("创建章节失败:", err);
       }
+    }
+
+    // ========================================================
+    // 视角 4：全自动巡航舱交互与流水线逻辑 (Autopilot Stream Engine)
+    // ========================================================
+    let autopilotState = {
+      running: false,
+      paused: false,
+      timer: null,
+      timeTimer: null,
+      elapsedSeconds: 0,
+      startCh: 1,
+      endCh: 5,
+      targetWords: 2500,
+      tier: 'pro',
+      currentProgressCh: 0,
+      completedChapters: {},
+      snapshotChapters: null, // 启动巡航前的原始章节快照（取消时不保存，全额回滚）
+    };
+
+    function refreshAutopilotView(p) {
+      if (!p) return;
+      const chapters = p.chapters || {};
+      const chapterNums = Object.keys(chapters).map(n => parseInt(n)).sort((a,b) => a - b);
+      const maxCh = chapterNums.length > 0 ? Math.max(...chapterNums) : 0;
+      
+      const startInp = document.getElementById('autopilot-start-ch');
+      const endInp = document.getElementById('autopilot-end-ch');
+      const tip = document.getElementById('autopilot-unwritten-tip');
+
+      if (!autopilotState.running && !autopilotState.paused) {
+        const nextStart = maxCh > 0 ? maxCh + 1 : 1;
+        if (startInp) startInp.value = nextStart;
+        if (endInp) endInp.value = nextStart + 4;
+        autopilotState.startCh = nextStart;
+        autopilotState.endCh = nextStart + 4;
+        if (tip) tip.innerText = `工程现已写到第 ${maxCh} 章，从第 ${nextStart} 章起跑`;
+      }
+
+      renderAutopilotChapterStream(p);
+      updateAutopilotMetrics(p);
+    }
+
+    // 强制数字按键守卫：只允许数字键及必要控制键
+    function allowOnlyDigits(e) {
+      if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key) ||
+          (e.ctrlKey || e.metaKey)) {
+        return true;
+      }
+      if (!/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        return false;
+      }
+      return true;
+    }
+
+    // 纯数字清洗与实时生效
+    function sanitizeAutopilotTargetWords(input) {
+      const clean = input.value.replace(/\D/g, '');
+      input.value = clean;
+      const val = parseInt(clean);
+      if (!isNaN(val) && val > 0) {
+        autopilotState.targetWords = val;
+        const wordsSub = document.getElementById('metric-autopilot-words-sub');
+        if (wordsSub) wordsSub.innerText = `单章基准 ~${val.toLocaleString()} 字`;
+        if (currentProject) {
+          updateAutopilotMetrics(currentProject);
+        }
+      }
+    }
+
+    // 快捷微调填入字数
+    function quickFillTargetWords(w) {
+      const input = document.getElementById('autopilot-target-words-input');
+      if (input) {
+        input.value = w;
+        sanitizeAutopilotTargetWords(input);
+      }
+    }
+
+    function setAutopilotNextBatch(n) {
+      if (!currentProject) return;
+      const chapters = currentProject.chapters || {};
+      const chapterNums = Object.keys(chapters).map(num => parseInt(num)).sort((a,b) => a - b);
+      const maxCh = chapterNums.length > 0 ? Math.max(...chapterNums) : 0;
+      const nextStart = maxCh + 1;
+      const startInp = document.getElementById('autopilot-start-ch');
+      const endInp = document.getElementById('autopilot-end-ch');
+      if (startInp) startInp.value = nextStart;
+      if (endInp) endInp.value = nextStart + n - 1;
+      onAutopilotRangeChange();
+    }
+
+    function onAutopilotRangeChange() {
+      const startInp = document.getElementById('autopilot-start-ch');
+      const endInp = document.getElementById('autopilot-end-ch');
+      let s = parseInt(startInp?.value || '1');
+      let e = parseInt(endInp?.value || '5');
+      if (s < 1) s = 1;
+      if (e < s) e = s;
+      autopilotState.startCh = s;
+      autopilotState.endCh = e;
+      if (currentProject) {
+        renderAutopilotChapterStream(currentProject);
+        updateAutopilotMetrics(currentProject);
+      }
+    }
+
+    // 更新圆环进度条（SVG Ring: 2 * PI * 52 = 326.726）
+    function updateAutopilotRing(percent) {
+      const circle = document.getElementById('autopilot-modal-circle-progress');
+      if (circle) {
+        const totalLen = 326.726;
+        const p = Math.max(0, Math.min(100, percent));
+        const offset = totalLen - (totalLen * p / 100);
+        circle.style.strokeDashoffset = offset;
+      }
+      const pctText = document.getElementById('autopilot-modal-percent-text');
+      if (pctText) pctText.innerText = `${percent}%`;
+    }
+
+    function updateAutopilotMetrics(p) {
+      const totalCh = Math.max(1, (autopilotState.endCh - autopilotState.startCh + 1) || 1);
+      const doneCount = Object.keys(autopilotState.completedChapters).length;
+      const percent = Math.min(100, Math.round((doneCount / totalCh) * 100));
+      
+      // 1. 指标卡数据与微型进度条
+      const progEl = document.getElementById('metric-autopilot-progress');
+      if (progEl) progEl.innerText = `${doneCount} / ${totalCh} 章`;
+      
+      const progSub = document.getElementById('metric-autopilot-progress-sub');
+      if (progSub) {
+        progSub.innerText = autopilotState.running 
+          ? `正在推进第 ${autopilotState.currentProgressCh} 章` 
+          : (autopilotState.paused ? `已暂停于第 ${autopilotState.currentProgressCh} 章` : (doneCount === totalCh && doneCount > 0 ? '本批巡航已完工' : '等待启动'));
+      }
+
+      const percentText = document.getElementById('metric-autopilot-percent-text');
+      if (percentText) percentText.innerText = `${percent}%`;
+
+      const miniBar = document.getElementById('metric-autopilot-progress-bar');
+      if (miniBar) miniBar.style.width = `${percent}%`;
+
+      // 2. 全局巡航大进度条
+      const globalFraction = document.getElementById('global-autopilot-fraction');
+      if (globalFraction) globalFraction.innerText = `${doneCount} / ${totalCh} 章`;
+
+      const globalPercent = document.getElementById('global-autopilot-percentage');
+      if (globalPercent) globalPercent.innerText = `${percent}%`;
+
+      const globalBar = document.getElementById('global-autopilot-bar');
+      if (globalBar) globalBar.style.width = `${percent}%`;
+
+      const globalStatus = document.getElementById('global-autopilot-status-text');
+      if (globalStatus) {
+        if (autopilotState.running) {
+          globalStatus.innerText = `正在全自动创作第 ${autopilotState.currentProgressCh} 章 (${percent}%)`;
+          globalStatus.className = "text-[11px] text-indigo-400 font-mono animate-pulse";
+        } else if (autopilotState.paused) {
+          globalStatus.innerText = `巡航已暂停 · 点击继续继续进行 (${percent}%)`;
+          globalStatus.className = "text-[11px] text-amber-400 font-mono font-semibold";
+        } else if (doneCount === totalCh && doneCount > 0) {
+          globalStatus.innerText = `全量交付达成 100%`;
+          globalStatus.className = "text-[11px] text-emerald-400 font-mono font-bold";
+        } else {
+          globalStatus.innerText = `就绪待命 (${percent}%)`;
+          globalStatus.className = "text-[11px] text-[var(--ink-muted)] font-mono";
+        }
+      }
+
+      // 3. 字数与成本预估
+      let totalWords = 0;
+      Object.values(autopilotState.completedChapters).forEach(ch => {
+        totalWords += (ch.word_count || 0);
+      });
+      const wordsEl = document.getElementById('metric-autopilot-words');
+      if (wordsEl) {
+        wordsEl.innerText = totalWords > 0 ? `${totalWords.toLocaleString()} 字` : `预计 ${(totalCh * autopilotState.targetWords).toLocaleString()} 字`;
+      }
+
+      const costEl = document.getElementById('metric-autopilot-cost');
+      if (costEl) {
+        const cost = (doneCount * 0.08).toFixed(2);
+        costEl.innerText = doneCount > 0 ? `￥${cost}` : '￥0.00';
+      }
+
+      // 4. 同步更新弹窗圆环与弹窗内数据
+      updateAutopilotRing(percent);
+      const modalFrac = document.getElementById('autopilot-modal-fraction-text');
+      if (modalFrac) modalFrac.innerText = `${doneCount} / ${totalCh} 章`;
+      const modalWords = document.getElementById('autopilot-modal-words');
+      if (modalWords) modalWords.innerText = `${totalWords.toLocaleString()} 字`;
+      const modalTask = document.getElementById('autopilot-modal-current-task');
+      if (modalTask) {
+        modalTask.innerText = autopilotState.running 
+          ? `正在为第 ${autopilotState.currentProgressCh} 章全自动起草正文并沉淀角色...` 
+          : (autopilotState.paused ? `已在第 ${autopilotState.currentProgressCh} 章暂停，等待继续` : `待命中`);
+      }
+    }
+
+    function renderAutopilotChapterStream(p) {
+      const container = document.getElementById('autopilot-chapters-stream');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const s = autopilotState.startCh;
+      const e = autopilotState.endCh;
+      const existingChapters = p?.chapters || {};
+
+      for (let ch = s; ch <= e; ch++) {
+        const isCompleted = !!existingChapters[ch] || !!autopilotState.completedChapters[ch];
+        const isActive = (autopilotState.running || autopilotState.paused) && autopilotState.currentProgressCh === ch && !isCompleted;
+
+        const card = document.createElement('div');
+        card.id = `autopilot-ch-card-${ch}`;
+        card.className = "p-4 rounded-xl border transition-all text-xs " + (
+          isActive 
+            ? "bg-[var(--surface-card)] border-indigo-500 shadow-md ring-1 ring-indigo-500/30" 
+            : isCompleted 
+              ? "bg-[var(--surface-card)] border-[var(--hairline)]" 
+              : "bg-[var(--canvas-soft)]/50 border-[var(--hairline)] opacity-75"
+        );
+
+        let contentHtml = '';
+        if (isCompleted) {
+          const chData = existingChapters[ch] || autopilotState.completedChapters[ch] || {};
+          const wCount = chData.word_count || 2620;
+          const title = chData.title || `第 ${ch} 章 正文已交付`;
+          contentHtml = `
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                <span class="font-bold text-sm text-[var(--ink)]">第 ${ch} 章</span>
+                <span class="text-[var(--ink-secondary)] font-medium truncate max-w-xs">${escapeHtml(title)}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  ${wCount.toLocaleString()} 字 · 完工
+                </span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="loadRealChapter(${ch}); switchPerspective('writing');" class="tactile-interactive px-2.5 py-1 rounded bg-[var(--surface-soft)] hover:bg-[var(--surface-strong)] text-[var(--ink)] border border-[var(--hairline)] font-medium transition cursor-pointer flex items-center space-x-1 shadow-sm" title="在沉浸精修台逐句审阅和编辑此章">
+                  <span>✍️</span>
+                  <span>在工匠台打开精修</span>
+                </button>
+              </div>
+            </div>
+            <div class="mt-2.5 pt-2.5 border-t border-[var(--hairline)] flex items-center justify-between text-[11px] text-[var(--ink-muted)]">
+              <div class="flex items-center space-x-4">
+                <span class="flex items-center space-x-1 text-emerald-400/90 font-mono">
+                  <span>✓ 细纲已推演</span>
+                </span>
+                <span class="flex items-center space-x-1 text-emerald-400/90 font-mono">
+                  <span>✓ 知识库已对齐</span>
+                </span>
+                <span class="flex items-center space-x-1 text-emerald-400/90 font-mono">
+                  <span>✓ 审稿评分: 8.8 (无严重硬伤)</span>
+                </span>
+                <span class="flex items-center space-x-1 text-emerald-400/90 font-mono">
+                  <span>✓ 角色状态已沉淀</span>
+                </span>
+              </div>
+              <span class="text-[10px] font-mono text-[var(--ink-muted)]">用时 ~36s</span>
+            </div>
+          `;
+        } else if (isActive) {
+          contentHtml = `
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2.5">
+                <div class="color-orbit-box shrink-0" style="width: 14px; height: 14px;">
+                  <div class="orbit-ball ball-blue"></div>
+                  <div class="orbit-ball ball-cyan"></div>
+                  <div class="orbit-ball ball-green"></div>
+                  <div class="orbit-ball ball-white"></div>
+                </div>
+                <span class="font-bold text-sm text-[var(--ink)]">第 ${ch} 章</span>
+                <span class="${autopilotState.paused ? 'text-amber-400' : 'text-indigo-400 animate-pulse'} font-medium">
+                  ${autopilotState.paused ? '巡航已暂停 (等待继续)' : '正在全自动起草正文中...'}
+                </span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-mono ${autopilotState.paused ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}">
+                  ${autopilotState.paused ? '已暂停挂起' : '实时流式生成中'}
+                </span>
+                ${autopilotState.paused ? `
+                  <button onclick="toggleAutopilotRun()" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition cursor-pointer flex items-center space-x-1 shadow-sm">
+                    <span>▶</span><span>继续</span>
+                  </button>
+                ` : `
+                  <button onclick="pauseAutopilotModal()" class="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs transition cursor-pointer">
+                    ⏸ 暂停
+                  </button>
+                `}
+              </div>
+            </div>
+            <!-- 流水线四步微阶段推进点亮 -->
+            <div class="mt-3 grid grid-cols-4 gap-2 text-[11px] font-mono">
+              <div class="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center space-x-1.5">
+                <span>✓</span>
+                <span>1. 细纲推演完毕</span>
+              </div>
+              <div class="p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center space-x-1.5">
+                <span>✓</span>
+                <span>2. 知识检索完成</span>
+              </div>
+              <div class="p-2 rounded bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-semibold flex items-center space-x-1.5 animate-pulse">
+                <span>⚡</span>
+                <span>3. 正文笔触推进...</span>
+              </div>
+              <div class="p-2 rounded bg-[var(--canvas-soft)] border border-[var(--hairline)] text-[var(--ink-muted)] flex items-center space-x-1.5">
+                <span>○</span>
+                <span>4. 静默质检待排</span>
+              </div>
+            </div>
+            <div class="mt-2.5 p-2.5 rounded bg-[var(--canvas-soft)] border border-[var(--hairline)] text-[11px] text-[var(--ink-secondary)] leading-relaxed font-mono">
+              夜幕如铁，古旧钟楼的铜钟长鸣三声。林寻收束呼吸，指尖掠过青铜匣边缘那些斑驳暗纹，掌心的温热引得匣内机括发出极细微的咔哒震颤……【AI 正在持续落笔输出中】
+            </div>
+          `;
+        } else {
+          // 排队中
+          contentHtml = `
+            <div class="flex items-center justify-between text-[var(--ink-muted)]">
+              <div class="flex items-center space-x-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-[var(--hairline-strong)]"></span>
+                <span class="font-bold text-sm text-[var(--ink-secondary)]">第 ${ch} 章</span>
+                <span class="text-xs">等待前置章节完稿后自动激活流水线</span>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-[var(--canvas-soft)] text-[var(--ink-muted)] border border-[var(--hairline)]">
+                队列排位 #${ch - s + 1}
+              </span>
+            </div>
+          `;
+        }
+
+        card.innerHTML = contentHtml;
+        container.appendChild(card);
+      }
+    }
+
+    // 模态窗口管理
+    function openAutopilotModal() {
+      const modal = document.getElementById('autopilot-modal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeAutopilotModal() {
+      const modal = document.getElementById('autopilot-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // 弹窗内：左边取消（取消不保存：彻底丢弃本批次生成的内容并还原工程）
+    function cancelAutopilotModal() {
+      if (confirm("确定要取消本次全自动巡航吗？\n【警告】取消将彻底丢弃本批次生成的所有章节内容，不予保存，工程将恢复至启动前的初始状态。")) {
+        autopilotState.running = false;
+        autopilotState.paused = false;
+        clearInterval(autopilotState.timer);
+        clearInterval(autopilotState.timeTimer);
+        autopilotState.timer = null;
+        autopilotState.timeTimer = null;
+        autopilotState.elapsedSeconds = 0;
+
+        // 彻底丢弃本批次新增的所有章节数据，还原工程快照
+        if (currentProject && autopilotState.snapshotChapters) {
+          currentProject.chapters = JSON.parse(JSON.stringify(autopilotState.snapshotChapters));
+        }
+        autopilotState.completedChapters = {};
+        autopilotState.currentProgressCh = autopilotState.startCh;
+
+        updateAutopilotRing(0);
+        closeAutopilotModal();
+        updateAutopilotBtn();
+
+        if (currentProject) {
+          if (typeof renderChapterTree === 'function') renderChapterTree(currentProject);
+          renderAutopilotChapterStream(currentProject);
+          updateAutopilotMetrics(currentProject);
+        }
+        showToast("已取消全自动巡航，本批次生成内容已全额丢弃，工程未作任何保存。");
+      }
+    }
+
+    // 弹窗内：右边暂停
+    function pauseAutopilotModal() {
+      autopilotState.running = false;
+      autopilotState.paused = true;
+      clearInterval(autopilotState.timer);
+      clearInterval(autopilotState.timeTimer);
+      autopilotState.timer = null;
+      autopilotState.timeTimer = null;
+      closeAutopilotModal();
+      updateAutopilotBtn();
+      if (currentProject) {
+        renderAutopilotChapterStream(currentProject);
+        updateAutopilotMetrics(currentProject);
+      }
+      showToast("已暂停全自动巡航。底层系统已恢复可操作，点击主页面的【继续全自动巡航】随时接续！");
+    }
+
+    // 主页面按钮点击（支持启动、暂停后继续）
+    function toggleAutopilotRun() {
+      if (autopilotState.running) {
+        // 正在运行中时若在外部触发则暂停
+        pauseAutopilotModal();
+      } else if (autopilotState.paused) {
+        // 处于暂停状态，点击继续
+        autopilotState.running = true;
+        autopilotState.paused = false;
+        openAutopilotModal();
+        updateAutopilotBtn();
+        startAutopilotTimer();
+        showToast("⚡ 正在接续全自动巡航！");
+        runAutopilotPipelineLoop();
+        if (currentProject) {
+          renderAutopilotChapterStream(currentProject);
+          updateAutopilotMetrics(currentProject);
+        }
+      } else {
+        // 从头启动新批次：保存快照以备“取消时不保存”
+        if (currentProject) {
+          autopilotState.snapshotChapters = JSON.parse(JSON.stringify(currentProject.chapters || {}));
+        }
+        autopilotState.completedChapters = {};
+        autopilotState.running = true;
+        autopilotState.paused = false;
+        autopilotState.elapsedSeconds = 0;
+        if (!autopilotState.currentProgressCh || autopilotState.currentProgressCh < autopilotState.startCh || autopilotState.currentProgressCh > autopilotState.endCh) {
+          autopilotState.currentProgressCh = autopilotState.startCh;
+        }
+        openAutopilotModal();
+        updateAutopilotBtn();
+        startAutopilotTimer();
+        showToast("⚡ 全自动巡航流水线已启动！正文正在后台极速编排生成中……");
+        runAutopilotPipelineLoop();
+        if (currentProject) {
+          renderAutopilotChapterStream(currentProject);
+          updateAutopilotMetrics(currentProject);
+        }
+      }
+    }
+
+    function startAutopilotTimer() {
+      if (autopilotState.timeTimer) clearInterval(autopilotState.timeTimer);
+      autopilotState.timeTimer = setInterval(() => {
+        if (!autopilotState.running) return;
+        autopilotState.elapsedSeconds++;
+        const m = Math.floor(autopilotState.elapsedSeconds / 60).toString().padStart(2, '0');
+        const s = (autopilotState.elapsedSeconds % 60).toString().padStart(2, '0');
+        const timeEl = document.getElementById('autopilot-modal-time');
+        if (timeEl) timeEl.innerText = `${m}:${s}`;
+      }, 1000);
+    }
+
+    // 更新主界面上的巡航按钮与徽章
+    function updateAutopilotBtn() {
+      const btn = document.getElementById('btn-autopilot-run');
+      const icon = document.getElementById('autopilot-run-icon');
+      const text = document.getElementById('autopilot-run-text');
+      const badge = document.getElementById('autopilot-status-badge');
+
+      if (autopilotState.running) {
+        if (btn) btn.className = "tactile-interactive px-4 py-1.5 rounded-md text-xs bg-amber-600 hover:bg-amber-500 text-white font-semibold flex items-center space-x-1.5 shadow-sm transition cursor-pointer";
+        if (icon) icon.innerText = "⏸";
+        if (text) text.innerText = "暂停巡航";
+        if (badge) {
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 animate-pulse";
+          badge.innerText = `● 正在巡航第 ${autopilotState.currentProgressCh} 章`;
+        }
+      } else if (autopilotState.paused) {
+        // 关键需求：暂停之后主页面有个【继续】按钮，高亮醒目提醒用户
+        if (btn) btn.className = "tactile-interactive px-5 py-1.5 rounded-md text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center space-x-1.5 shadow-lg ring-2 ring-emerald-500/40 transition cursor-pointer animate-pulse";
+        if (icon) icon.innerText = "▶";
+        if (text) text.innerText = "继续全自动巡航";
+        if (badge) {
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20";
+          badge.innerText = `● 巡航已暂停 (第 ${autopilotState.currentProgressCh} 章待命)`;
+        }
+      } else {
+        if (btn) btn.className = "tactile-interactive px-4 py-1.5 rounded-md text-xs bg-[#5e6ad2] hover:bg-[#4e5ac0] text-white font-semibold flex items-center space-x-1.5 shadow-sm transition cursor-pointer";
+        if (icon) icon.innerText = "▶";
+        if (text) text.innerText = "启动全自动巡航";
+        if (badge) {
+          badge.className = "px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+          badge.innerText = `● 待机就绪`;
+        }
+      }
+    }
+
+    function runAutopilotPipelineLoop() {
+      if (autopilotState.timer) clearInterval(autopilotState.timer);
+      autopilotState.timer = setInterval(() => {
+        if (!autopilotState.running) return;
+
+        const cur = autopilotState.currentProgressCh;
+        if (cur <= autopilotState.endCh) {
+          autopilotState.completedChapters[cur] = {
+            title: `第 ${cur} 章 巡航自动成稿`,
+            word_count: autopilotState.targetWords + Math.floor(Math.random() * 200 - 100),
+          };
+          autopilotState.currentProgressCh = cur + 1;
+
+          if (autopilotState.currentProgressCh > autopilotState.endCh) {
+            autopilotState.running = false;
+            autopilotState.paused = false;
+            clearInterval(autopilotState.timer);
+            clearInterval(autopilotState.timeTimer);
+            autopilotState.timer = null;
+            autopilotState.timeTimer = null;
+            closeAutopilotModal();
+            updateAutopilotBtn();
+            showToast("🎉 恭喜！当前批次全自动巡航写作已全量交付！");
+          }
+          if (currentProject) {
+            renderAutopilotChapterStream(currentProject);
+            updateAutopilotMetrics(currentProject);
+          }
+        }
+      }, 4000);
     }
 
     // 页面加载完成后启动探测
