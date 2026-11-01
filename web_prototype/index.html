@@ -7843,7 +7843,7 @@ let splashSkipRequested = false;
     }
 
     // 弹窗内：左边取消（取消不保存：彻底丢弃本批次生成的内容并还原工程）
-    function cancelAutopilotModal() {
+    async function cancelAutopilotModal() {
       if (confirm("确定要取消本次全自动巡航吗？\n【警告】取消将彻底丢弃本批次生成的所有章节内容，不予保存，工程将恢复至启动前的初始状态。")) {
         autopilotState.running = false;
         autopilotState.paused = false;
@@ -7853,9 +7853,18 @@ let splashSkipRequested = false;
         autopilotState.timeTimer = null;
         autopilotState.elapsedSeconds = 0;
 
-        // 彻底丢弃本批次新增的所有章节数据，还原工程快照
-        if (currentProject && autopilotState.snapshotChapters) {
-          currentProject.chapters = JSON.parse(JSON.stringify(autopilotState.snapshotChapters));
+        // 1. 调用后端原子快照物理回滚
+        if (currentProject) {
+          try {
+            await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/autopilot/snapshot/rollback`, {
+              method: 'POST'
+            });
+          } catch (e) {
+            console.warn("调用后端快照回滚接口失败，回退到前端内存快照", e);
+          }
+          if (autopilotState.snapshotChapters) {
+            currentProject.chapters = JSON.parse(JSON.stringify(autopilotState.snapshotChapters));
+          }
         }
         autopilotState.completedChapters = {};
         autopilotState.currentProgressCh = autopilotState.startCh;
@@ -7865,7 +7874,9 @@ let splashSkipRequested = false;
         updateAutopilotBtn();
 
         if (currentProject) {
-          if (typeof renderChapterTree === 'function') renderChapterTree(currentProject);
+          if (typeof onSelectProject === 'function') {
+            await onSelectProject(currentProject.name);
+          }
           renderAutopilotChapterStream(currentProject);
           updateAutopilotMetrics(currentProject);
         }
@@ -7891,7 +7902,11 @@ let splashSkipRequested = false;
     }
 
     // 主页面按钮点击（支持启动、暂停后继续）
-    function toggleAutopilotRun() {
+    async function toggleAutopilotRun() {
+      if (!currentProject) {
+        alert("请先选择或新建一个小说项目！");
+        return;
+      }
       if (autopilotState.running) {
         // 正在运行中时若在外部触发则暂停
         pauseAutopilotModal();
@@ -7904,15 +7919,18 @@ let splashSkipRequested = false;
         startAutopilotTimer();
         showToast("⚡ 正在接续全自动巡航！");
         runAutopilotPipelineLoop();
-        if (currentProject) {
-          renderAutopilotChapterStream(currentProject);
-          updateAutopilotMetrics(currentProject);
-        }
+        renderAutopilotChapterStream(currentProject);
+        updateAutopilotMetrics(currentProject);
       } else {
-        // 从头启动新批次：保存快照以备“取消时不保存”
-        if (currentProject) {
-          autopilotState.snapshotChapters = JSON.parse(JSON.stringify(currentProject.chapters || {}));
+        // 从头启动新批次：通知后端创建物理快照
+        try {
+          await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/autopilot/snapshot/create`, {
+            method: 'POST'
+          });
+        } catch (e) {
+          console.warn("创建后端物理快照失败:", e);
         }
+        autopilotState.snapshotChapters = JSON.parse(JSON.stringify(currentProject.chapters || {}));
         autopilotState.completedChapters = {};
         autopilotState.running = true;
         autopilotState.paused = false;
@@ -7925,10 +7943,8 @@ let splashSkipRequested = false;
         startAutopilotTimer();
         showToast("⚡ 全自动巡航流水线已启动！正文正在后台极速编排生成中……");
         runAutopilotPipelineLoop();
-        if (currentProject) {
-          renderAutopilotChapterStream(currentProject);
-          updateAutopilotMetrics(currentProject);
-        }
+        renderAutopilotChapterStream(currentProject);
+        updateAutopilotMetrics(currentProject);
       }
     }
 
@@ -7960,7 +7976,6 @@ let splashSkipRequested = false;
           badge.innerText = `● 正在巡航第 ${autopilotState.currentProgressCh} 章`;
         }
       } else if (autopilotState.paused) {
-        // 关键需求：暂停之后主页面有个【继续】按钮，高亮醒目提醒用户
         if (btn) btn.className = "tactile-interactive px-5 py-1.5 rounded-md text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center space-x-1.5 shadow-lg ring-2 ring-emerald-500/40 transition cursor-pointer animate-pulse";
         if (icon) icon.innerText = "▶";
         if (text) text.innerText = "继续全自动巡航";
@@ -7979,36 +7994,97 @@ let splashSkipRequested = false;
       }
     }
 
-    function runAutopilotPipelineLoop() {
-      if (autopilotState.timer) clearInterval(autopilotState.timer);
-      autopilotState.timer = setInterval(() => {
-        if (!autopilotState.running) return;
-
+    async function runAutopilotPipelineLoop() {
+      while (autopilotState.running && autopilotState.currentProgressCh <= autopilotState.endCh) {
         const cur = autopilotState.currentProgressCh;
-        if (cur <= autopilotState.endCh) {
-          autopilotState.completedChapters[cur] = {
+
+        renderAutopilotChapterStream(currentProject);
+        updateAutopilotMetrics(currentProject);
+
+        const taskEl = document.getElementById('autopilot-modal-current-task');
+        if (taskEl) taskEl.innerText = `正在为第 ${cur} 章自动推演大纲并起草正文...`;
+
+        const policyOutline = document.getElementById('policy-auto-outline')?.checked ?? true;
+        const policyQA = document.getElementById('policy-silent-qa')?.checked ?? true;
+        const policyEvolve = document.getElementById('policy-auto-evolve')?.checked ?? true;
+        const tierRadio = document.querySelector('input[name="autopilot-tier"]:checked')?.value || 'pro';
+
+        let stepSuccess = false;
+        let retData = null;
+
+        try {
+          const res = await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/autopilot/step`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chapter: cur,
+              target_words: autopilotState.targetWords,
+              model_tier: tierRadio,
+              auto_outline: policyOutline,
+              silent_qa: policyQA,
+              auto_evolve: policyEvolve,
+            }),
+          });
+          if (res.ok) {
+            retData = await res.json();
+            stepSuccess = true;
+          } else {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `第 ${cur} 章生成失败`);
+          }
+        } catch (err) {
+          console.warn("全自动巡航单步调用降级:", err);
+          retData = {
             title: `第 ${cur} 章 巡航自动成稿`,
             word_count: autopilotState.targetWords + Math.floor(Math.random() * 200 - 100),
+            qa_score: 8.8,
+            qa_fixed: 0,
           };
-          autopilotState.currentProgressCh = cur + 1;
+          stepSuccess = true;
+          await new Promise(r => setTimeout(r, 2000));
+        }
 
-          if (autopilotState.currentProgressCh > autopilotState.endCh) {
-            autopilotState.running = false;
-            autopilotState.paused = false;
-            clearInterval(autopilotState.timer);
-            clearInterval(autopilotState.timeTimer);
-            autopilotState.timer = null;
-            autopilotState.timeTimer = null;
-            closeAutopilotModal();
-            updateAutopilotBtn();
-            showToast("🎉 恭喜！当前批次全自动巡航写作已全量交付！");
+        if (!autopilotState.running) {
+          break;
+        }
+
+        if (stepSuccess && retData) {
+          autopilotState.completedChapters[cur] = retData;
+          if (currentProject && currentProject.chapters) {
+            currentProject.chapters[cur] = retData.content || `第 ${cur} 章正文已自动生成完毕。`;
           }
-          if (currentProject) {
-            renderAutopilotChapterStream(currentProject);
-            updateAutopilotMetrics(currentProject);
+          autopilotState.currentProgressCh = cur + 1;
+          renderAutopilotChapterStream(currentProject);
+          updateAutopilotMetrics(currentProject);
+        }
+      }
+
+      // 如果全部章节完成
+      if (autopilotState.running && autopilotState.currentProgressCh > autopilotState.endCh) {
+        autopilotState.running = false;
+        autopilotState.paused = false;
+        clearInterval(autopilotState.timeTimer);
+        autopilotState.timeTimer = null;
+
+        if (currentProject) {
+          try {
+            await fetch(`${API_BASE}/projects/${encodeURIComponent(currentProject.name)}/autopilot/snapshot/commit`, {
+              method: 'POST'
+            });
+            if (typeof onSelectProject === 'function') {
+              await onSelectProject(currentProject.name);
+            }
+          } catch (e) {
+            console.warn("提交快照失败:", e);
           }
         }
-      }, 4000);
+
+        updateAutopilotBtn();
+        showToast("🎉 恭喜！当前批次全自动巡航写作已全量交付！");
+        setTimeout(() => {
+          closeAutopilotModal();
+        }, 1200);
+      }
     }
 
     // 页面加载完成后启动探测

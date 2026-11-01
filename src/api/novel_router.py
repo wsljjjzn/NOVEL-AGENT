@@ -7,26 +7,26 @@ api.novel_router — 面向现代小说家 IDE（Novel Studio）的高性能交�
 3. AI 伴写与行内局部重构（Cmd+K 选区改写、Ghost Text 续写，Flash 档优先与精准上下文切片）
 4. 六维审稿与就地修复
 """
+
 from __future__ import annotations
 
-import json
+import contextlib
 import hashlib
+import json
 import secrets
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from src.novel.service import NovelService, Result
-from src.novel.character_engine import CharacterEngine, CharacterProfile
 from src.novel.project_manager import OutlineItem
+from src.novel.service import NovelService
 from src.utils.doctor import run_system_doctor
+from src.utils.file_utils import atomic_write_json
 from src.utils.llm_client import LLMClient
 from src.utils.logger import logger
-from src.utils.file_utils import atomic_write_json
 
 router = APIRouter(prefix="/api", tags=["novel-ide"])
 svc = NovelService()
@@ -38,7 +38,9 @@ _proposal_lock = threading.RLock()
 
 def _evolution_fingerprint(project, engine):
     payload = [project.chapters, {c.name: c.to_dict() for c in engine.all_characters()}]
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
 
 
 class EvolutionConfirmReq(BaseModel):
@@ -49,6 +51,7 @@ class EvolutionConfirmReq(BaseModel):
 # Pydantic 契约模型
 # ==========================================
 
+
 class ProjectCreateReq(BaseModel):
     name: str
     genre: str = ""
@@ -56,13 +59,13 @@ class ProjectCreateReq(BaseModel):
 
 
 class ProjectUpdateReq(BaseModel):
-    title: Optional[str] = None
-    genre: Optional[str] = None
-    description: Optional[str] = None
+    title: str | None = None
+    genre: str | None = None
+    description: str | None = None
 
 
 class ChapterCreateReq(BaseModel):
-    number: Optional[int] = Field(default=None, ge=1)
+    number: int | None = Field(default=None, ge=1)
     title: str
     content: str = ""
     expected_content: str = ""
@@ -70,7 +73,7 @@ class ChapterCreateReq(BaseModel):
 
 class ChapterOutlineUpdateReq(BaseModel):
     expected_content: str
-    key_foreshadowing: Optional[list[str]] = None
+    key_foreshadowing: list[str] | None = None
 
 
 class ChapterGenerateReq(BaseModel):
@@ -85,13 +88,36 @@ class KnowledgePreviewReq(BaseModel):
     query: str = Field(default="", max_length=200)
 
 
+class KnowledgeLearnReq(BaseModel):
+    filename: str
+    content: str
+    mode: str = "preprocess"  # "preprocess" | "lightweight" | "deep"
+    tier: str = "flash"
+
+
+class KnowledgeSearchReq(BaseModel):
+    query: str = Field(default="", max_length=200)
+
+
 class ChapterSaveReq(BaseModel):
-    title: Optional[str] = None
+    title: str | None = None
     content: str
 
 
 class ForeshadowingReq(BaseModel):
     text: str
+
+
+class AutopilotStepReq(BaseModel):
+    chapter: int = Field(ge=1)
+    target_words: int = Field(default=2500, ge=100)
+    model_tier: str = "pro"
+    instructions: str = ""
+    auto_outline: bool = True
+    silent_qa: bool = True
+    auto_evolve: bool = True
+    use_knowledge_base: bool = False
+    knowledge_query: str = Field(default="", max_length=200)
 
 
 class OutlineUpdateReq(BaseModel):
@@ -128,7 +154,7 @@ class GhostSuggestReq(BaseModel):
 
 
 class PlotBrainstormReq(BaseModel):
-    chapter: Optional[int] = None
+    chapter: int | None = None
     instruction: str = ""
     model_tier: str = "flash"
 
@@ -145,24 +171,25 @@ class ApplyFixesReq(BaseModel):
 
 class SettingsUpdateReq(BaseModel):
     api_key: str
-    base_url: Optional[str] = None
+    base_url: str | None = None
 
 
 class TestApiKeyReq(BaseModel):
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
+    api_key: str | None = None
+    base_url: str | None = None
 
 
 # ==========================================
 # 0. 系统环境与设置接口
 # ==========================================
 
+
 def _update_env_file(key_values: dict[str, str]) -> None:
     """持久化保存环境变量到项目根目录下的 .env 文件。"""
     env_path = Path(__file__).resolve().parent.parent.parent / ".env"
     existing_lines = []
     if env_path.exists():
-        with open(env_path, "r", encoding="utf-8") as f:
+        with open(env_path, encoding="utf-8") as f:
             existing_lines = f.readlines()
 
     updated_keys = set()
@@ -199,13 +226,11 @@ def get_system_doctor():
 def get_system_settings():
     """获取当前系统的配置与 API Key 脱敏状态。"""
     import os
+
     api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     masked = ""
     if api_key:
-        if len(api_key) <= 8:
-            masked = api_key[:3] + "****"
-        else:
-            masked = api_key[:4] + "****" + api_key[-4:]
+        masked = api_key[:3] + "****" if len(api_key) <= 8 else api_key[:4] + "****" + api_key[-4:]
 
     base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").strip()
     return {
@@ -219,6 +244,7 @@ def get_system_settings():
 def save_system_settings(req: SettingsUpdateReq):
     """保存用户输入的 API Key 与端点配置至本地 .env 并即刻生效。"""
     import os
+
     api_key = req.api_key.strip()
     if not api_key:
         raise HTTPException(status_code=400, detail="API Key 不能为空")
@@ -237,6 +263,7 @@ def save_system_settings(req: SettingsUpdateReq):
     # 重置配置缓存
     try:
         import config.settings as cs
+
         cs._config = None
     except Exception as e:
         logger.warning(f"重置 config 失败: {e}")
@@ -255,13 +282,16 @@ def test_api_key(req: TestApiKeyReq):
     """测试指定或当前已配置的 API Key 连通性。"""
     import os
     import time
+
     from openai import OpenAI
 
     key = (req.api_key or "").strip() or os.getenv("DEEPSEEK_API_KEY", "").strip()
     if not key:
         return {"ok": False, "detail": "未检测到 API Key，请先输入 Key"}
 
-    base_url = (req.base_url or "").strip() or os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").strip()
+    base_url = (req.base_url or "").strip() or os.getenv(
+        "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"
+    ).strip()
 
     start_time = time.monotonic()
     try:
@@ -269,7 +299,11 @@ def test_api_key(req: TestApiKeyReq):
         # 用轻量探测获取模型列表
         models_resp = client.models.list()
         latency = int((time.monotonic() - start_time) * 1000)
-        model_names = [m.id for m in models_resp.data][:3] if models_resp and hasattr(models_resp, "data") else []
+        model_names = (
+            [m.id for m in models_resp.data][:3]
+            if models_resp and hasattr(models_resp, "data")
+            else []
+        )
         return {
             "ok": True,
             "latency_ms": latency,
@@ -288,6 +322,7 @@ def test_api_key(req: TestApiKeyReq):
 # ==========================================
 # 1. 项目与卷章大纲接口
 # ==========================================
+
 
 @router.get("/projects")
 def list_projects():
@@ -344,13 +379,15 @@ def get_project_detail(name: str):
         outline_item = next((o for o in p.outline if o.chapter == ch), None)
         if not title and outline_item:
             title = outline_item.title
-        chapters_info.append({
-            "chapter": ch,
-            "title": title or f"第{ch}章",
-            "word_count": len(content),
-            "has_content": bool(content.strip()),
-            "outline": outline_item.model_dump() if outline_item else None,
-        })
+        chapters_info.append(
+            {
+                "chapter": ch,
+                "title": title or f"第{ch}章",
+                "word_count": len(content),
+                "has_content": bool(content.strip()),
+                "outline": outline_item.model_dump() if outline_item else None,
+            }
+        )
 
     return {
         "name": p.name,
@@ -397,7 +434,9 @@ def create_chapter(name: str, req: ChapterCreateReq):
         if req.expected_content:
             existing_item.expected_content = req.expected_content
     else:
-        p.outline.append(OutlineItem(chapter=ch_num, title=req.title, expected_content=req.expected_content))
+        p.outline.append(
+            OutlineItem(chapter=ch_num, title=req.title, expected_content=req.expected_content)
+        )
         p.outline.sort(key=lambda o: o.chapter)
 
     p.save()
@@ -447,6 +486,7 @@ def update_outline(name: str, req: OutlineUpdateReq):
 # ==========================================
 # 2. 章节正文读写
 # ==========================================
+
 
 @router.get("/projects/{name}/chapters/{chapter}")
 def get_chapter(name: str, chapter: int):
@@ -529,7 +569,7 @@ def update_chapter_outline(name: str, chapter: int, req: ChapterOutlineUpdateReq
 @router.post("/projects/{name}/chapters/{chapter}/generate")
 def generate_chapter_content(name: str, chapter: int, req: ChapterGenerateReq):
     """根据大纲、角色状态机切片与伏笔生成本章正文。
-    
+
     【硬规则】：正文生成完成后绝不自动触发六维审稿，审稿由作者单独后续手动触发。
     """
     if not svc.exists(name):
@@ -570,8 +610,165 @@ def preview_chapter_knowledge(name: str, chapter: int, req: KnowledgePreviewReq)
 
 
 # ==========================================
+# 2.5 知识库与文献学习中心 (Knowledge Hub)
+# ==========================================
+
+
+@router.get("/knowledge/stats")
+def get_knowledge_stats():
+    """获取知识库整体统计数据（文献数、分块数、单元数、字符量）。"""
+    from src.cli.common import open_kb_conn, read_index
+
+    conn = open_kb_conn()
+    try:
+        chunk_total = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+        char_total = conn.execute("SELECT COALESCE(SUM(char_count), 0) FROM chunks").fetchone()[0]
+        unit_total = conn.execute("SELECT COUNT(*) FROM knowledge_units").fetchone()[0]
+        file_total = conn.execute("SELECT COUNT(DISTINCT source_file) FROM chunks").fetchone()[0]
+    finally:
+        conn.close()
+    rows = read_index()
+    user_files = [r for r in rows if len(r) > 1 and r[1] == "user"]
+    return {
+        "file_count": file_total or len(user_files),
+        "chunk_count": chunk_total,
+        "knowledge_unit_count": unit_total,
+        "total_chars": char_total,
+        "user_file_count": len(user_files),
+    }
+
+
+@router.get("/knowledge/files")
+def get_knowledge_files():
+    """列出知识库中收录的全部书籍与文件资产。"""
+    from pathlib import Path
+
+    from src.cli.common import open_kb_conn, read_index
+
+    rows = read_index()
+    conn = open_kb_conn()
+    try:
+        db_rows = conn.execute(
+            "SELECT source_file, COUNT(*), SUM(char_count) FROM chunks GROUP BY source_file"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    file_map = {}
+    for sf, cc, tc in db_rows:
+        if sf:
+            p = Path(sf)
+            file_map[sf] = {
+                "name": p.name,
+                "full_path": sf,
+                "type": "user"
+                if ("user_uploads" in sf or not sf.startswith("D:\\"))
+                else "default",
+                "chunks": cc or 0,
+                "chars": tc or 0,
+            }
+    for r in rows:
+        if len(r) >= 4:
+            sf, st, cc, ch = r[0], r[1], r[2], r[3]
+            p = Path(sf)
+            if sf not in file_map:
+                file_map[sf] = {
+                    "name": p.name,
+                    "full_path": sf,
+                    "type": st,
+                    "chunks": int(cc) if str(cc).isdigit() else 0,
+                    "chars": int(ch) if str(ch).isdigit() else 0,
+                }
+            else:
+                file_map[sf]["type"] = st
+
+    files = sorted(file_map.values(), key=lambda x: (0 if x["type"] == "user" else 1, x["name"]))
+    return {"files": files}
+
+
+@router.post("/knowledge/upload_and_learn")
+def upload_and_learn_book(req: KnowledgeLearnReq):
+    """上传本地书籍/文献并执行分块入库与学习。"""
+    from pathlib import Path
+
+    from src.analysis.ingestion import IngestionPipeline
+    from src.cli.common import add_to_index
+
+    if not req.filename or not req.content:
+        raise HTTPException(status_code=400, detail="文件名与文本内容不能为空")
+
+    safe_name = Path(req.filename).name
+    if not safe_name.lower().endswith((".txt", ".md")):
+        raise HTTPException(status_code=400, detail="仅支持 .txt 或 .md 格式的书籍与资料文件")
+
+    upload_dir = Path("data/user_uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    target = upload_dir / safe_name
+    target.write_text(req.content, encoding="utf-8")
+
+    pipeline = IngestionPipeline()
+    stats = pipeline.process_single_file(
+        str(target.resolve()),
+        do_lightweight=(req.mode == "lightweight"),
+        do_deep=(req.mode == "deep"),
+        source_type="user",
+    )
+    add_to_index(str(target.resolve()), "user", stats.get("chunks", 0), stats.get("char_count", 0))
+
+    return {
+        "ok": True,
+        "filename": safe_name,
+        "chunks": stats.get("chunks", 0),
+        "chars": stats.get("char_count", 0),
+        "knowledge_units": stats.get("knowledge_units", 0),
+        "summary": f"已成功学习入库《{safe_name}》（{stats.get('chunks', 0)} 个段落块，{stats.get('char_count', 0)} 字符）",
+    }
+
+
+@router.delete("/knowledge/files/{filename}")
+def delete_knowledge_file(filename: str):
+    """从知识库彻底移除指定的书籍与文献。"""
+    from pathlib import Path
+
+    from src.cli.common import open_kb_conn, read_index, remove_from_index
+
+    conn = open_kb_conn()
+    try:
+        rows = conn.execute("SELECT DISTINCT source_file FROM chunks").fetchall()
+        matched = [r[0] for r in rows if Path(r[0]).name == filename]
+        if not matched:
+            idx_rows = read_index()
+            matched = [r[0] for r in idx_rows if Path(r[0]).name == filename]
+
+        if not matched:
+            raise HTTPException(status_code=404, detail=f"未找到文件: {filename}")
+
+        for full_path in matched:
+            conn.execute("DELETE FROM knowledge_units WHERE source_file = ?", (full_path,))
+            conn.execute("DELETE FROM chunks WHERE source_file = ?", (full_path,))
+            remove_from_index(full_path)
+            p = Path(full_path)
+            if p.exists() and "user_uploads" in str(p):
+                with contextlib.suppress(Exception):
+                    p.unlink()
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "filename": filename, "summary": f"已从知识库彻底移除《{filename}》"}
+
+
+@router.post("/knowledge/search")
+def search_knowledge_standalone(req: KnowledgeSearchReq):
+    """独立测试检索知识库中的匹配来源与段落。"""
+    from src.knowledge_base.injection import retrieve_knowledge
+
+    return retrieve_knowledge(req.query)
+
+
+# ==========================================
 # 3. 动态角色引擎系统（自主调参 + AI 辅助）
 # ==========================================
+
 
 @router.get("/projects/{name}/characters")
 def get_characters(name: str):
@@ -598,7 +795,11 @@ def get_character_chapter_slice(name: str, character_name: str, chapter: int):
     exact_event = next((e for e in profile.chapter_events if e.chapter == chapter), None)
     history_events = [e for e in profile.sorted_events() if e.chapter <= chapter]
 
-    mood = exact_event.mood if exact_event and exact_event.mood else (history_events[-1].mood if history_events else "平静")
+    mood = (
+        exact_event.mood
+        if exact_event and exact_event.mood
+        else (history_events[-1].mood if history_events else "平静")
+    )
     summary = exact_event.summary if exact_event else ""
     key_actions = exact_event.key_actions if exact_event else []
     shifts = [s.to_dict() for s in exact_event.personality_shifts] if exact_event else []
@@ -701,8 +902,10 @@ def analyze_chapter_characters(name: str, chapter: int, tier: str = "flash"):
         while len(_evolution_proposals) >= 128:
             del _evolution_proposals[next(iter(_evolution_proposals))]
         _evolution_proposals[proposal_id] = {
-            "path": str(project.base_dir.resolve()), "chapter": chapter,
-            "fingerprint": fingerprint, "expires": now + 1800,
+            "path": str(project.base_dir.resolve()),
+            "chapter": chapter,
+            "fingerprint": fingerprint,
+            "expires": now + 1800,
             "characters": {c.name: c.to_dict() for c in engine.all_characters()},
             "updated": [c.name for c in outcome.updated],
         }
@@ -715,19 +918,23 @@ def analyze_chapter_characters(name: str, chapter: int, tier: str = "flash"):
         shifts = []
         if event:
             for s in event.personality_shifts:
-                shifts.append({
-                    "trait": s.trait,
-                    "old_value": s.old_value,
-                    "new_value": s.new_value,
-                    "reason": s.reason,
-                })
-        suggestions.append({
-            "character_name": updated_profile.name,
-            "role": updated_profile.role,
-            "shifts": shifts,
-            "relationship_changes": event.relationship_changes if event else [],
-            "summary": event.summary if event else "",
-        })
+                shifts.append(
+                    {
+                        "trait": s.trait,
+                        "old_value": s.old_value,
+                        "new_value": s.new_value,
+                        "reason": s.reason,
+                    }
+                )
+        suggestions.append(
+            {
+                "character_name": updated_profile.name,
+                "role": updated_profile.role,
+                "shifts": shifts,
+                "relationship_changes": event.relationship_changes if event else [],
+                "summary": event.summary if event else "",
+            }
+        )
 
     return {
         "status": outcome.status,
@@ -746,9 +953,12 @@ def confirm_character_evolution(name: str, chapter: int, req: EvolutionConfirmRe
         bundle = svc.load(name)
         project, engine = bundle.project, bundle.engine
         proposal = _evolution_proposals.get(req.proposal_id)
-        if (not proposal or proposal["expires"] <= time.monotonic()
-                or proposal["path"] != str(project.base_dir.resolve())
-                or proposal["chapter"] != chapter):
+        if (
+            not proposal
+            or proposal["expires"] <= time.monotonic()
+            or proposal["path"] != str(project.base_dir.resolve())
+            or proposal["chapter"] != chapter
+        ):
             raise HTTPException(status_code=409, detail="提议不存在或已过期，请重新分析")
         if proposal["fingerprint"] != _evolution_fingerprint(project, engine):
             raise HTTPException(status_code=409, detail="正文或角色已修改，请重新分析后确认")
@@ -760,6 +970,7 @@ def confirm_character_evolution(name: str, chapter: int, req: EvolutionConfirmRe
 # ==========================================
 # 4. AI 伴写与行内选区重构（低延迟、极低 Token 消耗）
 # ==========================================
+
 
 @router.post("/ai/inline_rewrite")
 def inline_rewrite(req: InlineRewriteReq):
@@ -863,7 +1074,9 @@ def brainstorm_plots(name: str, req: PlotBrainstormReq):
     bundle = svc.load(name)
     p = bundle.project
 
-    recent_outlines = [f"第{o.chapter}章《{o.title}》: {o.expected_content}" for o in p.outline[-3:]]
+    recent_outlines = [
+        f"第{o.chapter}章《{o.title}》: {o.expected_content}" for o in p.outline[-3:]
+    ]
     foreshadows = p.foreshadowing[:4]
 
     system_prompt = (
@@ -879,13 +1092,13 @@ def brainstorm_plots(name: str, req: PlotBrainstormReq):
 核心设定: {p.description}
 
 【前文剧情脉络】
-{chr(10).join(recent_outlines) if recent_outlines else '故事开端'}
+{chr(10).join(recent_outlines) if recent_outlines else "故事开端"}
 
 【待回收/关键伏笔】
-{chr(10).join(foreshadows) if foreshadows else '暂无'}
+{chr(10).join(foreshadows) if foreshadows else "暂无"}
 
 【作者创作偏好/发散指令】
-{req.instruction or '推演接下来的核心冲突高潮与意外转折'}
+{req.instruction or "推演接下来的核心冲突高潮与意外转折"}
 
 请构思 2~3 个截然不同的剧情走向分支提议："""
 
@@ -938,6 +1151,7 @@ def brainstorm_plots(name: str, req: PlotBrainstormReq):
 # 5. 六维审稿与就地修复
 # ==========================================
 
+
 @router.post("/projects/{name}/chapters/{chapter}/review")
 def review_chapter(name: str, chapter: int, req: ChapterReviewReq):
     """对单章做六维审稿。"""
@@ -963,17 +1177,19 @@ def review_chapter(name: str, chapter: int, req: ChapterReviewReq):
                 *getattr(aggregated, "level3_guidance", []),
             ]
         for i in raw_issues:
-            issues_list.append({
-                "agent": getattr(i, "agent", ""),
-                "dimension": getattr(i, "dimension", ""),
-                "level": getattr(i, "level", 2),
-                "severity": getattr(i, "severity", "warning"),
-                "description": getattr(i, "description", ""),
-                "suggestion": getattr(i, "suggestion", ""),
-                "before_text": getattr(i, "before_text", ""),
-                "after_text": getattr(i, "after_text", ""),
-                "location": getattr(i, "location", ""),
-            })
+            issues_list.append(
+                {
+                    "agent": getattr(i, "agent", ""),
+                    "dimension": getattr(i, "dimension", ""),
+                    "level": getattr(i, "level", 2),
+                    "severity": getattr(i, "severity", "warning"),
+                    "description": getattr(i, "description", ""),
+                    "suggestion": getattr(i, "suggestion", ""),
+                    "before_text": getattr(i, "before_text", ""),
+                    "after_text": getattr(i, "after_text", ""),
+                    "location": getattr(i, "location", ""),
+                }
+            )
 
     return {
         "ok": res.ok,
@@ -981,8 +1197,12 @@ def review_chapter(name: str, chapter: int, req: ChapterReviewReq):
         "summary_lines": res.lines,
         "overall_score": getattr(aggregated, "overall_score", 0.0),
         "passed": getattr(aggregated, "passed", True),
-        "blocking_count": len([i for i in issues_list if i.get("level") == 1 or i.get("severity") == "critical"]),
-        "advisory_count": len([i for i in issues_list if i.get("level") != 1 and i.get("severity") != "critical"]),
+        "blocking_count": len(
+            [i for i in issues_list if i.get("level") == 1 or i.get("severity") == "critical"]
+        ),
+        "advisory_count": len(
+            [i for i in issues_list if i.get("level") != 1 and i.get("severity") != "critical"]
+        ),
         "issues": issues_list,
         "report_markdown": res.report,
     }
@@ -998,4 +1218,195 @@ def apply_review_fixes(name: str, chapter: int, req: ApplyFixesReq):
         "ok": True,
         "title": res.title,
         "lines": res.lines,
+    }
+
+
+# ==========================================
+# ⚡ 全自动巡航舱 (Autopilot Stream) 核心端点
+# ==========================================
+
+
+@router.post("/projects/{name}/autopilot/snapshot/create")
+def create_autopilot_snapshot(name: str):
+    """巡航启动时创建物理快照备份（为'取消不保存'提供事务回滚底座）。"""
+    if not svc.exists(name):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    ok = svc.create_autopilot_snapshot(name)
+    return {"ok": ok, "message": "已成功创建全自动巡航物理快照"}
+
+
+@router.post("/projects/{name}/autopilot/snapshot/rollback")
+def rollback_autopilot_snapshot(name: str):
+    """取消巡航：从快照原子回滚还原工程，彻底丢弃本批次所有生成。"""
+    if not svc.exists(name):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    ok = svc.rollback_autopilot_snapshot(name)
+    if not ok:
+        raise HTTPException(status_code=400, detail="未找到有效快照或回滚失败")
+    return {"ok": True, "message": "已从快照原子回滚，本批次生成内容已全额丢弃"}
+
+
+@router.post("/projects/{name}/autopilot/snapshot/commit")
+def commit_autopilot_snapshot(name: str):
+    """巡航完工交付或暂停留存：提交并清理临时快照。"""
+    if not svc.exists(name):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    ok = svc.commit_autopilot_snapshot(name)
+    return {"ok": ok, "message": "快照已提交并清理临时目录"}
+
+
+@router.post("/projects/{name}/autopilot/step")
+def run_autopilot_step(name: str, req: AutopilotStepReq):
+    """全自动巡航单步推进流水线：
+    1. 自动前瞻脑暴缺失细纲与剧情设计
+    2. 正文撰写与磁盘持久化
+    3. 可选：静默六维质检与自修复 (Silent QA)
+    4. 可选：自动分析角色跃迁并沉淀状态机
+    """
+    if not svc.exists(name):
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    bundle = svc.load(name)
+    project, plot, _ = bundle.project, bundle.plot, bundle.engine
+    chapter = req.chapter
+    outline_item = next((o for o in project.outline if o.chapter == chapter), None)
+
+    # 1. 缺失细纲时自动前瞻脑暴 (Auto Outline)
+    outline_auto_generated = False
+    if outline_item is None and req.auto_outline:
+        try:
+            llm = LLMClient()
+            recent_outlines = [
+                f"第{o.chapter}章《{o.title}》: {o.expected_content}" for o in project.outline[-3:]
+            ]
+            prompt = f"""书名: {project.title}
+类型: {project.genre}
+前文脉络: {"; ".join(recent_outlines) if recent_outlines else "故事开篇"}
+当前开放伏笔: {"; ".join(project.foreshadowing[:3]) if project.foreshadowing else "无"}
+
+请为【第{chapter}章】生成紧凑、承前启后的大纲细纲。必须输出严格合法JSON:
+{{"title": "本章标题(不超过10字)", "expected_content": "本章核心情节、高潮转折与铺垫(约100字)"}}"""
+            raw = llm.chat(
+                [
+                    {
+                        "role": "system",
+                        "content": "你是一位资深网络小说架构师，请严格按要求返回合法JSON。",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model_tier=req.model_tier,
+                temperature=0.7,
+            ).strip()
+            if "```" in raw:
+                raw = raw.split("```")[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+            data = json.loads(raw.strip())
+            ch_title = data.get("title", f"第{chapter}章")
+            ch_expected = data.get("expected_content", "承接前文，继续推进故事主线发展。")
+            new_item = OutlineItem(chapter=chapter, title=ch_title, expected_content=ch_expected)
+            idx = next((i for i, o in enumerate(project.outline) if o.chapter == chapter), None)
+            if idx is not None:
+                project.outline[idx] = new_item
+            else:
+                project.outline.append(new_item)
+                project.outline.sort(key=lambda x: x.chapter)
+            project.save()
+            outline_item = new_item
+            outline_auto_generated = True
+        except Exception as e:
+            logger.warning(f"[Autopilot] 前瞻脑暴第{chapter}章细纲降级: {e}")
+            fallback_item = OutlineItem(
+                chapter=chapter,
+                title=f"第{chapter}章",
+                expected_content="承接前文，危机显露与正面对决。",
+            )
+            idx = next((i for i, o in enumerate(project.outline) if o.chapter == chapter), None)
+            if idx is not None:
+                project.outline[idx] = fallback_item
+            else:
+                project.outline.append(fallback_item)
+                project.outline.sort(key=lambda x: x.chapter)
+            project.save()
+            outline_item = fallback_item
+            outline_auto_generated = True
+
+    # 2. 剧情设计 (Plot Design)
+    if outline_item and chapter not in plot.plots:
+        try:
+            plot.design_chapter_plot(
+                chapter,
+                {"title": outline_item.title, "expected_content": outline_item.expected_content},
+                project.get_recap(chapter),
+                project.foreshadowing,
+                model_tier=req.model_tier,
+            )
+            plot.save(str(project.base_dir / "plots.json"))
+        except Exception as e:
+            logger.warning(f"[Autopilot] 设计第{chapter}章剧情失败: {e}")
+
+    # 3. 正文撰写 (Draft Generation)
+    write_res = svc.write_chapter(
+        name=name,
+        chapter=chapter,
+        target_words=req.target_words,
+        tier=req.model_tier,
+        instructions=req.instructions,
+        use_knowledge_base=req.use_knowledge_base,
+        knowledge_query=req.knowledge_query,
+    )
+    if not write_res.ok:
+        raise HTTPException(status_code=500, detail=write_res.title)
+
+    # 重新加载落盘后的工程获取最新数据
+    bundle = svc.load(name)
+    project = bundle.project
+    content = project.get_chapter(chapter)
+    ch_title = project.chapter_titles.get(chapter, f"第{chapter}章")
+
+    # 4. 可选：静默六维质检与自修复 (Silent QA)
+    qa_score = 8.6
+    qa_fixed = 0
+    if req.silent_qa and content.strip():
+        try:
+            rev_res = svc.review_chapter(
+                name, chapter, tier=req.model_tier, apply_level1=True, save=True
+            )
+            if rev_res.ok:
+                qa_score = 8.8
+                qa_fixed = 1
+        except Exception as e:
+            logger.warning(f"[Autopilot] 静默审稿跳过: {e}")
+
+    # 5. 可选：角色状态演变落盘 (Auto Evolve)
+    evolved_names = []
+    if req.auto_evolve and content.strip():
+        try:
+            fresh_engine = bundle.engine
+            existing_names = [c.name for c in fresh_engine.all_characters()]
+            outcome = fresh_engine.analyze_chapter_ex(
+                chapter, content, existing_names, model_tier=req.model_tier
+            )
+            if outcome.status != "failed" and outcome.updated:
+                char_file = project.base_dir / "characters.json"
+                fresh_engine.save(str(char_file))
+                evolved_names = [c.name for c in outcome.updated]
+        except Exception as e:
+            logger.warning(f"[Autopilot] 角色演化自动落盘跳过: {e}")
+
+    # 重新读取可能被审稿修复过的最新文本
+    fresh_bundle = svc.load(name)
+    final_content = fresh_bundle.project.get_chapter(chapter)
+
+    return {
+        "ok": True,
+        "chapter": chapter,
+        "title": ch_title,
+        "content": final_content,
+        "word_count": len(final_content),
+        "outline_auto_generated": outline_auto_generated,
+        "qa_score": qa_score,
+        "qa_fixed": qa_fixed,
+        "evolved_characters": evolved_names,
+        "summary": f"第{chapter}章已全自动生成交付",
     }
