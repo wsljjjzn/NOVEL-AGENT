@@ -55,3 +55,13 @@ Thumbs.db
 # 课程学习资料与作业模版（本地留存，不入公共库）
 course_materials/
 
+# 用户小说工程与本地测试上传（除基线样例外不入库）
+data/projects/*
+!data/projects/project.json
+!data/projects/地球毁灭人类开始银河旅行纪元，只有我获得了无限氧气（示例文章）/
+data/user_uploads/*
+!data/user_uploads/CSGO：我的准星里无活物-hold载物.txt
+!data/user_uploads/菜鸟女道士-洗三娇.txt
+data/knowledge/samples/
+
+
