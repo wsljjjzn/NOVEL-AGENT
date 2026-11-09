@@ -497,7 +497,7 @@ def test_character_chapter_slice(client, temp_project):
     """测试获取角色在指定章节的时间切片接口。"""
     name, svc = temp_project
     bundle = svc.load(name)
-    from src.novel.character_engine import CharacterProfile, ChapterEvent, PersonalityShift
+    from src.novel.character_engine import ChapterEvent, CharacterProfile, PersonalityShift
     profile = CharacterProfile(
         name="林凡",
         role="主角",
@@ -527,4 +527,20 @@ def test_character_chapter_slice(client, temp_project):
     assert "步入青云宗山门" in data["key_actions"]
     assert data["personality"]["警惕心"] == 8
     assert 1 in data["all_recorded_chapters"]
+
+
+def test_system_usage(client):
+    """测试获取系统当前用量与费用统计。"""
+    resp = client.get("/api/system/usage")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "calls" in data
+    assert "cost_cny" in data
+    assert "prompt_tokens" in data
+    assert "completion_tokens" in data
+    assert "total_tokens" in data
+    assert "budget_cny" in data
+    assert isinstance(data["calls"], int)
+    assert isinstance(data["cost_cny"], float)
+
 

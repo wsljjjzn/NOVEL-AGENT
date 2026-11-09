@@ -1928,8 +1928,8 @@
       <span class="text-[var(--ink-muted)]">光标: 12行 34列</span>
     </div>
     <div class="flex items-center space-x-4">
-      <span class="text-[#5e6ad2] font-semibold flex items-center space-x-1">
-        <span>⚡ 今日已省 Token: 82%</span>
+      <span class="text-[var(--ink-muted)] hover:text-[var(--ink)] flex items-center space-x-1 cursor-pointer transition-colors" id="footer-token-stats" onclick="showUsageDetailToast()" title="今日暂无模型调用，Token 消耗为 0">
+        <span id="footer-cost-label">⚡ 今日消耗: ￥0.00</span>
       </span>
       <span>Tab 采纳</span>
       <span>Cmd+K 重构</span>
@@ -3106,6 +3106,44 @@
         localStorage.setItem('novel_ide_user_settings', JSON.stringify(novelSettings));
       } catch (e) {
         console.error("持久化设置失败:", e);
+      }
+    }
+
+    async function updateFooterUsage() {
+      try {
+        const res = await fetch(`${API_BASE}/system/usage`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const labelEl = document.getElementById('footer-cost-label');
+        const containerEl = document.getElementById('footer-token-stats');
+        if (!labelEl) return;
+
+        if (!data.calls || data.calls === 0) {
+          labelEl.textContent = '⚡ 今日消耗: ￥0.00';
+          if (containerEl) {
+            containerEl.title = '今日暂无模型调用，Token 消耗为 0（点击查看详情）';
+            containerEl.className = 'text-[var(--ink-muted)] hover:text-[var(--ink)] flex items-center space-x-1 cursor-pointer transition-colors';
+          }
+        } else {
+          const costText = data.cost_cny < 0.0001 ? '<￥0.0001' : `￥${data.cost_cny.toFixed(4)}`;
+          const tokensText = data.total_tokens ? `${data.total_tokens.toLocaleString()} tokens` : '';
+          labelEl.textContent = `⚡ 今日消耗: ${costText} (${tokensText || `${data.calls}次`})`;
+          if (containerEl) {
+            containerEl.title = `会话累计调用: ${data.calls} 次 · 输入: ${data.prompt_tokens.toLocaleString()} · 输出: ${data.completion_tokens.toLocaleString()} · 预估费用: ￥${data.cost_cny.toFixed(4)}`;
+            containerEl.className = 'text-[#5e6ad2] hover:text-[#717ff5] font-semibold flex items-center space-x-1 cursor-pointer transition-colors';
+          }
+        }
+      } catch (e) {
+        // 静默失败
+      }
+    }
+
+    function showUsageDetailToast() {
+      const containerEl = document.getElementById('footer-token-stats');
+      if (containerEl && containerEl.title) {
+        showToast(containerEl.title);
+      } else {
+        showToast('⚡ 今日暂无模型调用，Token 消耗为 0');
       }
     }
 
@@ -4425,6 +4463,7 @@
           if (res.ok) {
             const data = await res.json();
             rewritten = data.rewritten_text;
+            updateFooterUsage();
           }
         } catch (err) {
           console.warn("改写请求异常:", err);
@@ -5371,6 +5410,7 @@
           const ret = await res.json();
           if (ret.knowledge) renderKnowledge(ret.knowledge);
           await loadRealChapter(currentChapterNum);
+          updateFooterUsage();
           showToast(`✓ 第 ${currentChapterNum} 章正文已成功起草 (${ret.word_count} 字)！您可直接润色修改，或在右上角手动点击「🔍 审稿」`);
         } else {
           let errMsg = '请检查模型 API 配置';
@@ -6173,7 +6213,9 @@ let splashSkipRequested = false;
       initWorkspaceResizers();
       initTiltCards();
 
-      // 启动心跳自动保存守护进程 (按作者配置秒数落盘)
+      // 启动用量监控与心跳自动保存守护进程 (按作者配置秒数落盘)
+      updateFooterUsage();
+      setInterval(updateFooterUsage, 10000);
       setInterval(() => {
         const intervalSec = parseInt(novelSettings.autoSaveInterval, 10);
         if (intervalSec > 0 && currentProject && currentChapterData) {
@@ -8028,6 +8070,7 @@ let splashSkipRequested = false;
           if (res.ok) {
             retData = await res.json();
             stepSuccess = true;
+            updateFooterUsage();
           } else {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.detail || `第 ${cur} 章生成失败`);

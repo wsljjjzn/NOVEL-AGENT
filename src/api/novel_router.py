@@ -240,6 +240,23 @@ def get_system_settings():
     }
 
 
+@router.get("/system/usage")
+def get_system_usage():
+    """获取当前系统/会话累积的 LLM 调用统计与费用。"""
+    from src.utils.cost_tracker import get_tracker
+
+    t = get_tracker()
+    prompt_tokens, completion_tokens = t.total_tokens
+    return {
+        "calls": t.total_calls,
+        "cost_cny": float(round(t.total_cost_cny, 4)),
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
+        "budget_cny": float(t.budget_cny),
+    }
+
+
 @router.post("/system/settings")
 def save_system_settings(req: SettingsUpdateReq):
     """保存用户输入的 API Key 与端点配置至本地 .env 并即刻生效。"""
