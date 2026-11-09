@@ -35,6 +35,10 @@ if PROTOTYPE_DIR.exists():
         return FileResponse(PROTOTYPE_DIR / "index.html")
 
     app.mount("/static", StaticFiles(directory=str(PROTOTYPE_DIR)), name="static")
+    if (PROTOTYPE_DIR / "css").exists():
+        app.mount("/css", StaticFiles(directory=str(PROTOTYPE_DIR / "css")), name="css")
+    if (PROTOTYPE_DIR / "js").exists():
+        app.mount("/js", StaticFiles(directory=str(PROTOTYPE_DIR / "js")), name="js")
 
 orchestrator = WritingOrchestrator()
 reviewer = ReviewOrchestrator()

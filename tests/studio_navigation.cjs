@@ -2,9 +2,10 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const html = fs.readFileSync(require('node:path').join(__dirname, '../web_prototype/index.html'), 'utf8');
-const load = html.slice(html.indexOf('    async function loadRealChapter(chNum)'), html.indexOf('    // 轻量全局 Toast'));
-const save = html.slice(html.indexOf('    async function saveCurrentChapterToBackend()'), html.indexOf('    // 角色特质与实时调参'));
+const jsFile = require('node:path').join(__dirname, '../web_prototype/js/project-chapters.js');
+const jsCode = fs.readFileSync(jsFile, 'utf8');
+const load = jsCode.slice(jsCode.indexOf('    async function loadRealChapter(chNum)'), jsCode.indexOf('    async function saveCurrentChapterToBackend()'));
+const save = jsCode.slice(jsCode.indexOf('    async function saveCurrentChapterToBackend()'), jsCode.indexOf('    // 角色特质与实时调参'));
 const requests = [];
 const elements = new Map();
 const context = vm.createContext({console, API_BASE:'/api', document: {getElementById(id) {
